@@ -53,7 +53,8 @@ function Queue() {
   });
   const [pending, setPending] = useState<Record<string, boolean>>({});
 
-  const advanceFlow = async (token: string, patientName: string) => {
+  const advanceFlow = async (rawToken: string | number, patientName: string) => {
+    const token = String(rawToken);
     const current = flowStatus[token] ?? "WAITING";
     const next = FLOW_NEXT[current];
     if (!next) return;
