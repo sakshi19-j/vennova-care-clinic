@@ -131,7 +131,20 @@ function Queue() {
                 const p = getPatient(q.patientId)!;
                 const delayed = q.waitingMin > 20;
                 return (
-                  <li key={q.token} className="flex items-center gap-3 py-3 group">
+                  <li
+                    key={q.token}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => advanceFlow(q.token, p.name)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        advanceFlow(q.token, p.name);
+                      }
+                    }}
+                    aria-busy={pending[q.token] || undefined}
+                    className="flex items-center gap-3 py-3 group cursor-pointer hover:bg-muted/40 rounded-md px-1 -mx-1 transition"
+                  >
                     <span className="font-mono text-xs text-muted-foreground w-10">#{q.token}</span>
                     <Avatar name={p.name} />
                     <div className="flex-1 min-w-0">
