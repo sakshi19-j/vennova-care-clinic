@@ -1,0 +1,468 @@
+import { useSyncExternalStore } from "react";
+import {
+  rxQueue,
+  rxPatients,
+  rxAppointments,
+  rxPendingBills,
+  type RxQueue,
+  type QueueStatus,
+  type VisitType,
+  type RxPatient,
+  type PaymentMode,
+  type RxAppointment,
+  type RxBill,
+  type ApptStatus,
+  type RxReminder,
+} from "./reception-data";
+import { api, ApiError } from "./api-client";
+
+// ───────────────────────────────────────────────────────────
+// Types
+// ───────────────────────────────────────────────────────────
+export type PaidWith = PaymentMode | null;
+
+export type RxQueueRow = RxQueue & {
+  fee: number;
+  paid: boolean;
+  paid_with?: PaidWith;
+  reg_no?: string;
+  created_at: number;
+  invoice_sent?: boolean;
+  invoice_sent_at?: number;
+};
+
+export type RecentAction = {
+  id: string;
+  label: string;
+  at: number;
+};
+
+export type CallNotification = {
+  id: string;
+  queue_id: string;
+  patient_id: string;
+  patient_name: string;
+  token_number: number;
+  doctor: "ALLOPATHY" | "HOMEOPATHY";
+  at: number;
+};
+
+export type PatientVisit = {
+  visit_id: string;
+  date: string;
+  chief_complaint?: string;
+  doctor_name?: string;
+  diagnosis?: string;
+  prescription?: string;
+  fee?: number;
+  paid_with?: PaymentMode;
+};
+
+export type ExtendedPatient = RxPatient & {
+  history: PatientVisit[];
+  email?: string;
+  address?: string;
+  blood_group?: string;
+  dob?: string;
+};
+
+const FEE_BY_TYPE: Record<VisitType, number> = {
+  WALKIN: 400,
+  APPOINTMENT: 500,
+};
+
+function hydrate(q: RxQueue): RxQueueRow {
+  const reg = rxPatients.find((p) => p.id === q.patient_id);
+  // Completed visits start unpaid → they appear in the Billing tab as
+  // "pending payment" until reception collects cash/UPI.
+  return {
+    ...q,
+    fee: FEE_BY_TYPE[q.visit_type],
+    paid: false,
+    reg_no: reg?.reg_no,
+    created_at: Date.now() - q.wait_minutes * 60_000,
+  };
+}
+
+// ───────────────────────────────────────────────────────────
+// State
+// ───────────────────────────────────────────────────────────
+let state: RxQueueRow[] = rxQueue.map(hydrate);
+let patients: ExtendedPatient[] = rxPatients.map((p) => ({
+  ...p,
+  history: [
+    // seed some history for demo
+    ...(p.total_visits > 0
+      ? [
+          {
+            visit_id: `v-hist-${p.id}-1`,
+            date: p.last_visit ?? "2026-05-01",
+            chief_complaint: "Routine checkup",
+            doctor_name: "Dr. R. Sharma",
+            diagnosis: "General wellness",
+            prescription: "Rest & fluids",
+            fee: FEE_BY_TYPE["APPOINTMENT"],
+            paid_with: "UPI" as PaymentMode,
+          },
+        ]
+      : []),
+  ],
+}));
+let appointments: RxAppointment[] = [...rxAppointments];
+let bills: RxBill[] = [...rxPendingBills];
+let recent: RecentAction[] = [];
+let calls: CallNotification[] = [];
+let undoStack: RxQueueRow[][] = [];
+let reminders: RxReminder[] = [];
+let remindersLoading = false;
+let remindersError: string | null = null;
+
+const listeners = new Set<() => void>();
+function emit() {
+  for (const l of listeners) l();
+}
+function subscribe(fn: () => void) {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+function snapshot(label: string, id: string) {
+  undoStack.push(state.map((r) => ({ ...r })));
+  if (undoStack.length > 20) undoStack.shift();
+  recent = [{ id, label, at: Date.now() }, ...recent].slice(0, 3);
+}
+
+// ───────────────────────────────────────────────────────────
+// Hooks
+// ───────────────────────────────────────────────────────────
+export function useQueue(): RxQueueRow[] {
+  return useSyncExternalStore(subscribe, () => state, () => state);
+}
+export function useRecent(): RecentAction[] {
+  return useSyncExternalStore(subscribe, () => recent, () => recent);
+}
+export function usePatients(): ExtendedPatient[] {
+  return useSyncExternalStore(subscribe, () => patients, () => patients);
+}
+export function useAppointments(): RxAppointment[] {
+  return useSyncExternalStore(subscribe, () => appointments, () => appointments);
+}
+export function useBills(): RxBill[] {
+  return useSyncExternalStore(subscribe, () => bills, () => bills);
+}
+export function useCalls(): CallNotification[] {
+  return useSyncExternalStore(subscribe, () => calls, () => calls);
+}
+export function useReminders(): {
+  data: RxReminder[];
+  loading: boolean;
+  error: string | null;
+} {
+  const data = useSyncExternalStore(subscribe, () => reminders, () => reminders);
+  const loading = useSyncExternalStore(
+    subscribe,
+    () => remindersLoading,
+    () => remindersLoading,
+  );
+  const error = useSyncExternalStore(
+    subscribe,
+    () => remindersError,
+    () => remindersError,
+  );
+  return { data, loading, error };
+}
+
+// ───────────────────────────────────────────────────────────
+// Reminders — backend integration
+// ───────────────────────────────────────────────────────────
+export async function loadReminders(): Promise<RxReminder[]> {
+  remindersLoading = true;
+  remindersError = null;
+  emit();
+  try {
+    const data = await api.get<RxReminder[]>("/reminders/today");
+    reminders = Array.isArray(data) ? data : [];
+    return reminders;
+  } catch (err) {
+    remindersError =
+      err instanceof ApiError ? err.message : (err as Error)?.message ?? "Failed to load reminders";
+    return reminders;
+  } finally {
+    remindersLoading = false;
+    emit();
+  }
+}
+
+export async function sendReminder(followupId: string): Promise<void> {
+  try {
+    await api.post(`/reminders/${encodeURIComponent(followupId)}/send`);
+    reminders = reminders.map((r) =>
+      r.followup_id === followupId
+        ? { ...r, status: "SENT", sent_at: new Date().toISOString() }
+        : r,
+    );
+    emit();
+  } catch (err) {
+    remindersError =
+      err instanceof ApiError ? err.message : (err as Error)?.message ?? "Failed to send reminder";
+    emit();
+    throw err;
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Actions
+// ───────────────────────────────────────────────────────────
+function nextToken() {
+  return state.reduce((m, q) => Math.max(m, q.token_number), 0) + 1;
+}
+
+export const queueActions = {
+  setStatus(id: string, status: QueueStatus) {
+    snapshot(`Status → ${status}`, id);
+    state = state.map((q) => (q.queue_id === id ? { ...q, status } : q));
+    emit();
+  },
+  checkIn(id: string) {
+    const row = state.find((q) => q.queue_id === id);
+    if (!row) return;
+    snapshot(`Checked in ${row.patient_name}`, id);
+    state = state.map((q) =>
+      q.queue_id === id ? { ...q, status: "CHECKED_IN", wait_minutes: 0 } : q,
+    );
+    emit();
+  },
+  callIn(id: string, doctor: "ALLOPATHY" | "HOMEOPATHY" = "ALLOPATHY") {
+    const row = state.find((q) => q.queue_id === id);
+    if (!row) return;
+    // No-op if patient is already with the doctor (prevents spurious notifications)
+    if (row.status === "IN_TREATMENT") return;
+    snapshot(`Called ${row.patient_name}`, id);
+    state = state.map((q) => {
+      if (q.queue_id === id) return { ...q, status: "IN_TREATMENT", wait_minutes: 0 };
+      if (q.status === "IN_TREATMENT") return { ...q, status: "WAITING" };
+      return q;
+    });
+    // Drop any previous unacked call for this doctor — only one "send in" at a time per room
+    calls = [
+      ...calls.filter((c) => c.doctor !== doctor),
+      {
+        id: `call-${Date.now()}`,
+        queue_id: id,
+        patient_id: row.patient_id,
+        patient_name: row.patient_name,
+        token_number: row.token_number,
+        doctor,
+        at: Date.now(),
+      },
+    ];
+    emit();
+  },
+  acknowledgeCall(callId: string) {
+    calls = calls.filter((c) => c.id !== callId);
+    emit();
+  },
+  skip(id: string) {
+    const row = state.find((q) => q.queue_id === id);
+    if (!row) return;
+    snapshot(`Skipped ${row.patient_name}`, id);
+    state = state.map((q) =>
+      q.queue_id === id ? { ...q, wait_minutes: -1, status: "WAITING" } : q,
+    );
+    emit();
+  },
+  collectPayment(id: string, mode: PaymentMode, amount?: number) {
+    const row = state.find((q) => q.queue_id === id);
+    if (!row) return null;
+    snapshot(`Collected ${mode} ₹${amount ?? row.fee}`, id);
+    state = state.map((q) =>
+      q.queue_id === id
+        ? {
+            ...q,
+            status: "COMPLETED",
+            paid: true,
+            paid_with: mode,
+            fee: amount ?? q.fee,
+            invoice_sent: true,
+            invoice_sent_at: Date.now(),
+          }
+        : q,
+    );
+    // Update patient last_visit
+    patients = patients.map((p) =>
+      p.id === row.patient_id
+        ? {
+            ...p,
+            total_visits: p.total_visits + 1,
+            last_visit: new Date().toISOString().slice(0, 10),
+            history: [
+              {
+                visit_id: row.queue_id,
+                date: new Date().toISOString().slice(0, 10),
+                chief_complaint: row.notes,
+                doctor_name: "Dr. R. Sharma",
+                fee: amount ?? row.fee,
+                paid_with: mode,
+              },
+              ...p.history,
+            ],
+          }
+        : p,
+    );
+    emit();
+    return { mode, amount: amount ?? row.fee };
+  },
+  resendInvoice(id: string) {
+    state = state.map((q) =>
+      q.queue_id === id ? { ...q, invoice_sent: true, invoice_sent_at: Date.now() } : q,
+    );
+    emit();
+  },
+  complete(id: string) {
+    snapshot(`Completed`, id);
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "COMPLETED" } : q));
+    emit();
+  },
+  noShow(id: string) {
+    snapshot(`No-show`, id);
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "NO_SHOW" } : q));
+    emit();
+  },
+  remove(id: string) {
+    snapshot(`Removed`, id);
+    state = state.filter((q) => q.queue_id !== id);
+    emit();
+  },
+  add(item: {
+    patient_id: string;
+    patient_name: string;
+    patient_phone: string;
+    visit_type: VisitType;
+    priority?: 0 | 1;
+    notes?: string;
+  }) {
+    const dupe = state.find(
+      (q) =>
+        q.patient_phone.replace(/\s+/g, "") === item.patient_phone.replace(/\s+/g, "") &&
+        !["COMPLETED", "NO_SHOW", "CANCELLED"].includes(q.status),
+    );
+    if (dupe) return { token: dupe.token_number, duplicate: true } as const;
+
+    const token = nextToken();
+    const reg = patients.find((p) => p.id === item.patient_id);
+    const row: RxQueueRow = {
+      queue_id: `q-${Date.now()}`,
+      token_number: token,
+      status: "WAITING",
+      wait_minutes: 0,
+      priority: item.priority ?? 0,
+      fee: FEE_BY_TYPE[item.visit_type],
+      paid: false,
+      reg_no: reg?.reg_no,
+      created_at: Date.now(),
+      ...item,
+    };
+    snapshot(`Added ${item.patient_name}`, row.queue_id);
+    state = [...state, row];
+    emit();
+    return { token, duplicate: false } as const;
+  },
+  createPatient(name: string, phone: string, extra?: Partial<ExtendedPatient>) {
+    const existing = patients.find(
+      (p) => p.phone.replace(/\s+/g, "") === phone.replace(/\s+/g, ""),
+    );
+    if (existing) return { patient: existing, created: false } as const;
+    const id = `p-${Date.now()}`;
+    const reg_no = `VHC-${1042 + patients.length + 1}`;
+    const np: ExtendedPatient = {
+      id,
+      reg_no,
+      full_name: name,
+      phone,
+      city: extra?.city ?? "",
+      patient_type: extra?.patient_type ?? "HOMEOPATHY",
+      total_visits: 0,
+      last_visit: null,
+      is_missed: false,
+      history: [],
+      ...extra,
+    };
+    patients = [np, ...patients];
+    emit();
+    return { patient: np, created: true } as const;
+  },
+  updatePatientDiagnosis(
+    patientId: string,
+    visitData: { diagnosis: string; prescription: string; chief_complaint?: string; doctor_name?: string },
+  ) {
+    patients = patients.map((p) => {
+      if (p.id !== patientId) return p;
+      const updated = p.history.map((h, i) =>
+        i === 0 ? { ...h, ...visitData } : h,
+      );
+      return { ...p, history: updated };
+    });
+    emit();
+  },
+  undo() {
+    const prev = undoStack.pop();
+    if (!prev) return false;
+    state = prev;
+    recent = recent.slice(1);
+    emit();
+    return true;
+  },
+  // Appointments
+  addAppointment(appt: Omit<RxAppointment, "id">) {
+    const newAppt: RxAppointment = { ...appt, id: `a-${Date.now()}` };
+    appointments = [...appointments, newAppt].sort((a, b) =>
+      a.scheduled_at.localeCompare(b.scheduled_at),
+    );
+    emit();
+    return newAppt;
+  },
+  updateAppointmentStatus(id: string, status: ApptStatus) {
+    appointments = appointments.map((a) => (a.id === id ? { ...a, status } : a));
+    emit();
+  },
+  checkInAppointment(apptId: string) {
+    const appt = appointments.find((a) => a.id === apptId);
+    if (!appt) return;
+    appointments = appointments.map((a) =>
+      a.id === apptId ? { ...a, status: "COMPLETED" } : a,
+    );
+    const patient = patients.find((p) => p.id === appt.patient_id);
+    if (patient) {
+      queueActions.add({
+        patient_id: patient.id,
+        patient_name: patient.full_name,
+        patient_phone: patient.phone,
+        visit_type: "APPOINTMENT",
+        notes: appt.chief_complaint,
+      });
+    }
+    emit();
+  },
+  // Billing
+  markBillPaid(visitId: string, mode: PaymentMode, fee: number) {
+    bills = bills.filter((b) => b.visit_id !== visitId);
+    emit();
+  },
+};
+
+export function findPatient(query: string): ExtendedPatient[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return patients
+    .filter(
+      (p) =>
+        p.full_name.toLowerCase().includes(q) ||
+        p.phone.replace(/\s+/g, "").includes(q.replace(/\s+/g, "")) ||
+        p.reg_no.toLowerCase().includes(q),
+    )
+    .slice(0, 6);
+}
+
+export function feeFor(visitType: VisitType) {
+  return FEE_BY_TYPE[visitType];
+}

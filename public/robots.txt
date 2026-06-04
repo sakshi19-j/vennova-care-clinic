@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /doctor
+Disallow: /homeopathy
+Disallow: /reception
+Disallow: /consultation
+Disallow: /staff
+Disallow: /patients
+Disallow: /prescriptions
+Disallow: /billing
+Disallow: /queue
+Disallow: /reminders
+Disallow: /appointments
+Disallow: /analytics
+Disallow: /settings
+
+Sitemap: https://health-suite-base.lovable.app/sitemap.xml
