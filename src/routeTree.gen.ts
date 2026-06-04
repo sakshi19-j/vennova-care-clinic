@@ -46,6 +46,7 @@ import { Route as AdminBillingRouteImport } from './routes/admin.billing'
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin.settings.index'
 import { Route as HomeopathyPatientsIdRouteImport } from './routes/homeopathy.patients.$id'
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor.patients.$id'
+import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
 import { Route as AdminSettingsPrescriptionRouteImport } from './routes/admin.settings.prescription'
 import { Route as AdminSettingsBillingRouteImport } from './routes/admin.settings.billing'
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
@@ -235,6 +236,12 @@ const DoctorPatientsIdRoute = DoctorPatientsIdRouteImport.update({
   path: '/patients/$id',
   getParentRoute: () => DoctorRoute,
 } as any)
+const AdminSettingsSubscriptionRoute =
+  AdminSettingsSubscriptionRouteImport.update({
+    id: '/subscription',
+    path: '/subscription',
+    getParentRoute: () => AdminSettingsRoute,
+  } as any)
 const AdminSettingsPrescriptionRoute =
   AdminSettingsPrescriptionRouteImport.update({
     id: '/prescription',
@@ -290,6 +297,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
+  '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
@@ -327,6 +335,7 @@ export interface FileRoutesByTo {
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
+  '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
@@ -370,6 +379,7 @@ export interface FileRoutesById {
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
+  '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
@@ -414,6 +424,7 @@ export interface FileRouteTypes {
     | '/admin/settings/backups'
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
+    | '/admin/settings/subscription'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
     | '/admin/settings/'
@@ -451,6 +462,7 @@ export interface FileRouteTypes {
     | '/admin/settings/backups'
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
+    | '/admin/settings/subscription'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
     | '/admin/settings'
@@ -493,6 +505,7 @@ export interface FileRouteTypes {
     | '/admin/settings/backups'
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
+    | '/admin/settings/subscription'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
     | '/admin/settings/'
@@ -779,6 +792,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorPatientsIdRouteImport
       parentRoute: typeof DoctorRoute
     }
+    '/admin/settings/subscription': {
+      id: '/admin/settings/subscription'
+      path: '/subscription'
+      fullPath: '/admin/settings/subscription'
+      preLoaderRoute: typeof AdminSettingsSubscriptionRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
     '/admin/settings/prescription': {
       id: '/admin/settings/prescription'
       path: '/prescription'
@@ -807,6 +827,7 @@ interface AdminSettingsRouteChildren {
   AdminSettingsBackupsRoute: typeof AdminSettingsBackupsRoute
   AdminSettingsBillingRoute: typeof AdminSettingsBillingRoute
   AdminSettingsPrescriptionRoute: typeof AdminSettingsPrescriptionRoute
+  AdminSettingsSubscriptionRoute: typeof AdminSettingsSubscriptionRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
 }
 
@@ -814,6 +835,7 @@ const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsBackupsRoute: AdminSettingsBackupsRoute,
   AdminSettingsBillingRoute: AdminSettingsBillingRoute,
   AdminSettingsPrescriptionRoute: AdminSettingsPrescriptionRoute,
+  AdminSettingsSubscriptionRoute: AdminSettingsSubscriptionRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 }
 
