@@ -161,13 +161,26 @@ function Queue() {
                         {q.priority && <Tag className={tagStyles[q.priority as keyof typeof tagStyles] || ""}>{q.priority}</Tag>}
                       </div>
                     </div>
+                    <span
+                      className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border font-medium ${FLOW_BADGE[flowStatus[String(q.token)] ?? "WAITING"]}`}
+                    >
+                      {flowStatus[String(q.token)] ?? "WAITING"}
+                    </span>
                     <div className={`text-xs inline-flex items-center gap-1 px-2 py-1 rounded-full border ${delayed ? "border-destructive/40 text-destructive bg-destructive/10" : "border-border text-muted-foreground"}`}>
                       <Clock className="size-3" /> {q.waitingMin}m
                     </div>
-                    <button className="px-2.5 h-8 text-xs rounded-lg border border-border hover:bg-destructive hover:text-destructive-foreground hover:border-destructive opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-2.5 h-8 text-xs rounded-lg border border-border hover:bg-destructive hover:text-destructive-foreground hover:border-destructive opacity-0 group-hover:opacity-100 transition"
+                    >
                       <UserX className="size-3.5" />
                     </button>
-                    <button className="px-3 h-8 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">Call</button>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-3 h-8 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      Call
+                    </button>
                   </li>
                 );
               })}
