@@ -6,7 +6,13 @@ import { patients } from "@/lib/clinic-data";
 
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const navigate = useNavigate();
-  const go = (to: string) => { onOpenChange(false); navigate({ to } as any); };
+  const go = (to: string, params?: Record<string, string>) => {
+    onOpenChange(false);
+    // Defer navigation so the Dialog's focus-restore / unmount doesn't swallow it.
+    setTimeout(() => {
+      navigate({ to, params } as any);
+    }, 0);
+  };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="p-0 max-w-xl overflow-hidden">
@@ -18,7 +24,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               <CommandItem onSelect={() => go("/")}><LayoutDashboard className="size-4 mr-2" /> Dashboard</CommandItem>
               <CommandItem onSelect={() => go("/queue")}><ListOrdered className="size-4 mr-2" /> Live Queue</CommandItem>
               <CommandItem onSelect={() => go("/appointments")}><Calendar className="size-4 mr-2" /> Appointments</CommandItem>
-              <CommandItem onSelect={() => go("/consultation/V-2058")}><Stethoscope className="size-4 mr-2" /> Consultation</CommandItem>
+              <CommandItem onSelect={() => go("/consultation/$visitId", { visitId: "V-2058" })}><Stethoscope className="size-4 mr-2" /> Consultation</CommandItem>
               <CommandItem onSelect={() => go("/patients")}><Users className="size-4 mr-2" /> Patients</CommandItem>
               <CommandItem onSelect={() => go("/prescriptions")}><FileText className="size-4 mr-2" /> Prescriptions</CommandItem>
               <CommandItem onSelect={() => go("/billing")}><Receipt className="size-4 mr-2" /> Billing</CommandItem>
@@ -27,7 +33,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
             </CommandGroup>
             <CommandGroup heading="Patients">
               {patients.slice(0, 6).map((p) => (
-                <CommandItem key={p.id} onSelect={() => go(`/patients/${p.id}`)}>
+                <CommandItem key={p.id} onSelect={() => go("/patients/$patientId", { patientId: p.id })}>
                   <span className="size-6 rounded-full bg-muted flex items-center justify-center text-[10px] mr-2">
                     {p.name.split(" ").map((s) => s[0]).slice(0, 2).join("")}
                   </span>
