@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, Tag, Avatar } from "@/components/clinic/PageHeader";
 import { queueActions } from "@/lib/queue-store";
+import { api, ApiError } from "@/lib/api-client";
 import {
   MessageCircle, Settings, X, Calendar, Send,
   Edit3, Save, RefreshCw, Link as LinkIcon, AlertCircle, CheckCircle2,
