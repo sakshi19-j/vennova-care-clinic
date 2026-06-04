@@ -4,11 +4,27 @@ import { queue, getPatient, completedToday, tagStyles } from "@/lib/clinic-data"
 import { Pause, Plus, Clock, ArrowRight, UserX, Stethoscope, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { api, ApiError } from "@/lib/api-client";
 
 export const Route = createFileRoute("/queue")({
   head: () => ({ meta: [{ title: "Live Queue — Vedic Clinic" }] }),
   component: Queue,
 });
+
+type FlowStatus = "WAITING" | "WITH DOCTOR" | "DONE" | "PAID";
+const FLOW_NEXT: Record<FlowStatus, FlowStatus | null> = {
+  WAITING: "WITH DOCTOR",
+  "WITH DOCTOR": "DONE",
+  DONE: "PAID",
+  PAID: null,
+};
+const FLOW_BADGE: Record<FlowStatus, string> = {
+  WAITING: "bg-amber-100 text-amber-800 border-amber-300",
+  "WITH DOCTOR": "bg-blue-100 text-blue-800 border-blue-300",
+  DONE: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  PAID: "bg-purple-100 text-purple-800 border-purple-300",
+};
 
 const statusColor: Record<string, string> = {
   waiting: "bg-gold/20 border-gold/40 text-[color-mix(in_oklab,var(--gold)_30%,black)]",
