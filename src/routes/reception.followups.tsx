@@ -179,16 +179,30 @@ function FollowupsPage() {
     return () => clearInterval(id);
   }, []);
 
-  // ── Send the stage reminder ──
-  const sendStageReminder = (row: FollowupRow) => {
-    const tmpl = templates[row.stage] ?? DEFAULT_TEMPLATES[row.stage];
-    const msg = personalise(tmpl, row.patient_name);
-    const phone = row.patient_phone.replace(/\D/g, "");
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-    setRows((rs) =>
-      rs.map((r) => (r.id === row.id ? { ...r, last_attempt_at: todayISO() } : r)),
-    );
-    toast.success(`${row.stage}-day reminder sent to ${row.patient_name.split(" ")[0]}`);
+  // ── Refresh follow-ups list from backend ──
+  const refreshFollowups = async () => {
+    try {
+      const data = await api.get<FollowupRow[]>("/reminders/today");
+      if (Array.isArray(data) && data.length > 0) setRows(data);
+    } catch {
+      // backend unreachable in demo mode — keep local state
+    }
+  };
+
+  // ── Send the stage reminder via backend ──
+  const sendStageReminder = async (row: FollowupRow) => {
+    try {
+      await api.post(`/reminders/${encodeURIComponent(row.id)}/send`);
+      toast.success(`WhatsApp sent to ${row.patient_name}`);
+      setRows((rs) =>
+        rs.map((r) => (r.id === row.id ? { ...r, last_attempt_at: todayISO() } : r)),
+      );
+      refreshFollowups();
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to send reminder";
+      toast.error(message);
+    }
   };
 
   // ── Manual re-send of Calendly (in case patient lost the link) ──
