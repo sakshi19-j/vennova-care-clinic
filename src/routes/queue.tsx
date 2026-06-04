@@ -45,6 +45,34 @@ function Queue() {
   const mm = String(Math.floor(consultSeconds / 60)).padStart(2, "0");
   const ss = String(consultSeconds % 60).padStart(2, "0");
 
+  // Per-row flow status (WAITING → WITH DOCTOR → DONE → PAID)
+  const [flowStatus, setFlowStatus] = useState<Record<string, FlowStatus>>(() => {
+    const init: Record<string, FlowStatus> = {};
+    waiting.forEach((q) => (init[q.token] = "WAITING"));
+    return init;
+  });
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+
+  const advanceFlow = async (token: string, patientName: string) => {
+    const current = flowStatus[token] ?? "WAITING";
+    const next = FLOW_NEXT[current];
+    if (!next) return;
+    if (pending[token]) return;
+    setPending((p) => ({ ...p, [token]: true }));
+    try {
+      await api.patch(`/queue/${encodeURIComponent(token)}/status`, { status: next });
+      setFlowStatus((s) => ({ ...s, [token]: next }));
+      toast.success(`${patientName} → ${next}`);
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to update status";
+      toast.error(message);
+    } finally {
+      setPending((p) => ({ ...p, [token]: false }));
+    }
+  };
+
+
   return (
     <div className="max-w-[1500px] mx-auto">
       <PageHeader
