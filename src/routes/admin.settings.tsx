@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Building2, FileText, DatabaseBackup, ReceiptText } from "lucide-react";
+import { Building2, FileText, DatabaseBackup, ReceiptText, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsLayout,
@@ -10,6 +10,7 @@ const tabs = [
   { to: "/admin/settings/prescription", label: "Prescription template", icon: FileText },
   { to: "/admin/settings/backups",      label: "Backups",              icon: DatabaseBackup },
   { to: "/admin/settings/billing",      label: "Billing & GST",        icon: ReceiptText },
+  { to: "/admin/settings/subscription", label: "Subscription",         icon: Sparkles },
 ];
 
 function SettingsLayout() {

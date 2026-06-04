@@ -1,43 +1,59 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from "recharts";
-import { IndianRupee, TrendingUp, TrendingDown, CreditCard, Banknote, Smartphone, Wifi } from "lucide-react";
+import { IndianRupee, TrendingUp, TrendingDown, CreditCard, Banknote, Smartphone, Wifi, Users, UserPlus, Repeat, Award, Loader2 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
 import {
   revenueHourly, revenue14d, revenue12m, paymentMix, paymentTrend14d,
 } from "@/lib/admin-data";
 import { rxRevenueToday } from "@/lib/reception-data";
+import { api, ApiError } from "@/lib/api-client";
 
 export const Route = createFileRoute("/admin/")({
   component: RevenuePage,
 });
 
 type Range = "today" | "week" | "month" | "year";
-
 const rangeLabels: Record<Range, string> = {
-  today: "Today",
-  week: "Last 14 days",
-  month: "Last 30 days",
-  year: "Last 12 months",
+  today: "Today", week: "Last 14 days", month: "Last 30 days", year: "Last 12 months",
 };
 
-const modeIcons = {
-  UPI: Smartphone,
-  Cash: Banknote,
-  Card: CreditCard,
-  Online: Wifi,
-} as const;
+const modeIcons = { UPI: Smartphone, Cash: Banknote, Card: CreditCard, Online: Wifi } as const;
+
+type RevenueAnalytics = {
+  today?: number;
+  weekly?: number;
+  monthly?: number;
+  total_patients?: number;
+  new_patients?: number;
+  returning_patients?: number;
+  by_mode?: { CASH?: number; UPI?: number; CARD?: number; ONLINE?: number };
+  top_referrers?: Array<{ name: string; count: number; contact?: string }>;
+};
 
 function RevenuePage() {
   const [range, setRange] = useState<Range>("today");
+  const [live, setLive] = useState<RevenueAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    api.get<RevenueAnalytics>("/analytics/revenue")
+      .then((d) => { if (alive) { setLive(d); setErr(null); } })
+      .catch((e) => { if (alive) setErr(e instanceof ApiError ? e.message : (e as Error).message); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
 
   const series = useMemo(() => {
     if (range === "today") return revenueHourly;
     if (range === "year") return revenue12m;
-    return revenue14d; // week / month both use the 14d set for the demo
+    return revenue14d;
   }, [range]);
 
   const totals = useMemo(() => {
@@ -47,31 +63,37 @@ function RevenuePage() {
     return { total, allo, homeo };
   }, [series]);
 
-  // headline KPI — today always shows live rxRevenueToday
-  const headline = range === "today"
-    ? { label: "Collected today", value: rxRevenueToday.total, sub: `${rxRevenueToday.count} bills` }
-    : { label: `Total · ${rangeLabels[range]}`, value: totals.total, sub: `${series.length} ${range === "year" ? "months" : "days"}` };
+  const todayCollected = live?.today ?? rxRevenueToday.total;
+  const weekly = live?.weekly ?? totals.total;
+  const monthly = live?.monthly ?? totals.total;
+  const totalPatients = live?.total_patients ?? 0;
+  const newPatients = live?.new_patients ?? 0;
+  const returningPatients = live?.returning_patients ?? Math.max(0, totalPatients - newPatients);
+
+  const byMode = live?.by_mode ?? {
+    CASH: rxRevenueToday.CASH, UPI: rxRevenueToday.UPI, CARD: rxRevenueToday.CARD, ONLINE: rxRevenueToday.ONLINE,
+  };
 
   const paymentTotal = paymentMix.reduce((s, p) => s + p.value, 0);
+  const referrers = live?.top_referrers ?? [];
 
   return (
     <div className="grid grid-cols-12 gap-3">
       {/* range switcher */}
       <div className="col-span-12 flex items-center justify-between flex-wrap gap-2">
         <div>
-          <div className="font-display text-lg leading-tight">Revenue</div>
-          <div className="text-xs text-muted-foreground">Collections in real time across branches and payment methods.</div>
+          <div className="font-display text-lg leading-tight inline-flex items-center gap-2">
+            Revenue
+            {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {err ? <span className="text-amber-600">Live data unavailable: {err} — showing local snapshot</span> : "Real-time collections from your backend."}
+          </div>
         </div>
         <div className="inline-flex p-1 rounded-xl bg-card border border-border">
           {(Object.keys(rangeLabels) as Range[]).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={[
-                "px-3 h-8 rounded-lg text-xs font-medium transition-colors",
-                range === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
+            <button key={r} onClick={() => setRange(r)}
+              className={["px-3 h-8 rounded-lg text-xs font-medium transition-colors", range === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"].join(" ")}>
               {rangeLabels[r]}
             </button>
           ))}
@@ -80,29 +102,55 @@ function RevenuePage() {
 
       {/* KPI tiles */}
       <Card className="col-span-12 md:col-span-3">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">{headline.label}</div>
-        <div className="font-display text-2xl mt-0.5">₹{headline.value.toLocaleString("en-IN")}</div>
-        <div className="text-xs text-muted-foreground mt-1">{headline.sub}</div>
-        <div className="mt-2 inline-flex items-center gap-1 text-xs text-success">
-          <TrendingUp className="size-3.5" /> +12.4% vs prev
-        </div>
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Today's collection</div>
+        <div className="font-display text-2xl mt-0.5">₹{todayCollected.toLocaleString("en-IN")}</div>
+        <div className="mt-2 inline-flex items-center gap-1 text-xs text-success"><TrendingUp className="size-3.5" /> vs yesterday</div>
       </Card>
       <Card className="col-span-12 md:col-span-3">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Allopathy</div>
-        <div className="font-display text-2xl mt-0.5">₹{totals.allo.toLocaleString("en-IN")}</div>
-        <div className="text-xs text-muted-foreground mt-1">{Math.round((totals.allo / Math.max(1, totals.total)) * 100)}% share</div>
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Weekly</div>
+        <div className="font-display text-2xl mt-0.5">₹{weekly.toLocaleString("en-IN")}</div>
+        <div className="text-xs text-muted-foreground mt-1">Last 7 days</div>
       </Card>
       <Card className="col-span-12 md:col-span-3">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Homeopathy</div>
-        <div className="font-display text-2xl mt-0.5">₹{totals.homeo.toLocaleString("en-IN")}</div>
-        <div className="text-xs text-muted-foreground mt-1">{Math.round((totals.homeo / Math.max(1, totals.total)) * 100)}% share</div>
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Monthly</div>
+        <div className="font-display text-2xl mt-0.5">₹{monthly.toLocaleString("en-IN")}</div>
+        <div className="text-xs text-muted-foreground mt-1">Last 30 days</div>
       </Card>
       <Card className="col-span-12 md:col-span-3">
         <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Pending</div>
         <div className="font-display text-2xl mt-0.5">₹1,900</div>
         <div className="text-xs text-muted-foreground mt-1">3 unpaid bills</div>
-        <div className="mt-2 inline-flex items-center gap-1 text-xs text-amber-600">
-          <TrendingDown className="size-3.5" /> down 8%
+        <div className="mt-2 inline-flex items-center gap-1 text-xs text-amber-600"><TrendingDown className="size-3.5" /> down 8%</div>
+      </Card>
+
+      {/* Patient mix */}
+      <Card className="col-span-12 md:col-span-4">
+        <div className="font-display text-base mb-3 inline-flex items-center gap-2"><Users className="size-4 text-primary" /> Patients</div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <Stat label="Total" value={totalPatients} />
+          <Stat label="New" value={newPatients} icon={<UserPlus className="size-3.5" />} />
+          <Stat label="Returning" value={returningPatients} icon={<Repeat className="size-3.5" />} />
+        </div>
+      </Card>
+
+      {/* By payment mode (live) */}
+      <Card className="col-span-12 md:col-span-8">
+        <div className="font-display text-base mb-3">Payment mode breakdown (today)</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {([
+            { name: "Cash" as const, value: byMode.CASH ?? 0 },
+            { name: "UPI" as const, value: byMode.UPI ?? 0 },
+            { name: "Card" as const, value: byMode.CARD ?? 0 },
+            { name: "Online" as const, value: byMode.ONLINE ?? 0 },
+          ]).map((p) => {
+            const Icon = modeIcons[p.name];
+            return (
+              <div key={p.name} className="rounded-lg border border-border bg-muted/40 p-2.5">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="size-3.5" /> {p.name}</div>
+                <div className="font-display text-xl mt-0.5">₹{p.value.toLocaleString("en-IN")}</div>
+              </div>
+            );
+          })}
         </div>
       </Card>
 
@@ -131,14 +179,13 @@ function RevenuePage() {
               <XAxis dataKey="d" stroke="oklch(0.52 0.06 285)" fontSize={11} />
               <YAxis stroke="oklch(0.52 0.06 285)" fontSize={11} />
               <Tooltip />
-              <Area type="monotone" dataKey="allopathy"  stroke="oklch(0.42 0.08 250)" fill="url(#rv-allo)"  name="Allopathy" />
+              <Area type="monotone" dataKey="allopathy" stroke="oklch(0.42 0.08 250)" fill="url(#rv-allo)" name="Allopathy" />
               <Area type="monotone" dataKey="homeopathy" stroke="oklch(0.55 0.14 295)" fill="url(#rv-homeo)" name="Homeopathy" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
-      {/* Payment mix pie */}
       <Card className="col-span-12 lg:col-span-4">
         <div className="font-display text-base mb-1">Payment methods</div>
         <div className="text-xs text-muted-foreground mb-2">Lifetime share · ₹{paymentTotal.toLocaleString("en-IN")}</div>
@@ -167,14 +214,8 @@ function RevenuePage() {
         </ul>
       </Card>
 
-      {/* Payment trend stacked bars */}
       <Card className="col-span-12">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <div className="font-display text-base">Collections by payment method</div>
-            <div className="text-xs text-muted-foreground">Last 14 days · stacked</div>
-          </div>
-        </div>
+        <div className="font-display text-base mb-2">Collections by payment method</div>
         <div className="h-56">
           <ResponsiveContainer>
             <BarChart data={paymentTrend14d}>
@@ -183,40 +224,49 @@ function RevenuePage() {
               <YAxis stroke="oklch(0.52 0.06 285)" fontSize={11} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="UPI"    stackId="m" fill="oklch(0.55 0.14 295)" />
-              <Bar dataKey="Cash"   stackId="m" fill="oklch(0.78 0.14 75)"  />
-              <Bar dataKey="Card"   stackId="m" fill="oklch(0.42 0.08 250)" />
+              <Bar dataKey="UPI" stackId="m" fill="oklch(0.55 0.14 295)" />
+              <Bar dataKey="Cash" stackId="m" fill="oklch(0.78 0.14 75)" />
+              <Bar dataKey="Card" stackId="m" fill="oklch(0.42 0.08 250)" />
               <Bar dataKey="Online" stackId="m" fill="oklch(0.38 0.16 285)" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
-      {/* Today’s mode chips */}
+      {/* Referrals */}
       <Card className="col-span-12">
-        <div className="flex items-center gap-2 mb-2">
-          <IndianRupee className="size-4 text-muted-foreground" />
-          <div className="font-display text-base">Today’s collections by method</div>
+        <div className="flex items-center gap-2 mb-3">
+          <Award className="size-4 text-primary" />
+          <div className="font-display text-base">Referrals</div>
+          <div className="text-xs text-muted-foreground">Patients who brought the most new patients</div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {([
-            { name: "Cash" as const,   value: rxRevenueToday.CASH },
-            { name: "UPI" as const,    value: rxRevenueToday.UPI },
-            { name: "Card" as const,   value: rxRevenueToday.CARD },
-            { name: "Online" as const, value: rxRevenueToday.ONLINE },
-          ]).map((p) => {
-            const Icon = modeIcons[p.name];
-            return (
-              <div key={p.name} className="rounded-lg border border-border bg-muted/40 p-2.5">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Icon className="size-3.5" /> {p.name}
+        {referrers.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-6 text-center">No referrals tracked yet.</div>
+        ) : (
+          <ul className="divide-y clinic-divider">
+            {referrers.slice(0, 10).map((r, i) => (
+              <li key={`${r.name}-${i}`} className="flex items-center gap-3 py-2.5">
+                <span className="size-7 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-semibold">{i + 1}</span>
+                <div className="flex-1">
+                  <div className="text-sm font-medium">{r.name}</div>
+                  {r.contact && <div className="text-xs text-muted-foreground">{r.contact}</div>}
                 </div>
-                <div className="font-display text-xl mt-0.5">₹{p.value.toLocaleString("en-IN")}</div>
-              </div>
-            );
-          })}
-        </div>
+                <div className="font-display text-xl tabular-nums">{r.count}</div>
+                <div className="text-xs text-muted-foreground">referrals</div>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
+    </div>
+  );
+}
+
+function Stat({ label, value, icon }: { label: string; value: number; icon?: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border p-2.5 bg-muted/30">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1">{icon}{label}</div>
+      <div className="font-display text-xl mt-0.5">{value.toLocaleString("en-IN")}</div>
     </div>
   );
 }
