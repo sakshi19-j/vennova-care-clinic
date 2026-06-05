@@ -5,7 +5,16 @@ import {
 import { AdminToolbar } from "@/components/admin/AdminToolbar";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Owner Console — Vedic Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Owner Console — Vedic Clinic" },
+      { name: "description", content: "Owner console for clinic revenue, staff performance, monitoring and billing across doctors, reception and homeopathy departments." },
+      { property: "og:title", content: "Owner Console — Vedic Clinic" },
+      { property: "og:description", content: "Revenue, staff, monitoring and billing for clinic owners." },
+      { property: "og:url", content: "https://care-flow-fix.lovable.app/admin" },
+    ],
+    links: [{ rel: "canonical", href: "https://care-flow-fix.lovable.app/admin" }],
+  }),
   component: AdminLayout,
 });
 

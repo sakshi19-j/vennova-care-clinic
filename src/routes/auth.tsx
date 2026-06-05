@@ -8,12 +8,13 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — Vedic Homeopathic Clinic" },
+      { title: "Clinic Sign In — Vedic Homeopathic Clinic" },
       { name: "description", content: "Sign in to your clinic console or register a new clinic — owner, doctors and reception each get their own login." },
-      { property: "og:title", content: "Sign in — Vedic Homeopathic Clinic" },
+      { property: "og:title", content: "Clinic Sign In — Vedic Homeopathic Clinic" },
       { property: "og:description", content: "Owner registration and staff sign-in for the Vedic Clinic operating system." },
+      { property: "og:url", content: "https://care-flow-fix.lovable.app/auth" },
     ],
-    links: [{ rel: "canonical", href: "/auth" }],
+    links: [{ rel: "canonical", href: "https://care-flow-fix.lovable.app/auth" }],
   }),
   component: AuthPage,
 });
@@ -52,8 +53,9 @@ function AuthPage() {
         </div>
         <div>
           <h1 className="font-display text-5xl leading-tight">
-            One console for the whole clinic.
+            Clinic Sign In
           </h1>
+          <p className="mt-3 text-primary-foreground/90 text-lg">One console for the whole clinic.</p>
           <p className="mt-4 text-primary-foreground/80 max-w-md">
             Reception runs the front desk. Doctors run the consultation. The owner sees everything — revenue, queue, staff, audit. Each role gets its own login.
           </p>

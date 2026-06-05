@@ -11,7 +11,14 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/consultation/$visitId")({
-  head: () => ({ meta: [{ title: "Consultation — Vedic Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Consultation Workspace — Vedic Clinic" },
+      { name: "description", content: "In-visit consultation workspace: chief complaint, case-taking, rubrics, prescription and instant prescription generation." },
+      { property: "og:title", content: "Consultation Workspace — Vedic Clinic" },
+      { property: "og:description", content: "Doctor's in-visit workspace for case-taking, rubrics and prescriptions." },
+    ],
+  }),
   component: Consultation,
 });
 
@@ -278,7 +285,7 @@ function HomeopathySection({ value, onChange }: { value: HomeoForm; onChange: (v
               <select className="h-10 rounded-lg border border-input bg-background/60 px-2 text-sm" value={r.grade} onChange={(e) => updateRubric(r.id, { grade: Number(e.target.value) as 1 | 2 | 3 })}>
                 <option value={1}>Grade 1</option><option value={2}>Grade 2</option><option value={3}>Grade 3</option>
               </select>
-              <button type="button" onClick={() => removeRubric(r.id)} className="size-9 rounded-lg hover:bg-destructive/10 text-destructive grid place-items-center">
+              <button type="button" onClick={() => removeRubric(r.id)} aria-label="Remove rubric" className="size-9 rounded-lg hover:bg-destructive/10 text-destructive grid place-items-center">
                 <Trash2 className="size-4" />
               </button>
             </li>
@@ -317,7 +324,7 @@ function AllopathySection({ value, onChange }: { value: AlloForm; onChange: (v: 
               <div className="col-span-6 md:col-span-2"><label className={lab}>Duration</label><input className={inp} value={m.duration} onChange={(e) => updateMed(m.id, { duration: e.target.value })} placeholder="5 days" /></div>
               <div className="col-span-6 md:col-span-2"><label className={lab}>Instructions</label><input className={inp} value={m.instructions} onChange={(e) => updateMed(m.id, { instructions: e.target.value })} placeholder="After food" /></div>
               <div className="col-span-12 md:col-span-1 flex md:justify-end">
-                <button type="button" onClick={() => removeMed(m.id)} className="size-9 rounded-lg hover:bg-destructive/10 text-destructive grid place-items-center"><Trash2 className="size-4" /></button>
+                <button type="button" onClick={() => removeMed(m.id)} aria-label="Remove medicine" className="size-9 rounded-lg hover:bg-destructive/10 text-destructive grid place-items-center"><Trash2 className="size-4" /></button>
               </div>
             </li>
           ))}

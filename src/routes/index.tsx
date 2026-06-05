@@ -13,12 +13,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Today — Vedic Homeopathic Clinic" },
-      { name: "description", content: "Your clinic at a glance: live queue, today's schedule, urgent follow-ups and revenue — all in one dashboard." },
-      { property: "og:title", content: "Today — Vedic Homeopathic Clinic" },
+      { title: "Clinic Dashboard — Vedic Homeopathic Clinic" },
+      { name: "description", content: "Your clinic at a glance: live queue, today's schedule, urgent follow-ups and revenue trends — the doctor's daily home base." },
+      { property: "og:title", content: "Clinic Dashboard — Vedic Homeopathic Clinic" },
       { property: "og:description", content: "Live queue, today's schedule, urgent follow-ups and clinic revenue at a glance." },
+      { property: "og:url", content: "https://care-flow-fix.lovable.app/" },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [{ rel: "canonical", href: "https://care-flow-fix.lovable.app/" }],
   }),
   component: Dashboard,
 });
@@ -33,8 +34,8 @@ function Dashboard() {
     <div className="max-w-[1500px] mx-auto">
       <PageHeader
         eyebrow={`Today · ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}`}
-        title={<>Namaste, <span className="text-[color-mix(in_oklab,var(--primary)_70%,var(--saffron))]">Dr. Sharma</span></>}
-        subtitle={<>You have <strong className="text-foreground">{waiting.length} patients waiting</strong> and {todaySchedule.length} appointments today. {overdue.length} follow-ups need attention.</>}
+        title="Clinic Dashboard"
+        subtitle={<>Namaste, Dr. Sharma. You have <strong className="text-foreground">{waiting.length} patients waiting</strong> and {todaySchedule.length} appointments today. {overdue.length} follow-ups need attention.</>}
         actions={
           <>
             <Button variant="outline" className="rounded-full">Day plan</Button>
