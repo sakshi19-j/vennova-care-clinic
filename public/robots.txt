@@ -15,4 +15,4 @@ Disallow: /appointments
 Disallow: /analytics
 Disallow: /settings
 
-Sitemap: https://health-suite-base.lovable.app/sitemap.xml
+Sitemap: https://care-flow-fix.lovable.app/sitemap.xml

@@ -8,7 +8,16 @@ import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api-client";
 
 export const Route = createFileRoute("/queue")({
-  head: () => ({ meta: [{ title: "Live Queue — Vedic Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Live Queue — Vedic Clinic" },
+      { name: "description", content: "Real-time clinic queue showing waiting patients, current consultation, wait times and quick token controls for front-desk and doctor." },
+      { property: "og:title", content: "Live Queue — Vedic Clinic" },
+      { property: "og:description", content: "Real-time waiting list, tokens and wait times for the clinic." },
+      { property: "og:url", content: "https://care-flow-fix.lovable.app/queue" },
+    ],
+    links: [{ rel: "canonical", href: "https://care-flow-fix.lovable.app/queue" }],
+  }),
   component: Queue,
 });
 
