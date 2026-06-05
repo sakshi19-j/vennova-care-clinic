@@ -11,7 +11,7 @@ function createSupabaseClient() {
   const SUPABASE_PUBLISHABLE_KEY =
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
     serverEnv?.SUPABASE_PUBLISHABLE_KEY ||
-    'sb_publishable_kdYPdmP9nF--CPi5V5QLKg_NCZoCxl1';
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVtcWRmcGZya214amZwY2NjYXhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4OTgwNzYsImV4cCI6MjA5MzQ3NDA3Nn0.eRVg2tOVtWo8FnMVCIAgnUkBXDOTAFOf1wU7FFY2XDA';
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
