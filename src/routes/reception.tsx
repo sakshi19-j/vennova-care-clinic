@@ -24,6 +24,10 @@ function ReceptionLayout() {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    void refreshAll();
+  }, []);
+
 
   return (
     <div className="max-w-[1500px] mx-auto">
