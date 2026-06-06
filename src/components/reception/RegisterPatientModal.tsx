@@ -58,7 +58,7 @@ const empty: FormState = {
   referred_by_name: "",
   referred_by_contact: "",
   language_pref: "English",
-  patient_type: "HOMEOPATHY",
+
 };
 
 export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props) {
