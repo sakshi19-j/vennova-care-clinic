@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, Avatar } from "@/components/clinic/PageHeader";
-import { useQueue, queueActions } from "@/lib/queue-store";
+import { useQueue, queueActions, refreshAll } from "@/lib/queue-store";
 import { isHomeoPatient } from "./homeopathy";
+import { api, ApiError } from "@/lib/api-client";
+import { BillingModal, type BillingPaymentMode } from "@/components/clinic/BillingModal";
 import {
   getCase, commonRemedies, potencies, forms, repetitions, repetitionLabel,
   modalityChips,
@@ -12,6 +14,15 @@ import {
 import {
   PlayCircle, CheckCircle2, Plus, Trash2, Sparkles, Coffee, Sun, CloudRain,
 } from "lucide-react";
+
+type PreviousVisit = {
+  visit_id: string;
+  date: string;
+  chief_complaint?: string;
+  remedy?: string;
+  potency?: string;
+};
+
 
 export const Route = createFileRoute("/homeopathy/")({
   component: NowSeeing,
@@ -73,6 +84,32 @@ function CasePanel({ queueId }: { queueId: string }) {
   const [worseFrom, setWorseFrom] = useState<string[]>([]);
   const [advice, setAdvice] = useState("");
   const [followupDays, setFollowupDays] = useState<number | null>(15);
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [previous, setPrevious] = useState<PreviousVisit[]>([]);
+
+  // Load previous visits from API (Rule 4 - Step 2)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.get<any>("/visits", { query: { patient_id: q.patient_id, limit: 5 } });
+        const rows = Array.isArray(data) ? data : data?.visits ?? [];
+        if (!cancelled && Array.isArray(rows)) {
+          setPrevious(rows.map((v: any) => ({
+            visit_id: String(v.visit_id ?? v.id ?? ""),
+            date: String(v.date ?? v.created_at ?? "").slice(0, 10),
+            chief_complaint: v.chief_complaint ?? undefined,
+            remedy: v.remedy ?? v.case?.remedy ?? undefined,
+            potency: v.potency ?? v.case?.potency ?? undefined,
+          })));
+        }
+      } catch {
+        // keep local mock history fallback
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [q.patient_id]);
 
   const toggle = (arr: string[], setArr: (v: string[]) => void, val: string) =>
     setArr(arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val]);
@@ -96,15 +133,73 @@ function CasePanel({ queueId }: { queueId: string }) {
     setLines((l) => l.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   const removeLine = (id: string) => setLines((l) => l.filter((x) => x.id !== id));
 
-  const markDone = () => {
+  const openBilling = () => {
     if (!diagnosis.trim()) return toast.error("Add a diagnosis / clinical impression first");
     if (lines.length === 0) {
-      const ok = window.confirm("No remedy added. Mark visit done anyway?");
+      const ok = window.confirm("No remedy added. Send to billing anyway?");
       if (!ok) return;
     }
-    queueActions.complete(queueId);
-    toast.success(`${q.patient_name} — case completed. Sent to billing.`);
+    setBillingOpen(true);
   };
+
+  const handleClose = async (fee: number, mode: BillingPaymentMode) => {
+    setClosing(true);
+    const primary = lines[0];
+    try {
+      // Step 3a — create the visit
+      const visitRes = await api.post<{ id?: string; visit_id?: string }>("/visits", {
+        patient_id: q.patient_id,
+        type: "HOMEOPATHY",
+        chief_complaint: diagnosis,
+        notes: [mentals, advice].filter(Boolean).join("\n\n") || null,
+      });
+      const visitId = visitRes?.visit_id ?? visitRes?.id ?? q.visit_id ?? q.queue_id;
+
+      // Step 3b — save the homeopathy case (best-effort)
+      try {
+        await api.post("/homeopathy-cases", {
+          visit_id: visitId,
+          patient_id: q.patient_id,
+          chief_complaint: diagnosis,
+          remedy: primary?.remedy ?? null,
+          potency: primary?.potency ?? null,
+          repetition: primary?.repetition ?? null,
+          remedies: lines.map((l) => ({
+            remedy: l.remedy, potency: l.potency, form: l.form,
+            dose: l.dose, repetition: l.repetition, duration_days: l.duration_days,
+          })),
+          rubrics: [],
+          mind_symptoms: mentals || null,
+          history_present: null,
+          history_past: null,
+          better_from: betterFrom,
+          worse_from: worseFrom,
+          advice: advice || null,
+          followup_days: followupDays,
+        });
+      } catch (err) {
+        console.warn("[homeopathy-cases] save failed", err);
+      }
+
+      // Step 4 — close the visit with fee + payment mode
+      await api.post(`/visits/${encodeURIComponent(String(visitId))}/close`, {
+        fee, payment_mode: mode,
+      });
+
+      queueActions.complete(queueId);
+      setBillingOpen(false);
+      toast.success("Payment collected. Follow-ups scheduled.");
+      void refreshAll();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message
+        : err instanceof Error ? err.message
+        : "Failed to close visit";
+      toast.error(msg);
+    } finally {
+      setClosing(false);
+    }
+  };
+
 
   return (
     <div className="grid grid-cols-12 gap-5">
@@ -127,8 +222,14 @@ function CasePanel({ queueId }: { queueId: string }) {
           </div>
           <ol className="relative pl-4 space-y-3">
             <span className="absolute left-1 top-1 bottom-1 w-px bg-border" />
-            {rec.history.length === 0 && <li className="text-xs text-muted-foreground">No prior visits.</li>}
-            {rec.history.map((h, i) => (
+            {(previous.length > 0
+              ? previous.map((h) => ({ date: h.date, complaint: h.chief_complaint ?? "Visit", remedy: h.remedy ?? "—" }))
+              : rec.history
+            ).length === 0 && <li className="text-xs text-muted-foreground">No prior visits.</li>}
+            {(previous.length > 0
+              ? previous.map((h) => ({ date: h.date, complaint: h.chief_complaint ?? "Visit", remedy: h.remedy ?? "—" }))
+              : rec.history
+            ).map((h, i) => (
               <li key={i} className="relative">
                 <span className="absolute -left-[10px] top-1.5 size-2 rounded-full bg-muted-foreground ring-2 ring-background" />
                 <div className="text-[11px] text-muted-foreground">{h.date}</div>
@@ -137,6 +238,7 @@ function CasePanel({ queueId }: { queueId: string }) {
               </li>
             ))}
           </ol>
+
         </Card>
       </aside>
 
@@ -255,16 +357,26 @@ function CasePanel({ queueId }: { queueId: string }) {
                 {lines.length} remedy{lines.length === 1 ? "" : "ies"} · {followupDays ? `Follow-up in ${followupDays}d` : "Wait & watch"}
               </div>
             </div>
-            <button onClick={markDone}
+            <button onClick={openBilling}
               className="h-11 px-5 rounded-full bg-success text-white font-medium hover:brightness-105 inline-flex items-center gap-2">
               <CheckCircle2 className="size-4" /> Mark done & send to billing
             </button>
           </Card>
         </div>
       </section>
+
+      <BillingModal
+        open={billingOpen}
+        patientName={q.patient_name}
+        defaultFee={q.fee || 500}
+        saving={closing}
+        onCancel={() => !closing && setBillingOpen(false)}
+        onConfirm={handleClose}
+      />
     </div>
   );
 }
+
 
 function Step({ n, title, hint }: { n: number; title: string; hint: string }) {
   return (
