@@ -357,16 +357,26 @@ function CasePanel({ queueId }: { queueId: string }) {
                 {lines.length} remedy{lines.length === 1 ? "" : "ies"} · {followupDays ? `Follow-up in ${followupDays}d` : "Wait & watch"}
               </div>
             </div>
-            <button onClick={markDone}
+            <button onClick={openBilling}
               className="h-11 px-5 rounded-full bg-success text-white font-medium hover:brightness-105 inline-flex items-center gap-2">
               <CheckCircle2 className="size-4" /> Mark done & send to billing
             </button>
           </Card>
         </div>
       </section>
+
+      <BillingModal
+        open={billingOpen}
+        patientName={q.patient_name}
+        defaultFee={q.fee || 500}
+        saving={closing}
+        onCancel={() => !closing && setBillingOpen(false)}
+        onConfirm={handleClose}
+      />
     </div>
   );
 }
+
 
 function Step({ n, title, hint }: { n: number; title: string; hint: string }) {
   return (
