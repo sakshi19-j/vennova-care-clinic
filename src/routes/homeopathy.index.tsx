@@ -222,8 +222,14 @@ function CasePanel({ queueId }: { queueId: string }) {
           </div>
           <ol className="relative pl-4 space-y-3">
             <span className="absolute left-1 top-1 bottom-1 w-px bg-border" />
-            {rec.history.length === 0 && <li className="text-xs text-muted-foreground">No prior visits.</li>}
-            {rec.history.map((h, i) => (
+            {(previous.length > 0
+              ? previous.map((h) => ({ date: h.date, complaint: h.chief_complaint ?? "Visit", remedy: h.remedy ?? "—" }))
+              : rec.history
+            ).length === 0 && <li className="text-xs text-muted-foreground">No prior visits.</li>}
+            {(previous.length > 0
+              ? previous.map((h) => ({ date: h.date, complaint: h.chief_complaint ?? "Visit", remedy: h.remedy ?? "—" }))
+              : rec.history
+            ).map((h, i) => (
               <li key={i} className="relative">
                 <span className="absolute -left-[10px] top-1.5 size-2 rounded-full bg-muted-foreground ring-2 ring-background" />
                 <div className="text-[11px] text-muted-foreground">{h.date}</div>
@@ -232,6 +238,7 @@ function CasePanel({ queueId }: { queueId: string }) {
               </li>
             ))}
           </ol>
+
         </Card>
       </aside>
 
