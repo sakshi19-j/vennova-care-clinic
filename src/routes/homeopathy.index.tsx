@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, Avatar } from "@/components/clinic/PageHeader";
-import { useQueue, queueActions } from "@/lib/queue-store";
+import { useQueue, queueActions, refreshAll } from "@/lib/queue-store";
 import { isHomeoPatient } from "./homeopathy";
+import { api, ApiError } from "@/lib/api-client";
+import { BillingModal, type BillingPaymentMode } from "@/components/clinic/BillingModal";
 import {
   getCase, commonRemedies, potencies, forms, repetitions, repetitionLabel,
   modalityChips,
@@ -12,6 +14,15 @@ import {
 import {
   PlayCircle, CheckCircle2, Plus, Trash2, Sparkles, Coffee, Sun, CloudRain,
 } from "lucide-react";
+
+type PreviousVisit = {
+  visit_id: string;
+  date: string;
+  chief_complaint?: string;
+  remedy?: string;
+  potency?: string;
+};
+
 
 export const Route = createFileRoute("/homeopathy/")({
   component: NowSeeing,
