@@ -206,14 +206,8 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
               {["English", "Hindi", "Marathi", "Gujarati", "Kannada", "Tamil", "Telugu"].map((l) => <option key={l}>{l}</option>)}
             </select>
           </div>
-          <div className="col-span-4"><label className={L}>Patient type</label>
-            <select className={T} value={f.patient_type} onChange={(e) => set("patient_type", e.target.value as any)}>
-              <option value="HOMEOPATHY">Homeopathy</option>
-              <option value="ALLOPATHY">Allopathy</option>
-              <option value="BOTH">Both</option>
-            </select>
-          </div>
         </div>
+
 
         <div className="flex justify-end gap-2 mt-6 border-t clinic-divider pt-4">
           <button type="button" disabled={saving} onClick={() => { onOpenChange(false); reset(); }} className="h-10 px-5 rounded-full border border-border text-sm hover:bg-muted disabled:opacity-50">Cancel</button>
