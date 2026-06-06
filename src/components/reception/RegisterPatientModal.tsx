@@ -35,7 +35,7 @@ type FormState = {
   referred_by_name: string;
   referred_by_contact: string;
   language_pref: string;
-  patient_type: "HOMEOPATHY" | "ALLOPATHY" | "BOTH";
+
 };
 
 const empty: FormState = {
