@@ -35,7 +35,7 @@ type FormState = {
   referred_by_name: string;
   referred_by_contact: string;
   language_pref: string;
-  patient_type: "HOMEOPATHY" | "ALLOPATHY" | "BOTH";
+
 };
 
 const empty: FormState = {
@@ -58,7 +58,7 @@ const empty: FormState = {
   referred_by_name: "",
   referred_by_contact: "",
   language_pref: "English",
-  patient_type: "HOMEOPATHY",
+
 };
 
 export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props) {
@@ -97,7 +97,8 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
       referred_by_name: f.referred_by_name.trim() || null,
       referred_by_contact: f.referred_by_contact.trim() || null,
       language_pref: f.language_pref || null,
-      patient_type: f.patient_type,
+      patient_type: "HOMEOPATHY",
+
     };
 
     setSaving(true);
@@ -106,7 +107,7 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
       // Mirror into local store so the patients table updates immediately.
       const local = queueActions.createPatient(fullName, f.phone_mobile.trim(), {
         city: f.res_city,
-        patient_type: f.patient_type,
+        patient_type: "HOMEOPATHY",
         age: f.age ? Number(f.age) : undefined,
         gender: (f.gender || undefined) as any,
         dob: f.dob || undefined,
@@ -205,14 +206,8 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
               {["English", "Hindi", "Marathi", "Gujarati", "Kannada", "Tamil", "Telugu"].map((l) => <option key={l}>{l}</option>)}
             </select>
           </div>
-          <div className="col-span-4"><label className={L}>Patient type</label>
-            <select className={T} value={f.patient_type} onChange={(e) => set("patient_type", e.target.value as any)}>
-              <option value="HOMEOPATHY">Homeopathy</option>
-              <option value="ALLOPATHY">Allopathy</option>
-              <option value="BOTH">Both</option>
-            </select>
-          </div>
         </div>
+
 
         <div className="flex justify-end gap-2 mt-6 border-t clinic-divider pt-4">
           <button type="button" disabled={saving} onClick={() => { onOpenChange(false); reset(); }} className="h-10 px-5 rounded-full border border-border text-sm hover:bg-muted disabled:opacity-50">Cancel</button>

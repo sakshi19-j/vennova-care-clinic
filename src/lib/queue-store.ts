@@ -211,6 +211,106 @@ export async function sendReminder(followupId: string): Promise<void> {
 }
 
 // ───────────────────────────────────────────────────────────
+// Live API loaders (Rule 3 — replace mocks with backend)
+// On failure we keep existing (mock) state so the UI never crashes.
+// ───────────────────────────────────────────────────────────
+function toQueueRow(raw: any): RxQueueRow {
+  const visit_type: VisitType = raw.visit_type === "APPOINTMENT" ? "APPOINTMENT" : "WALKIN";
+  return {
+    queue_id: String(raw.queue_id ?? raw.id ?? `q-${Math.random().toString(36).slice(2)}`),
+    token_number: Number(raw.token_number ?? raw.token ?? 0),
+    patient_id: String(raw.patient_id ?? ""),
+    patient_name: String(raw.patient_name ?? raw.full_name ?? "Patient"),
+    patient_phone: String(raw.patient_phone ?? raw.phone ?? ""),
+    visit_id: raw.visit_id ? String(raw.visit_id) : undefined,
+    status: (raw.status ?? "WAITING") as QueueStatus,
+    visit_type,
+    priority: (raw.priority === 1 ? 1 : 0) as 0 | 1,
+    wait_minutes: Number(raw.wait_minutes ?? 0),
+    notes: raw.notes ?? undefined,
+    fee: Number(raw.fee ?? FEE_BY_TYPE[visit_type]),
+    paid: Boolean(raw.paid ?? false),
+    paid_with: (raw.paid_with ?? null) as PaidWith,
+    reg_no: raw.reg_no ?? undefined,
+    created_at: raw.created_at ? new Date(raw.created_at).getTime() : Date.now(),
+  };
+}
+
+function toPatient(raw: any): ExtendedPatient {
+  return {
+    id: String(raw.id ?? raw.patient_id ?? `p-${Math.random().toString(36).slice(2)}`),
+    reg_no: String(raw.reg_no ?? ""),
+    full_name: String(raw.full_name ?? [raw.title, raw.first_name, raw.last_name].filter(Boolean).join(" ") ?? "Unnamed"),
+    phone: String(raw.phone ?? raw.phone_mobile ?? ""),
+    city: String(raw.city ?? raw.res_city ?? ""),
+    patient_type: "HOMEOPATHY",
+    total_visits: Number(raw.total_visits ?? 0),
+    last_visit: raw.last_visit ?? null,
+    is_missed: Boolean(raw.is_missed ?? false),
+    age: raw.age ?? undefined,
+    gender: raw.gender ?? undefined,
+    dob: raw.dob ?? undefined,
+    email: raw.email ?? undefined,
+    address: raw.res_address ?? raw.address ?? undefined,
+    history: Array.isArray(raw.history) ? raw.history : [],
+  };
+}
+
+export async function loadQueue(): Promise<void> {
+  try {
+    const data = await api.get<any>("/queue/today");
+    const rows = Array.isArray(data) ? data : data?.queue ?? [];
+    if (Array.isArray(rows)) {
+      state = rows.map(toQueueRow);
+      emit();
+    }
+  } catch (err) {
+    console.warn("[queue] load failed", err);
+  }
+}
+
+export async function loadPatients(): Promise<void> {
+  try {
+    const data = await api.get<any>("/patients", { query: { type: "HOMEOPATHY" } });
+    const rows = Array.isArray(data) ? data : data?.patients ?? [];
+    if (Array.isArray(rows)) {
+      patients = rows.map(toPatient);
+      emit();
+    }
+  } catch (err) {
+    console.warn("[patients] load failed", err);
+  }
+}
+
+export async function loadAppointments(): Promise<void> {
+  try {
+    const data = await api.get<any>("/appointments/today");
+    const rows = Array.isArray(data) ? data : data?.appointments ?? [];
+    if (Array.isArray(rows)) {
+      appointments = rows.map((a: any) => ({
+        id: String(a.id ?? a.appointment_id),
+        patient_id: String(a.patient_id ?? ""),
+        patient_name: String(a.patient_name ?? a.full_name ?? "Patient"),
+        patient_phone: String(a.patient_phone ?? a.phone ?? ""),
+        scheduled_at: String(a.scheduled_at ?? a.slot_at ?? new Date().toISOString()),
+        visit_type: "HOMEOPATHY",
+        status: (a.status ?? "SCHEDULED") as ApptStatus,
+        chief_complaint: a.chief_complaint ?? a.notes ?? undefined,
+      })) as RxAppointment[];
+      emit();
+    }
+  } catch (err) {
+    console.warn("[appointments] load failed", err);
+  }
+}
+
+/** Refresh everything (queue, patients, appointments) in parallel. */
+export async function refreshAll(): Promise<void> {
+  await Promise.allSettled([loadQueue(), loadPatients(), loadAppointments()]);
+}
+
+
+// ───────────────────────────────────────────────────────────
 // Actions
 // ───────────────────────────────────────────────────────────
 function nextToken() {

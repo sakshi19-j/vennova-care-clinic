@@ -1,6 +1,8 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ListOrdered, CalendarDays, Users, Receipt, BellRing } from "lucide-react";
 import { useEffect, useState } from "react";
+import { refreshAll } from "@/lib/queue-store";
+
 
 export const Route = createFileRoute("/reception")({
   head: () => ({ meta: [{ title: "Reception — Vedic Clinic" }] }),
@@ -22,6 +24,10 @@ function ReceptionLayout() {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    void refreshAll();
+  }, []);
+
 
   return (
     <div className="max-w-[1500px] mx-auto">
