@@ -1,7 +1,9 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Stethoscope, ListChecks, Bell } from "lucide-react";
-import { useQueue } from "@/lib/queue-store";
+import { useQueue, refreshAll } from "@/lib/queue-store";
 import { rxPatients } from "@/lib/reception-data";
+
 
 export const Route = createFileRoute("/homeopathy")({
   head: () => ({ meta: [{ title: "Homeopathy — Vedic Clinic" }] }),
