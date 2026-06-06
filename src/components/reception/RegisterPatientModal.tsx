@@ -97,7 +97,8 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
       referred_by_name: f.referred_by_name.trim() || null,
       referred_by_contact: f.referred_by_contact.trim() || null,
       language_pref: f.language_pref || null,
-      patient_type: f.patient_type,
+      patient_type: "HOMEOPATHY",
+
     };
 
     setSaving(true);
