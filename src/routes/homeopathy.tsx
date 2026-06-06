@@ -17,6 +17,8 @@ export function isHomeoPatient(patientId: string) {
 }
 
 function HomeopathyLayout() {
+  useEffect(() => { void refreshAll(); }, []);
+
   const path = useRouterState({ select: (s) => s.location.pathname });
   const list = useQueue();
   const homeo = list.filter((q) => isHomeoPatient(q.patient_id));
