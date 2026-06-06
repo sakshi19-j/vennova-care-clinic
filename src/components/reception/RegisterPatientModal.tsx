@@ -107,7 +107,7 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
       // Mirror into local store so the patients table updates immediately.
       const local = queueActions.createPatient(fullName, f.phone_mobile.trim(), {
         city: f.res_city,
-        patient_type: f.patient_type,
+        patient_type: "HOMEOPATHY",
         age: f.age ? Number(f.age) : undefined,
         gender: (f.gender || undefined) as any,
         dob: f.dob || undefined,
