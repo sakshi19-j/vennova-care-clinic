@@ -373,6 +373,7 @@ export const queueActions = {
         at: Date.now(),
       },
     ];
+    patchStatusRemote(id, "IN_CONSULTATION");
     emit();
   },
   acknowledgeCall(callId: string) {
