@@ -317,10 +317,27 @@ function nextToken() {
   return state.reduce((m, q) => Math.max(m, q.token_number), 0) + 1;
 }
 
+/** Backend status codes per Fix-3 spec. */
+type RemoteStatus = "WAITING" | "IN_CONSULTATION" | "BILLING" | "COMPLETED";
+
+/** Fire-and-forget PATCH /queue/{id}/status — never throws. */
+function patchStatusRemote(id: string, status: RemoteStatus): void {
+  void api
+    .patch(`/queue/${encodeURIComponent(id)}/status`, { status })
+    .catch((err) => console.warn(`[queue] PATCH status ${status} failed`, err));
+}
+
 export const queueActions = {
   setStatus(id: string, status: QueueStatus) {
     snapshot(`Status → ${status}`, id);
     state = state.map((q) => (q.queue_id === id ? { ...q, status } : q));
+    emit();
+  },
+  /** Move a queue row to BILLING (doctor finished, awaiting reception payment). */
+  markBilling(id: string) {
+    snapshot(`→ Billing`, id);
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "COMPLETED" } : q));
+    patchStatusRemote(id, "BILLING");
     emit();
   },
   checkIn(id: string) {
