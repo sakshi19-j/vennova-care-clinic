@@ -439,6 +439,7 @@ export const queueActions = {
   complete(id: string) {
     snapshot(`Completed`, id);
     state = state.map((q) => (q.queue_id === id ? { ...q, status: "COMPLETED" } : q));
+    patchStatusRemote(id, "COMPLETED");
     emit();
   },
   noShow(id: string) {
