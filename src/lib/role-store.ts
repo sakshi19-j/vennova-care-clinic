@@ -32,8 +32,8 @@ export const roleMeta: Record<Role, {
   homeopathy: {
     label: "Homeopathy OPD",
     tagline: "Homeopathy OPD · case-taking & remedies",
-    home: "/homeopathy",
-    allowedPrefixes: ["/homeopathy"],
+    home: "/admin",
+    allowedPrefixes: ["/admin", "/homeopathy", "/reception"],
     initials: "HM",
     accent: "text-violet-600",
   },
