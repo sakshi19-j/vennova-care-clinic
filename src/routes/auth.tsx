@@ -34,7 +34,7 @@ function AuthPage() {
     const home =
       role === "admin" ? "/admin"
       : role === "reception" ? "/reception"
-      : role === "homeopathy" ? "/homeopathy"
+      : role === "homeopathy" ? "/admin"
       : "/doctor";
     navigate({ to: home as any, replace: true });
   }, [loading, session, role, navigate]);
