@@ -139,6 +139,7 @@ function CasePanel({ queueId }: { queueId: string }) {
       const ok = window.confirm("No remedy added. Send to billing anyway?");
       if (!ok) return;
     }
+    queueActions.markBilling(queueId);
     setBillingOpen(true);
   };
 
