@@ -1,6 +1,6 @@
 // Mock data matching backend schemas (receptionist role)
 
-export type QueueStatus = "WAITING" | "CHECKED_IN" | "IN_TREATMENT" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
+export type QueueStatus = "WAITING" | "CHECKED_IN" | "IN_TREATMENT" | "DONE" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
 export type VisitType = "WALKIN" | "APPOINTMENT";
 export type ClinicType = "HOMEOPATHY" | "ALLOPATHY";
 export type PatientType = "HOMEOPATHY" | "ALLOPATHY" | "BOTH";
@@ -150,6 +150,7 @@ export const queueStatusStyles: Record<QueueStatus, { dot: string; pill: string;
   WAITING:      { dot: "bg-amber-500",  pill: "bg-amber-500/15 text-amber-700 border-amber-500/30",     label: "Waiting" },
   CHECKED_IN:   { dot: "bg-blue-500",   pill: "bg-blue-500/15 text-blue-700 border-blue-500/30",        label: "Checked-in" },
   IN_TREATMENT: { dot: "bg-success",    pill: "bg-success/15 text-[color-mix(in_oklab,var(--success)_70%,black)] border-success/30", label: "In treatment" },
+  DONE:         { dot: "bg-muted-foreground", pill: "bg-muted text-muted-foreground border-border",     label: "Done" },
   COMPLETED:    { dot: "bg-muted-foreground", pill: "bg-muted text-muted-foreground border-border",     label: "Completed" },
   NO_SHOW:      { dot: "bg-destructive",pill: "bg-destructive/15 text-destructive border-destructive/30", label: "No show" },
   CANCELLED:    { dot: "bg-muted-foreground", pill: "bg-muted text-muted-foreground/70 border-border line-through", label: "Cancelled" },

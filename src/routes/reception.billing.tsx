@@ -21,12 +21,12 @@ function BillingPage() {
 
   // Patients the doctor has marked done, awaiting payment
   const pending = queue
-    .filter((r) => r.status === "COMPLETED" && !r.paid)
+    .filter((r) => (r.status === "DONE" || r.status === "COMPLETED") && !r.paid)
     .sort((a, b) => a.token_number - b.token_number);
 
   // Bills already collected → invoices sent automatically
   const queuePaid = queue
-    .filter((r) => r.paid && r.status === "COMPLETED")
+    .filter((r) => r.paid && (r.status === "DONE" || r.status === "COMPLETED"))
     .sort((a, b) => (b.invoice_sent_at ?? 0) - (a.invoice_sent_at ?? 0));
 
   const [revenue] = useState({ ...rxRevenueToday });

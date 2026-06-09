@@ -22,7 +22,8 @@ export const Route = createFileRoute("/queue")({
 type QueueStatus = "WAITING" | "IN_TREATMENT" | "DONE" | "NO_SHOW";
 
 type QueueItem = {
-  id: string;
+  id?: string;
+  queue_id?: string;
   token_number: number;
   patient_id: string;
   patient_name: string;
@@ -59,6 +60,19 @@ function errMsg(e: unknown): string {
   return "Something went wrong";
 }
 
+function normalizedStatus(status: unknown): QueueStatus {
+  const s = String(status ?? "WAITING").toUpperCase();
+  if (s === "IN_CONSULTATION") return "IN_TREATMENT";
+  if (s === "COMPLETED" || s === "BILLING") return "DONE";
+  if (s === "NO_SHOW") return "NO_SHOW";
+  if (s === "IN_TREATMENT") return "IN_TREATMENT";
+  return "WAITING";
+}
+
+function queueId(q?: QueueItem): string {
+  return String(q?.id ?? q?.queue_id ?? "");
+}
+
 const STATUS_BADGE: Record<QueueStatus, string> = {
   WAITING: "bg-amber-100 text-amber-800 border-amber-300",
   IN_TREATMENT: "bg-blue-100 text-blue-800 border-blue-300",
@@ -80,7 +94,7 @@ function QueuePage() {
     queryKey: ["queue", "today"],
     queryFn: async () => {
       const raw = await api.get<unknown>("/queue/today");
-      return asArray<QueueItem>(raw);
+      return asArray<QueueItem>(raw).map((q) => ({ ...q, status: normalizedStatus(q.status) }));
     },
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
@@ -101,21 +115,17 @@ function QueuePage() {
 
   const callMut = useMutation({
     mutationFn: async (item: QueueItem) => {
-      try {
-        await api.post("/queue/next");
-      } catch (e) {
-        // /queue/next may fail if backend expects no body or item already called; fall back gracefully
-        if (!(e instanceof ApiError) || e.status >= 500) throw e;
-      }
+      await api.post("/queue/next");
       return item;
     },
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
       const visitType = item.visit_type || "HOMEOPATHY";
+      const id = queueId(item);
       navigate({
         to: "/consultation/$patientId",
         params: { patientId: item.patient_id },
-        search: { queue_id: item.id, visit_type: visitType } as Record<string, string>,
+        search: { queue_id: id, visit_type: visitType } as Record<string, string>,
       });
     },
     onError: (e) => toast.error(errMsg(e)),
@@ -218,12 +228,13 @@ function QueuePage() {
             ) : (
               <ul className="divide-y clinic-divider">
                 {waiting.map((q, idx) => {
+                  const id = queueId(q);
                   const delayed = (q.wait_minutes ?? 0) > 20;
-                  const busy = (callMut.isPending && callMut.variables?.id === q.id) ||
-                    (noShowMut.isPending && noShowMut.variables === q.id) ||
-                    (removeMut.isPending && removeMut.variables === q.id);
+                  const busy = (callMut.isPending && queueId(callMut.variables) === id) ||
+                    (noShowMut.isPending && noShowMut.variables === id) ||
+                    (removeMut.isPending && removeMut.variables === id);
                   return (
-                    <li key={q.id} className="flex items-center gap-3 py-3 group">
+                    <li key={id || `${q.patient_id}-${q.token_number}`} className="flex items-center gap-3 py-3 group">
                       <span className="font-mono text-xs text-muted-foreground w-10">#{q.token_number}</span>
                       <Avatar name={q.patient_name} />
                       <div className="flex-1 min-w-0">
@@ -251,7 +262,7 @@ function QueuePage() {
                       <button
                         title="Mark no-show"
                         disabled={busy}
-                        onClick={() => noShowMut.mutate(q.id)}
+                        onClick={() => noShowMut.mutate(id)}
                         className="px-2.5 h-8 text-xs rounded-lg border border-border hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 disabled:opacity-50"
                       >
                         <UserX className="size-3.5" />
@@ -260,7 +271,7 @@ function QueuePage() {
                         title="Remove from queue"
                         disabled={busy}
                         onClick={() => {
-                          if (confirm(`Remove ${q.patient_name} from queue?`)) removeMut.mutate(q.id);
+                          if (confirm(`Remove ${q.patient_name} from queue?`)) removeMut.mutate(id);
                         }}
                         className="px-2.5 h-8 text-xs rounded-lg border border-border hover:bg-destructive hover:text-destructive-foreground hover:border-destructive disabled:opacity-50"
                       >
@@ -277,7 +288,7 @@ function QueuePage() {
                       <Link
                         to="/consultation/$patientId"
                         params={{ patientId: q.patient_id }}
-                        search={{ queue_id: q.id, visit_type: q.visit_type || "HOMEOPATHY" } as Record<string, string>}
+                        search={{ queue_id: id, visit_type: q.visit_type || "HOMEOPATHY" } as Record<string, string>}
                         className="px-3 h-8 text-xs rounded-lg bg-teal-600 text-white hover:bg-teal-700 inline-flex items-center gap-1"
                       >
                         <Stethoscope className="size-3.5" />
@@ -295,7 +306,7 @@ function QueuePage() {
               <div className="font-display text-2xl mb-3">Completed today</div>
               <ul className="divide-y clinic-divider">
                 {[...completed, ...noShow].map((q) => (
-                  <li key={q.id} className="flex items-center gap-3 py-3">
+                  <li key={queueId(q) || `${q.patient_id}-${q.token_number}`} className="flex items-center gap-3 py-3">
                     <span className="font-mono text-xs text-muted-foreground w-10">#{q.token_number}</span>
                     <Avatar name={q.patient_name} size={32} />
                     <div className="flex-1 min-w-0 font-medium truncate">{q.patient_name}</div>

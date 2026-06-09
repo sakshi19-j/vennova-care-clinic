@@ -66,7 +66,7 @@ function QueuePage() {
 
   const queue = useMemo(() => {
     const order: Record<string, number> = {
-      IN_TREATMENT: 0, CHECKED_IN: 1, WAITING: 2, COMPLETED: 3, NO_SHOW: 4, CANCELLED: 5,
+      IN_TREATMENT: 0, CHECKED_IN: 1, WAITING: 2, DONE: 3, COMPLETED: 3, NO_SHOW: 4, CANCELLED: 5,
     };
     return [...list]
       .filter((r) => r.status !== "CANCELLED")
@@ -87,17 +87,22 @@ function QueuePage() {
   const isNewCandidate = !picked && q.trim().length > 0 && matches.length === 0;
 
   const addExisting = useCallback(
-    (p: RxPatient) => {
-      const res = queueActions.add({
-        patient_id: p.id,
-        patient_name: p.full_name,
-        patient_phone: p.phone,
-        visit_type: visitType,
-      });
-      if (res.duplicate) toast.warning(`${p.full_name} already in queue · token #${res.token}`);
-      else toast.success(`#${res.token} · ${p.full_name} added to queue`);
-      setQ(""); setPicked(null);
-      searchRef.current?.focus();
+    async (p: RxPatient) => {
+      try {
+        const res = await queueActions.add({
+          patient_id: p.id,
+          patient_name: p.full_name,
+          patient_phone: p.phone,
+          visit_type: visitType,
+        });
+        if (res.duplicate) toast.warning(`${p.full_name} already in queue · token #${res.token}`);
+        else toast.success(`#${res.token} · ${p.full_name} added to queue`);
+        setQ(""); setPicked(null);
+        searchRef.current?.focus();
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Failed to add patient to queue";
+        toast.error(message);
+      }
     },
     [visitType],
   );
@@ -154,7 +159,7 @@ function QueuePage() {
     for (const r of list) {
       if (r.status === "WAITING" || r.status === "CHECKED_IN") s.waiting++;
       else if (r.status === "IN_TREATMENT") s.in++;
-      else if (r.status === "COMPLETED") { s.done++; if (r.paid) s.revenue += r.fee; }
+      else if (r.status === "DONE" || r.status === "COMPLETED") { s.done++; if (r.paid) s.revenue += r.fee; }
     }
     return s;
   }, [list]);
@@ -483,12 +488,13 @@ function VirtualList({
 
 const STATUS_LABEL: Record<string, string> = {
   WAITING: "Waiting", CHECKED_IN: "Ready", IN_TREATMENT: "With doctor",
-  COMPLETED: "Done", NO_SHOW: "No-show", CANCELLED: "Cancelled",
+  DONE: "Done", COMPLETED: "Done", NO_SHOW: "No-show", CANCELLED: "Cancelled",
 };
 const STATUS_TONE: Record<string, string> = {
   WAITING: "bg-amber-500/10 text-amber-700 border-amber-500/30",
   CHECKED_IN: "bg-sky-500/10 text-sky-700 border-sky-500/30",
   IN_TREATMENT: "bg-primary/15 text-primary border-primary/30",
+  DONE: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
   COMPLETED: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
   NO_SHOW: "bg-destructive/10 text-destructive border-destructive/30",
   CANCELLED: "bg-muted text-muted-foreground border-border",
@@ -507,7 +513,8 @@ function QueueRow({
 }) {
   const isBooked = row.visit_type === "APPOINTMENT";
   const canSkip = row.status === "WAITING" || row.status === "CHECKED_IN";
-  const awaitingPayment = row.status === "COMPLETED" && !row.paid;
+  const isDone = row.status === "DONE" || row.status === "COMPLETED";
+  const awaitingPayment = isDone && !row.paid;
   const delayed = row.wait_minutes > 20;
 
   return (
@@ -563,7 +570,7 @@ function QueueRow({
         "hidden md:block w-10 text-right text-[11px] tabular-nums",
         delayed ? "text-destructive font-medium" : "text-muted-foreground",
       ].join(" ")}>
-        {row.status === "COMPLETED" || row.status === "NO_SHOW" ? "—" : `${row.wait_minutes}m`}
+        {isDone || row.status === "NO_SHOW" ? "—" : `${row.wait_minutes}m`}
       </div>
 
       <div className="flex items-center gap-1.5">
