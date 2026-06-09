@@ -158,7 +158,8 @@ function PatientsTable({ items, onOpen }: { items: Patient[]; onOpen: (id: strin
             <th className="text-left font-medium py-2 px-3">Patient</th>
             <th className="text-left font-medium py-2 px-3">Reg. No</th>
             <th className="text-left font-medium py-2 px-3">Phone</th>
-            <th className="text-left font-medium py-2 px-3">Gender · Age</th>
+            <th className="text-left font-medium py-2 px-3">City</th>
+            <th className="text-left font-medium py-2 px-3">Type</th>
             <th className="text-left font-medium py-2 px-3">Last visit</th>
             <th className="text-left font-medium py-2 px-3">Visits</th>
             <th className="text-right font-medium py-2 px-3">Actions</th>
@@ -166,10 +167,36 @@ function PatientsTable({ items, onOpen }: { items: Patient[]; onOpen: (id: strin
         </thead>
         <tbody>
           {items.map((p) => {
-            const name = patientDisplayName(p);
-            const phone = patientPhone(p);
-            const visits = typeof p.visit_count === "number" ? p.visit_count : null;
-            const lastVisit = p.last_visit_at ? new Date(p.last_visit_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+            // Backend canonical fields: full_name, phone, city, patient_type,
+            // total_visits, last_visit, is_missed, reg_no
+            const rec = p as unknown as Record<string, unknown>;
+            const name =
+              (typeof rec.full_name === "string" && rec.full_name) ||
+              patientDisplayName(p);
+            const phone =
+              (typeof rec.phone === "string" && rec.phone) ||
+              patientPhone(p);
+            const city = (typeof rec.city === "string" && rec.city) || "";
+            const patientType = (typeof rec.patient_type === "string" && rec.patient_type) || "";
+            const visits =
+              typeof rec.total_visits === "number"
+                ? rec.total_visits
+                : typeof p.visit_count === "number"
+                ? p.visit_count
+                : null;
+            const lastVisitRaw =
+              (typeof rec.last_visit === "string" && rec.last_visit) ||
+              p.last_visit_at ||
+              null;
+            const lastVisit = lastVisitRaw
+              ? new Date(lastVisitRaw).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+              : "—";
+            const regNo =
+              typeof p.reg_no === "number" && p.reg_no > 0
+                ? `VNC-${String(p.reg_no).padStart(4, "0")}`
+                : "—";
+            const isMissed = rec.is_missed === true;
+
             return (
               <tr key={p.id} className="border-b clinic-divider hover:bg-muted/50 transition group cursor-pointer"
                 onClick={() => onOpen(p.id)}>
@@ -177,16 +204,22 @@ function PatientsTable({ items, onOpen }: { items: Patient[]; onOpen: (id: strin
                   <div className="flex items-center gap-3">
                     <Avatar name={name} />
                     <div>
-                      <div className="font-medium group-hover:text-primary">{name}</div>
+                      <div className="font-medium group-hover:text-primary flex items-center gap-2">
+                        {name}
+                        {isMissed && (
+                          <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                            Missed
+                          </span>
+                        )}
+                      </div>
                       {p.email && <div className="text-xs text-muted-foreground truncate max-w-[220px]">{p.email}</div>}
                     </div>
                   </div>
                 </td>
-                <td className="py-3 px-3 font-mono text-xs text-muted-foreground">{p.reg_no ?? "—"}</td>
+                <td className="py-3 px-3 font-mono text-xs text-muted-foreground">{regNo}</td>
                 <td className="py-3 px-3 text-muted-foreground tabular-nums">{phone || "—"}</td>
-                <td className="py-3 px-3 text-muted-foreground">
-                  {(p.gender || "—")}{p.age != null ? ` · ${p.age}y` : ""}
-                </td>
+                <td className="py-3 px-3 text-muted-foreground">{city || "—"}</td>
+                <td className="py-3 px-3 text-muted-foreground uppercase text-[11px]">{patientType || "—"}</td>
                 <td className="py-3 px-3 text-muted-foreground">{lastVisit}</td>
                 <td className="py-3 px-3 tabular-nums">{visits ?? "—"}</td>
                 <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
@@ -199,7 +232,9 @@ function PatientsTable({ items, onOpen }: { items: Patient[]; onOpen: (id: strin
                       Open
                     </Link>
                     <Link
-                      to="/homeopathy/queue"
+                      to="/consultation/$patientId"
+                      params={{ patientId: p.id }}
+                      search={{ visit_type: (patientType || "HOMEOPATHY").toUpperCase() } as Record<string, string>}
                       className="h-8 px-3 rounded-full bg-primary text-primary-foreground inline-flex items-center gap-1 text-xs hover:bg-primary/90"
                     >
                       <Stethoscope className="size-3.5" /> Consult
