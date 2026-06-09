@@ -24,7 +24,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
               <CommandItem onSelect={() => go("/")}><LayoutDashboard className="size-4 mr-2" /> Dashboard</CommandItem>
               <CommandItem onSelect={() => go("/queue")}><ListOrdered className="size-4 mr-2" /> Live Queue</CommandItem>
               <CommandItem onSelect={() => go("/appointments")}><Calendar className="size-4 mr-2" /> Appointments</CommandItem>
-              <CommandItem onSelect={() => go("/consultation/$visitId", { visitId: "V-2058" })}><Stethoscope className="size-4 mr-2" /> Consultation</CommandItem>
+              <CommandItem onSelect={() => go("/queue")}><Stethoscope className="size-4 mr-2" /> Consultation queue</CommandItem>
               <CommandItem onSelect={() => go("/patients")}><Users className="size-4 mr-2" /> Patients</CommandItem>
               <CommandItem onSelect={() => go("/prescriptions")}><FileText className="size-4 mr-2" /> Prescriptions</CommandItem>
               <CommandItem onSelect={() => go("/billing")}><Receipt className="size-4 mr-2" /> Billing</CommandItem>
