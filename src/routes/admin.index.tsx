@@ -242,6 +242,25 @@ function Skeleton() {
   return <div className="h-full w-full rounded-lg bg-muted/40 animate-pulse" />;
 }
 
+function MiniStat({
+  label, value, tone, icon,
+}: { label: string; value: number; tone: "gold" | "primary" | "success" | "destructive"; icon?: React.ReactNode }) {
+  const map = {
+    gold: "from-gold/20 to-gold/5 text-foreground",
+    primary: "from-primary/15 to-primary/5 text-primary",
+    success: "from-success/20 to-success/5 text-[color-mix(in_oklab,var(--success)_75%,black)]",
+    destructive: "from-destructive/15 to-destructive/5 text-destructive",
+  } as const;
+  return (
+    <div className={`rounded-xl border border-border p-4 bg-gradient-to-br ${map[tone]}`}>
+      <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
+        {icon} {label}
+      </div>
+      <div className="font-display text-3xl tabular-nums mt-0.5">{(value || 0).toLocaleString("en-IN")}</div>
+    </div>
+  );
+}
+
 function EmptyChart({ message }: { message: string }) {
   return (
     <div className="h-full grid place-items-center text-sm text-muted-foreground border border-dashed border-border rounded-lg">
