@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Loader2, AlertTriangle, CheckCircle2, Plus, Trash2, ExternalLink, ArrowLeft,
-  ChevronDown, ChevronRight, X,
+  Loader2, AlertTriangle, Plus, Trash2, ArrowLeft, ChevronDown, ChevronRight, X,
+  Sparkles, RotateCw, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
@@ -22,20 +22,20 @@ export const Route = createFileRoute("/consultation/$patientId")({
   head: () => ({
     meta: [
       { title: "Consultation — Vennova Clinic" },
-      { name: "description", content: "Doctor consultation case paper: complaint, vitals, case-taking, remedy and billing." },
+      { name: "description", content: "Doctor consultation case paper." },
     ],
   }),
   component: ConsultationPage,
 });
 
-// ----- Helpers -----
+// ---------- Helpers ----------
 function errMsg(e: unknown): string {
   if (e instanceof ApiError) {
     const d = e.data as { detail?: unknown; message?: unknown } | null;
-    const detail = d?.detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      const m = detail.map((x: { msg?: string }) => x?.msg || "").filter(Boolean).join("; ");
+    const raw = d?.detail;
+    if (typeof raw === "string") return raw;
+    if (Array.isArray(raw)) {
+      const m = raw.map((x: { msg?: string }) => x?.msg || "").filter(Boolean).join(", ");
       if (m) return m;
     }
     if (typeof d?.message === "string") return d.message;
@@ -55,6 +55,17 @@ function pickId(o: unknown): string | null {
   return null;
 }
 
+function asArray<T>(x: unknown): T[] {
+  if (Array.isArray(x)) return x as T[];
+  if (x && typeof x === "object") {
+    const o = x as Record<string, unknown>;
+    for (const k of ["items", "data", "results", "visits"]) {
+      if (Array.isArray(o[k])) return o[k] as T[];
+    }
+  }
+  return [];
+}
+
 type Patient = {
   id: string;
   reg_no?: number;
@@ -63,9 +74,24 @@ type Patient = {
   last_name?: string;
   phone?: string;
   phone_mobile?: string;
+  city?: string;
   patient_type?: string;
   total_visits?: number;
   last_visit?: string | null;
+  [k: string]: unknown;
+};
+
+type LastVisit = {
+  id?: string;
+  visit_date?: string;
+  created_at?: string;
+  chief_complaint?: string;
+  homeopathy?: {
+    remedy?: string;
+    potency?: string;
+    thermal_sensation?: string;
+    rubrics?: Array<{ text?: string } | string>;
+  };
   [k: string]: unknown;
 };
 
@@ -82,8 +108,14 @@ function regFmt(p?: Patient | null): string {
   if (!p?.reg_no) return "—";
   return `VNC-${String(p.reg_no).padStart(4, "0")}`;
 }
+function fmtDate(d?: string | null): string {
+  if (!d) return "—";
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
 
-// ----- Form state -----
+// ---------- Form ----------
 type Medicine = { name: string; dosage: string; frequency: string; duration: string };
 const POTENCIES = ["6C", "30C", "200C", "1M", "10M", "CM", "50M"];
 const MIASMS = ["Psora", "Sycosis", "Syphilis", "Tubercular"];
@@ -91,40 +123,13 @@ const THERMALS = ["Hot", "Cold", "Mixed"];
 
 type FormState = {
   chief_complaint: string;
-  // vitals
-  bp_sys: string;
-  bp_dia: string;
-  weight: string;
-  temperature: string;
-  pulse: string;
-  // history
-  history_present: string;
-  history_past: string;
-  history_surgical: string;
-  history_family: string;
-  // generals
-  thermal: string;
-  appetite: string;
-  thirst: string;
-  sleep: string;
-  dreams: string;
-  mind_symptoms: string;
-  // particulars
-  particulars: string;
-  rubrics: string[];
-  rubricInput: string;
-  // remedy
-  remedy: string;
-  potency: string;
-  repetition: string;
-  miasm: string;
-  // allopathy
-  diagnosis: string;
-  medicines: Medicine[];
-  advice: string;
-  // billing
-  fee: string;
-  payment_mode: "CASH" | "UPI" | "CARD" | "ONLINE";
+  bp_sys: string; bp_dia: string; weight: string; temperature: string; pulse: string;
+  history_present: string; history_past: string; history_surgical: string; history_family: string;
+  thermal: string; appetite: string; thirst: string; sleep: string; dreams: string; mind_symptoms: string;
+  particulars: string; rubrics: string[]; rubricInput: string;
+  remedy: string; potency: string; repetition: string; miasm: string;
+  diagnosis: string; medicines: Medicine[]; advice: string;
+  fee: string; payment_mode: "CASH" | "UPI" | "CARD" | "ONLINE";
 };
 
 const initialForm = (): FormState => ({
@@ -138,36 +143,69 @@ const initialForm = (): FormState => ({
   fee: "500", payment_mode: "CASH",
 });
 
-// ----- Page -----
+// ---------- Page ----------
 function ConsultationPage() {
   const { patientId } = Route.useParams();
   const search = useSearch({ from: "/consultation/$patientId" });
   const navigate = useNavigate();
-  const visitType = (search.visit_type || "HOMEOPATHY").toUpperCase();
-  const isAllo = visitType === "ALLOPATHY";
 
   const patientQ = useQuery({
     queryKey: ["patient", patientId],
     queryFn: () => api.get<Patient>(`/patients/${encodeURIComponent(patientId)}`),
     retry: 1,
   });
+
+  const lastVisitQ = useQuery({
+    queryKey: ["last-visit", patientId],
+    queryFn: async () => {
+      const raw = await api.get<unknown>("/visits/", { query: { patient_id: patientId, limit: 1 } });
+      const arr = asArray<LastVisit>(raw);
+      return arr.length > 0 ? arr[0] : null;
+    },
+    retry: 1,
+  });
+
   const patient = patientQ.data;
+  const lastVisit = lastVisitQ.data ?? null;
+  const isFollowup = !!lastVisit;
+
+  const visitType = (
+    search.visit_type ||
+    (patient?.patient_type as string | undefined) ||
+    "HOMEOPATHY"
+  ).toUpperCase();
+  const isAllo = visitType === "ALLOPATHY";
 
   const [form, setForm] = useState<FormState>(initialForm);
+  const [chiefError, setChiefError] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
+
+  // Pre-fill from last visit
+  useEffect(() => {
+    if (!lastVisit || prefilled) return;
+    const homeo = lastVisit.homeopathy || {};
+    const rubrics = Array.isArray(homeo.rubrics)
+      ? homeo.rubrics
+          .map((r) => (typeof r === "string" ? r : r?.text || ""))
+          .filter(Boolean)
+      : [];
+    setForm((f) => ({
+      ...f,
+      chief_complaint: lastVisit.chief_complaint || f.chief_complaint,
+      remedy: homeo.remedy || f.remedy,
+      potency: homeo.potency || f.potency,
+      thermal: homeo.thermal_sensation || f.thermal,
+      rubrics: rubrics.length ? rubrics : f.rubrics,
+    }));
+    setPrefilled(true);
+  }, [lastVisit, prefilled]);
+
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
   const [open, setOpen] = useState({ vitals: true, history: false, generals: false, particulars: false, remedy: true });
 
-  const [quickNote, setQuickNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<{
-    visitId: string;
-    prescriptionUrl?: string;
-    rxOk: boolean;
-    whatsappOk: boolean;
-    receiptOk: boolean;
-  } | null>(null);
 
   const anyVitals = useMemo(
     () => [form.bp_sys, form.bp_dia, form.weight, form.temperature, form.pulse].some((x) => x.trim() !== ""),
@@ -194,129 +232,97 @@ function ConsultationPage() {
     return s.trim() === "" || !Number.isFinite(n) ? null : n;
   };
 
-  const completeConsultation = async () => {
+  const completeAndSendToBilling = async () => {
     if (!form.chief_complaint.trim()) {
+      setChiefError(true);
       toast.error("Chief complaint is required");
       return;
     }
+    setChiefError(false);
     setSubmitting(true);
+
+    const toastId = toast.loading("Creating visit…");
     try {
-      // 1. Create visit
+      // Step 1 — Create visit
       const visitRes = await api.post<unknown>("/visits/", {
         patient_id: patientId,
-        visit_type: visitType,
+        visit_type: visitType || "HOMEOPATHY",
         chief_complaint: form.chief_complaint,
         disease_type: "default",
       });
       const visitId = pickId(visitRes);
-      if (!visitId) throw new Error("Visit was created but no ID returned");
+      if (!visitId) throw new Error("Visit created but no ID returned");
 
-      // 2. Vitals
+      // Step 2 — Vitals (only if any vital filled)
       if (anyVitals) {
-        try {
-          await api.post(`/visits/${encodeURIComponent(visitId)}/vitals`, {
-            weight_kg: numOrNull(form.weight),
-            bp_systolic: numOrNull(form.bp_sys),
-            bp_diastolic: numOrNull(form.bp_dia),
-            temperature: numOrNull(form.temperature),
-            pulse_rate: numOrNull(form.pulse),
-          });
-        } catch (e) {
-          toast.warning(`Vitals not saved: ${errMsg(e)}`);
-        }
+        toast.loading("Saving vitals…", { id: toastId });
+        await api.post(`/visits/${encodeURIComponent(visitId)}/vitals`, {
+          weight_kg: numOrNull(form.weight),
+          bp_systolic: numOrNull(form.bp_sys),
+          bp_diastolic: numOrNull(form.bp_dia),
+          temperature: numOrNull(form.temperature),
+          pulse_rate: numOrNull(form.pulse),
+        });
       }
 
-      // 3. Case data
-      try {
-        if (isAllo) {
-          await api.post(`/visits/${encodeURIComponent(visitId)}/allopathy`, {
-            diagnosis: form.diagnosis || null,
-            medicines: form.medicines
-              .filter((m) => m.name.trim())
-              .map((m) => ({
-                name: m.name,
-                dosage: m.dosage || "",
-                frequency: m.frequency || "",
-                duration: m.duration || "",
-              })),
-            advice: form.advice || null,
-          });
-        } else {
-          await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
-            chief_complaint: form.chief_complaint,
-            history_present: form.history_present || null,
-            history_past: form.history_past || null,
-            history_surgical: form.history_surgical || null,
-            history_family: form.history_family || null,
-            thermal_sensation: form.thermal || null,
-            appetite: form.appetite || null,
-            thirst: form.thirst || null,
-            sleep: form.sleep || null,
-            dreams: form.dreams || null,
-            mind_symptoms: form.mind_symptoms || null,
-            particulars: form.particulars ? { text: form.particulars } : null,
-            rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
-            remedy: form.remedy || null,
-            potency: form.potency || null,
-            repetition: form.repetition || null,
-            miasm: form.miasm || null,
-          });
-        }
-      } catch (e) {
-        toast.warning(`Case details not saved: ${errMsg(e)}`);
+      // Step 3 — Case details
+      toast.loading("Saving case details…", { id: toastId });
+      if (isAllo) {
+        await api.post(`/visits/${encodeURIComponent(visitId)}/allopathy`, {
+          diagnosis: form.diagnosis || null,
+          medicines: form.medicines
+            .filter((m) => m.name.trim())
+            .map((m) => ({
+              name: m.name,
+              dosage: m.dosage || "",
+              frequency: m.frequency || "",
+              duration: m.duration || "",
+            })),
+          advice: form.advice || null,
+        });
+      } else {
+        await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
+          chief_complaint: form.chief_complaint,
+          history_present: form.history_present || null,
+          history_past: form.history_past || null,
+          history_surgical: form.history_surgical || null,
+          history_family: form.history_family || null,
+          thermal_sensation: form.thermal || null,
+          appetite: form.appetite || null,
+          thirst: form.thirst || null,
+          sleep: form.sleep || null,
+          dreams: form.dreams || null,
+          mind_symptoms: form.mind_symptoms || null,
+          particulars: form.particulars ? { text: form.particulars } : null,
+          rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
+          remedy: form.remedy || null,
+          potency: form.potency || null,
+          repetition: form.repetition || null,
+          miasm: form.miasm || null,
+        });
       }
 
-      // 4. Close visit + billing
+      // Step 4 — Close visit (billing pending — receptionist will collect)
+      toast.loading("Sending to billing…", { id: toastId });
       await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
         fee: Number(form.fee) || 0,
-        payment_mode: form.payment_mode || "CASH",
+        payment_mode: "CASH",
         disease_type: "default",
         followup_channel: "WHATSAPP",
       });
 
-      // 5. Prescription PDF
-      let prescriptionUrl: string | undefined;
-      let rxOk = false;
-      try {
-        const rx = await api.post<unknown>(`/prescriptions/generate/${encodeURIComponent(visitId)}`);
-        rxOk = true;
-        if (rx && typeof rx === "object") {
-          const r = rx as Record<string, unknown>;
-          const url = r.secure_url ?? r.url ?? r.pdf_url;
-          if (typeof url === "string") prescriptionUrl = url;
-        }
-      } catch (e) {
-        toast.warning(`Prescription PDF: ${errMsg(e)}`);
-      }
-
-      // 6. WhatsApp prescription
-      let whatsappOk = false;
-      try {
-        await api.post(`/prescriptions/send/${encodeURIComponent(visitId)}`);
-        whatsappOk = true;
-      } catch (e) {
-        toast.warning(`WhatsApp send: ${errMsg(e)}`);
-      }
-
-      // 7. Receipt
-      let receiptOk = false;
-      try {
-        await api.post(`/billing/receipt/${encodeURIComponent(visitId)}`);
-        receiptOk = true;
-      } catch (e) {
-        toast.warning(`Receipt: ${errMsg(e)}`);
-      }
-
-      setSuccess({ visitId, prescriptionUrl, rxOk, whatsappOk, receiptOk });
+      // Step 5 — done
+      toast.success("Case saved. Sent to billing ✓", { id: toastId });
+      navigate({ to: "/queue" });
     } catch (e) {
-      toast.error(errMsg(e));
+      toast.error(errMsg(e), { id: toastId });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // -------- Render --------
-  if (patientQ.isLoading) {
+  // ---------- Render ----------
+  if (patientQ.isLoading || lastVisitQ.isLoading) {
     return (
       <div className="max-w-[1500px] mx-auto py-12 grid place-items-center text-sm text-muted-foreground">
         <Loader2 className="size-5 animate-spin mb-2" />
@@ -338,73 +344,79 @@ function ConsultationPage() {
     );
   }
 
+  const ptype = (patient.patient_type || visitType).toUpperCase();
+  const typeBadgeClass =
+    ptype === "ALLOPATHY"
+      ? "bg-blue-100 text-blue-800 border-blue-300"
+      : "bg-teal-100 text-teal-800 border-teal-300";
+
   return (
     <div className="max-w-[1500px] mx-auto pb-28">
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={() => navigate({ to: "/queue" })}
-          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-        >
-          <ArrowLeft className="size-4" /> Back to queue
-        </button>
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
-          {isAllo ? "Allopathy" : "Homeopathy"} · Case paper
-        </div>
-      </div>
-
       <div className="grid grid-cols-12 gap-5">
         {/* LEFT SIDEBAR */}
-        <aside className="col-span-12 lg:col-span-3">
+        <aside className="col-span-12 lg:col-span-3 xl:col-span-2">
           <div className="rounded-2xl border border-border bg-card p-5 sticky top-4">
-            <div className="size-14 rounded-full bg-primary/10 text-primary grid place-items-center font-display text-xl mb-3">
-              {displayName(patient).charAt(0)}
+            <div className="size-12 rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 grid place-items-center text-white font-display text-xl mb-3 shadow">
+              <Zap className="size-6" />
             </div>
             <div className="font-display text-xl leading-tight">{displayName(patient)}</div>
             <div className="text-xs text-muted-foreground mt-0.5 font-mono">{regFmt(patient)}</div>
             <div className="text-sm text-muted-foreground mt-2">{displayPhone(patient) || "—"}</div>
-            {patient.patient_type && (
-              <span className="mt-3 inline-flex text-[10px] uppercase tracking-widest px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
-                {patient.patient_type}
-              </span>
-            )}
-            <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-              <div className="rounded-lg border border-border p-2">
+            {patient.city && <div className="text-xs text-muted-foreground mt-0.5">{patient.city}</div>}
+            <span className={`mt-3 inline-flex text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border ${typeBadgeClass}`}>
+              {ptype}
+            </span>
+            <div className="mt-4 space-y-2">
+              <div className="rounded-lg border border-border p-2 text-center">
                 <div className="font-display text-lg tabular-nums">{patient.total_visits ?? 0}</div>
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">Visits</div>
               </div>
-              <div className="rounded-lg border border-border p-2">
+              <div className="rounded-lg border border-border p-2 text-center">
                 <div className="text-xs tabular-nums">
-                  {patient.last_visit
-                    ? new Date(patient.last_visit).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
-                    : "—"}
+                  {patient.last_visit ? fmtDate(patient.last_visit) : "New Patient"}
                 </div>
                 <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-0.5">Last visit</div>
               </div>
             </div>
-            <Link
-              to="/patients/$patientId"
-              params={{ patientId }}
-              className="mt-4 block text-center h-9 leading-9 rounded-full border border-border text-sm hover:bg-muted"
+            <button
+              onClick={() => navigate({ to: "/queue" })}
+              className="mt-4 w-full h-9 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center justify-center gap-1"
             >
-              View full profile
-            </Link>
+              <ArrowLeft className="size-4" /> Back to Queue
+            </button>
           </div>
         </aside>
 
         {/* CENTER */}
-        <section className="col-span-12 lg:col-span-6 space-y-4">
-          <div className="font-display text-2xl">{isAllo ? "Consultation" : "Homeopathy Case Paper"}</div>
+        <section className="col-span-12 lg:col-span-6 xl:col-span-7 space-y-4">
+          <div className="flex items-center gap-3 flex-wrap">
+            {isFollowup ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                <RotateCw className="size-3.5" /> Follow-up
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <Sparkles className="size-3.5" /> New Patient
+              </span>
+            )}
+          </div>
+          <div className="font-display text-2xl">{isAllo ? "Allopathy Case Paper" : "Homeopathy Case Paper"}</div>
 
           {/* Chief complaint */}
-          <Block title="Chief Complaint *">
+          <Block title={<>Chief Complaint <span className="text-destructive">*</span></>}>
             <textarea
               value={form.chief_complaint}
-              onChange={(e) => setField("chief_complaint", e.target.value)}
+              onChange={(e) => { setField("chief_complaint", e.target.value); if (chiefError) setChiefError(false); }}
               rows={3}
               required
-              placeholder="What is the patient's main concern today?"
-              className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+              placeholder="Describe the chief complaint..."
+              className={`w-full rounded-lg border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring/40 ${
+                chiefError ? "border-destructive ring-2 ring-destructive/30" : "border-border"
+              }`}
             />
+            {chiefError && (
+              <div className="text-xs text-destructive mt-1">Chief complaint is required</div>
+            )}
           </Block>
 
           {/* Vitals */}
@@ -413,18 +425,17 @@ function ConsultationPage() {
             open={open.vitals}
             onToggle={() => setOpen((o) => ({ ...o, vitals: !o.vitals }))}
           >
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <Field label="BP Sys" value={form.bp_sys} onChange={(v) => setField("bp_sys", v)} type="number" />
-              <Field label="BP Dia" value={form.bp_dia} onChange={(v) => setField("bp_dia", v)} type="number" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <Field label="BP Systolic" value={form.bp_sys} onChange={(v) => setField("bp_sys", v)} type="number" />
+              <Field label="BP Diastolic" value={form.bp_dia} onChange={(v) => setField("bp_dia", v)} type="number" />
+              <Field label="Pulse Rate" value={form.pulse} onChange={(v) => setField("pulse", v)} type="number" />
               <Field label="Weight (kg)" value={form.weight} onChange={(v) => setField("weight", v)} type="number" />
-              <Field label="Temp (°F)" value={form.temperature} onChange={(v) => setField("temperature", v)} type="number" />
-              <Field label="Pulse" value={form.pulse} onChange={(v) => setField("pulse", v)} type="number" />
+              <Field label="Temperature (°F)" value={form.temperature} onChange={(v) => setField("temperature", v)} type="number" />
             </div>
           </Collapsible>
 
           {!isAllo && (
             <>
-              {/* History */}
               <Collapsible
                 title="History"
                 open={open.history}
@@ -438,14 +449,13 @@ function ConsultationPage() {
                 </div>
               </Collapsible>
 
-              {/* Generals */}
               <Collapsible
                 title="Generals"
                 open={open.generals}
                 onToggle={() => setOpen((o) => ({ ...o, generals: !o.generals }))}
               >
                 <div className="mb-3">
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Thermal</div>
+                  <Label>Thermal</Label>
                   <Pills options={THERMALS} value={form.thermal} onChange={(v) => setField("thermal", v)} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -459,7 +469,6 @@ function ConsultationPage() {
                 </div>
               </Collapsible>
 
-              {/* Particulars & Rubrics */}
               <Collapsible
                 title="Particulars & Rubrics"
                 open={open.particulars}
@@ -467,7 +476,7 @@ function ConsultationPage() {
               >
                 <TextArea label="Particulars" rows={3} value={form.particulars} onChange={(v) => setField("particulars", v)} />
                 <div className="mt-3">
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Rubrics</div>
+                  <Label>Rubrics</Label>
                   <div className="flex gap-2">
                     <input
                       value={form.rubricInput}
@@ -478,12 +487,10 @@ function ConsultationPage() {
                           addRubric();
                         }
                       }}
-                      placeholder="Type a rubric, press Enter…"
+                      placeholder="Type a rubric and press Enter…"
                       className="flex-1 h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
                     />
-                    <Button type="button" variant="outline" className="rounded-lg" onClick={addRubric}>
-                      Add
-                    </Button>
+                    <Button type="button" variant="outline" className="rounded-lg" onClick={addRubric}>Add</Button>
                   </div>
                   {form.rubrics.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
@@ -500,7 +507,6 @@ function ConsultationPage() {
                 </div>
               </Collapsible>
 
-              {/* Remedy */}
               <Collapsible
                 title="Remedy"
                 open={open.remedy}
@@ -509,7 +515,7 @@ function ConsultationPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <Field label="Remedy" value={form.remedy} onChange={(v) => setField("remedy", v)} />
                   <div>
-                    <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Potency</div>
+                    <Label>Potency</Label>
                     <select
                       value={form.potency}
                       onChange={(e) => setField("potency", e.target.value)}
@@ -519,10 +525,10 @@ function ConsultationPage() {
                       {POTENCIES.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>
-                  <Field label="Repetition" value={form.repetition} onChange={(v) => setField("repetition", v)} placeholder="e.g. BD x 7 days" />
+                  <Field label="Repetition" value={form.repetition} onChange={(v) => setField("repetition", v)} placeholder="Once daily for 7 days" />
                 </div>
                 <div className="mt-3">
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Miasm</div>
+                  <Label>Miasm</Label>
                   <Pills options={MIASMS} value={form.miasm} onChange={(v) => setField("miasm", v)} />
                 </div>
               </Collapsible>
@@ -533,7 +539,7 @@ function ConsultationPage() {
             <Block title="Diagnosis & Medicines">
               <Field label="Diagnosis" value={form.diagnosis} onChange={(v) => setField("diagnosis", v)} />
               <div className="mt-3">
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Medicines</div>
+                <Label>Medicines</Label>
                 <div className="space-y-2">
                   {form.medicines.map((m, i) => (
                     <div key={i} className="grid grid-cols-12 gap-2 items-center">
@@ -563,7 +569,7 @@ function ConsultationPage() {
                   ))}
                 </div>
                 <Button type="button" variant="outline" className="rounded-full mt-3" onClick={addMedicine}>
-                  <Plus className="size-4 mr-1" /> Add medicine
+                  <Plus className="size-4 mr-1" /> Add Medicine
                 </Button>
               </div>
               <div className="mt-3">
@@ -576,81 +582,105 @@ function ConsultationPage() {
           <Block title="Billing">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Fee (₹)</div>
+                <Label>Fee (₹)</Label>
                 <input
                   type="number" min={0} value={form.fee} onChange={(e) => setField("fee", e.target.value)}
-                  className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                  className="w-full h-12 rounded-lg border border-border bg-background px-3 text-lg font-display tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
                 />
               </div>
               <div>
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Payment mode</div>
+                <Label>Payment mode</Label>
                 <Pills
                   options={["CASH", "UPI", "CARD", "ONLINE"]}
                   value={form.payment_mode}
-                  onChange={(v) => setField("payment_mode", v as FormState["payment_mode"])}
+                  onChange={(v) => setField("payment_mode", (v || "CASH") as FormState["payment_mode"])}
                 />
               </div>
             </div>
           </Block>
+
+          {/* Desktop submit */}
+          <div className="hidden md:flex justify-end pt-2">
+            <button
+              disabled={submitting}
+              onClick={completeAndSendToBilling}
+              className="h-12 px-8 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow-lg"
+            >
+              {submitting && <Loader2 className="size-4 animate-spin" />}
+              Complete & Send to Billing
+            </button>
+          </div>
         </section>
 
         {/* RIGHT SIDEBAR */}
         <aside className="col-span-12 lg:col-span-3 hidden lg:block">
-          <div className="rounded-2xl border border-border bg-card p-5 sticky top-4 space-y-4">
-            <div>
-              <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">Previous remedy</div>
-              <div className="text-sm text-muted-foreground">
-                {patient.last_visit ? "Check full profile for history" : "No previous visits"}
-              </div>
-            </div>
-            <div>
-              <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">Quick notes</div>
-              <textarea
-                rows={6}
-                value={quickNote}
-                onChange={(e) => setQuickNote(e.target.value)}
-                placeholder="Scratchpad (not saved)…"
-                className="w-full rounded-lg border border-border bg-background p-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-              />
-            </div>
+          <div className="rounded-2xl border border-border bg-card p-5 sticky top-4">
+            {isFollowup && lastVisit ? (
+              <>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Previous Visit</div>
+                <div className="text-sm font-medium">{fmtDate(lastVisit.visit_date || lastVisit.created_at)}</div>
+                <div className="mt-3 space-y-2 text-sm">
+                  {lastVisit.homeopathy?.remedy && (
+                    <div>
+                      <span className="text-muted-foreground">Remedy: </span>
+                      <span className="font-medium">
+                        {lastVisit.homeopathy.remedy}
+                        {lastVisit.homeopathy.potency ? ` ${lastVisit.homeopathy.potency}` : ""}
+                      </span>
+                    </div>
+                  )}
+                  {lastVisit.chief_complaint && (
+                    <div>
+                      <div className="text-muted-foreground text-xs">Complaint</div>
+                      <div className="text-sm">{lastVisit.chief_complaint}</div>
+                    </div>
+                  )}
+                  {Array.isArray(lastVisit.homeopathy?.rubrics) && lastVisit.homeopathy!.rubrics!.length > 0 && (
+                    <div>
+                      <div className="text-muted-foreground text-xs">Rubrics</div>
+                      <div className="text-sm">
+                        {lastVisit
+                          .homeopathy!.rubrics!.map((r) => (typeof r === "string" ? r : r?.text || ""))
+                          .filter(Boolean)
+                          .join(", ")}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-2">Previous Visit</div>
+                <div className="text-sm text-muted-foreground">No previous visits</div>
+              </>
+            )}
           </div>
         </aside>
       </div>
 
-      {/* Sticky CTA */}
-      <div className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-        <div className="max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-3 justify-end">
-          <div className="text-sm text-muted-foreground hidden md:block">
-            ₹{Number(form.fee) || 0} · {form.payment_mode}
-          </div>
+      {/* Mobile sticky CTA */}
+      <div className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur md:hidden">
+        <div className="px-4 py-3 flex items-center gap-3 justify-end">
           <button
-            disabled={submitting || !form.chief_complaint.trim()}
-            onClick={completeConsultation}
-            className="h-11 px-6 rounded-full bg-primary text-primary-foreground font-medium text-sm inline-flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50"
+            disabled={submitting}
+            onClick={completeAndSendToBilling}
+            className="w-full h-12 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center justify-center gap-2 hover:bg-teal-700 disabled:opacity-60"
           >
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-            {submitting ? "Completing…" : "Complete Consultation"}
+            {submitting && <Loader2 className="size-4 animate-spin" />}
+            Complete & Send to Billing
           </button>
         </div>
       </div>
-
-      {/* Success modal */}
-      {success && (
-        <SuccessModal
-          patientName={displayName(patient)}
-          phone={displayPhone(patient)}
-          info={success}
-          onNext={() => navigate({ to: "/queue" })}
-          onClose={() => setSuccess(null)}
-        />
-      )}
     </div>
   );
 }
 
-// ----- Subcomponents -----
+// ---------- Subcomponents ----------
+function Label({ children }: { children: React.ReactNode }) {
+  return <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">{children}</div>;
+}
 
-function Block({ title, children }: { title: string; children: React.ReactNode }) {
+function Block({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-5">
       <div className="font-display text-lg mb-3">{title}</div>
@@ -681,7 +711,7 @@ function Field({
 }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">{label}</div>
+      <Label>{label}</Label>
       <input
         type={type}
         value={value}
@@ -698,7 +728,7 @@ function TextArea({
 }: { label: string; value: string; onChange: (v: string) => void; rows?: number }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">{label}</div>
+      <Label>{label}</Label>
       <textarea
         rows={rows}
         value={value}
@@ -726,59 +756,6 @@ function Pills({ options, value, onChange }: { options: string[]; value: string;
           {o}
         </button>
       ))}
-    </div>
-  );
-}
-
-function SuccessModal({
-  patientName, phone, info, onNext, onClose,
-}: {
-  patientName: string;
-  phone: string;
-  info: { visitId: string; prescriptionUrl?: string; rxOk: boolean; whatsappOk: boolean; receiptOk: boolean };
-  onNext: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/30 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="size-14 rounded-full bg-success/10 text-success grid place-items-center mx-auto mb-3">
-          <CheckCircle2 className="size-8" />
-        </div>
-        <div className="text-center font-display text-2xl">Consultation Complete</div>
-        <div className="text-center text-sm text-muted-foreground mt-1">for {patientName}</div>
-
-        <ul className="mt-5 space-y-2 text-sm">
-          <li className={info.rxOk ? "text-foreground" : "text-muted-foreground"}>
-            {info.rxOk ? "✓" : "·"} Prescription PDF {info.rxOk ? "generated" : "skipped"}
-          </li>
-          <li className={info.whatsappOk ? "text-foreground" : "text-muted-foreground"}>
-            {info.whatsappOk ? "✓" : "·"} WhatsApp sent{phone ? ` to ${phone}` : ""}
-          </li>
-          <li className={info.receiptOk ? "text-foreground" : "text-muted-foreground"}>
-            {info.receiptOk ? "✓" : "·"} Receipt {info.receiptOk ? "generated" : "skipped"}
-          </li>
-          <li className="text-foreground">✓ Followup reminders scheduled</li>
-        </ul>
-
-        <div className="mt-6 grid grid-cols-2 gap-2">
-          <button onClick={onNext} className="h-11 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90">
-            Next patient
-          </button>
-          {info.prescriptionUrl ? (
-            <a
-              href={info.prescriptionUrl} target="_blank" rel="noopener noreferrer"
-              className="h-11 rounded-full border border-border text-sm font-medium hover:bg-muted inline-flex items-center justify-center gap-1"
-            >
-              View prescription <ExternalLink className="size-3.5" />
-            </a>
-          ) : (
-            <button onClick={onClose} className="h-11 rounded-full border border-border text-sm font-medium hover:bg-muted">
-              Close
-            </button>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
