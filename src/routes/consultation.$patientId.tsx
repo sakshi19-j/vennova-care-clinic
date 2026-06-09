@@ -12,12 +12,14 @@ import { api, ApiError } from "@/lib/api-client";
 type ConsultationSearch = {
   queue_id?: string;
   visit_type?: string;
+  mode?: "new" | "followup";
 };
 
 export const Route = createFileRoute("/consultation/$patientId")({
   validateSearch: (s: Record<string, unknown>): ConsultationSearch => ({
     queue_id: typeof s.queue_id === "string" ? s.queue_id : undefined,
     visit_type: typeof s.visit_type === "string" ? s.visit_type : undefined,
+    mode: s.mode === "new" || s.mode === "followup" ? s.mode : undefined,
   }),
   head: () => ({
     meta: [
