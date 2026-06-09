@@ -77,10 +77,13 @@ function CaseTakingQueue() {
   const fetchQueue = async () => {
     try {
       const res = await api.get<unknown>("/queue/today");
-      setQueue(asArray<QueueItem>(res));
+      const rows = asArray<QueueItem>(res);
+      setQueue(rows);
       setError(null);
+      return rows;
     } catch (e) {
       setError(errMsg(e));
+      return [];
     } finally {
       setLoading(false);
     }
@@ -104,8 +107,12 @@ function CaseTakingQueue() {
     setCallingId(id);
     try {
       await api.post("/queue/next");
-      const p = await api.get<PatientLite>(`/patients/${encodeURIComponent(q.patient_id)}`);
-      goToConsultation(q.patient_id, q.visit_type || p.patient_type || "HOMEOPATHY", Number(p?.total_visits ?? 0), id);
+      const latest = await fetchQueue();
+      const called = latest.find((x) => queueId(x) === id && normalizedStatus(x.status) === "IN_TREATMENT") ??
+        latest.find((x) => normalizedStatus(x.status) === "IN_TREATMENT") ?? q;
+      const calledId = queueId(called) || id;
+      const p = await api.get<PatientLite>(`/patients/${encodeURIComponent(called.patient_id)}`);
+      goToConsultation(called.patient_id, called.visit_type || p.patient_type || "HOMEOPATHY", Number(p?.total_visits ?? 0), calledId);
     } catch (e) {
       toast.error(errMsg(e));
     } finally {
