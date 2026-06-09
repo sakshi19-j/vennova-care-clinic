@@ -157,6 +157,7 @@ function ConsultationPage() {
     retry: 1,
   });
 
+  const explicitMode = search.mode;
   const lastVisitQ = useQuery({
     queryKey: ["last-visit", patientId],
     queryFn: async () => {
@@ -165,11 +166,12 @@ function ConsultationPage() {
       return arr.length > 0 ? arr[0] : null;
     },
     retry: 1,
+    enabled: explicitMode !== "new",
   });
 
   const patient = patientQ.data;
   const lastVisit = lastVisitQ.data ?? null;
-  const isFollowup = !!lastVisit;
+  const isFollowup = explicitMode ? explicitMode === "followup" : !!lastVisit;
 
   const visitType = (
     search.visit_type ||
