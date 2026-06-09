@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, PageHeader, Tag, Avatar } from "@/components/clinic/PageHeader";
@@ -274,6 +274,15 @@ function QueuePage() {
                         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <PhoneCall className="size-3.5" />}
                         Call
                       </button>
+                      <Link
+                        to="/consultation/$patientId"
+                        params={{ patientId: q.patient_id }}
+                        search={{ queue_id: q.id, visit_type: q.visit_type || "HOMEOPATHY" } as Record<string, string>}
+                        className="px-3 h-8 text-xs rounded-lg bg-teal-600 text-white hover:bg-teal-700 inline-flex items-center gap-1"
+                      >
+                        <Stethoscope className="size-3.5" />
+                        Start Consultation
+                      </Link>
                     </li>
                   );
                 })}
