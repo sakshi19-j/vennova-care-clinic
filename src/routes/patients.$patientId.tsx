@@ -111,8 +111,11 @@ function PatientDetail() {
             <Link
               to="/consultation/$patientId"
               params={{ patientId: p.id }}
-              search={{ visit_type: ((p as unknown as { patient_type?: string }).patient_type || "HOMEOPATHY").toUpperCase() } as Record<string, string>}
-              className="inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-sm hover:bg-primary/90"
+              search={{
+                visit_type: ((p as unknown as { patient_type?: string }).patient_type || "HOMEOPATHY").toUpperCase(),
+                mode: (Number((p as unknown as { total_visits?: number }).total_visits ?? p.visit_count ?? 0) > 0 ? "followup" : "new"),
+              } as Record<string, string>}
+              className="inline-flex items-center gap-1 h-9 px-4 rounded-full bg-teal-600 text-white text-sm hover:bg-teal-700"
             >
               <Stethoscope className="size-4" /> Start Consultation
             </Link>
