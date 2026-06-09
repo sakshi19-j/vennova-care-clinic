@@ -74,8 +74,8 @@ function Dashboard() {
                   ))}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Link to="/consultation/$visitId" params={{ visitId: "V-2058" }} className="inline-flex items-center gap-2 px-4 h-10 rounded-full bg-gold text-gold-foreground font-medium hover:brightness-105">
-                    <Stethoscope className="size-4" /> Open consultation
+                  <Link to="/queue" className="inline-flex items-center gap-2 px-4 h-10 rounded-full bg-gold text-gold-foreground font-medium hover:brightness-105">
+                    <Stethoscope className="size-4" /> Open queue
                   </Link>
                   <button className="inline-flex items-center gap-2 px-4 h-10 rounded-full bg-white/10 border border-white/15 hover:bg-white/15">
                     Call next <ArrowRight className="size-4" />
