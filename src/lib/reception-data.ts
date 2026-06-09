@@ -51,23 +51,14 @@ export type RxQueue = {
   notes?: string;
 };
 
-export const rxQueue: RxQueue[] = [
-  { queue_id: "q1", token_number: 14, patient_id: "p1", patient_name: "Anjali Mehta", patient_phone: "+91 98200 11122", visit_id: "v-2058", status: "IN_TREATMENT", visit_type: "APPOINTMENT", priority: 0, wait_minutes: 0, notes: "Follow-up — sleep & anxiety" },
-  { queue_id: "q2", token_number: 15, patient_id: "p2", patient_name: "Ravi Kumar", patient_phone: "+91 99300 22113", status: "WAITING", visit_type: "APPOINTMENT", priority: 0, wait_minutes: 24, notes: "Diabetic, review reports" },
-  { queue_id: "q3", token_number: 16, patient_id: "p3", patient_name: "Priya Singh", patient_phone: "+91 90100 33214", status: "WAITING", visit_type: "WALKIN", priority: 0, wait_minutes: 12 },
-  { queue_id: "q4", token_number: 17, patient_id: "p4", patient_name: "Mahesh Iyer", patient_phone: "+91 98765 44315", status: "CHECKED_IN", visit_type: "APPOINTMENT", priority: 1, wait_minutes: 6, notes: "Elderly, chest discomfort" },
-  { queue_id: "q5", token_number: 18, patient_id: "p5", patient_name: "Neha Gupta", patient_phone: "+91 99887 55416", status: "WAITING", visit_type: "WALKIN", priority: 0, wait_minutes: 3 },
-  { queue_id: "q6", token_number: 19, patient_id: "p8", patient_name: "Arjun Patel", patient_phone: "+91 90901 11220", status: "WAITING", visit_type: "WALKIN", priority: 0, wait_minutes: 2, notes: "Child, mild fever" },
-  { queue_id: "q7", token_number: 13, patient_id: "p7", patient_name: "Kavita Rao", patient_phone: "+91 98801 77711", visit_id: "v-2055", status: "COMPLETED", visit_type: "APPOINTMENT", priority: 0, wait_minutes: 0 },
-  { queue_id: "q8", token_number: 12, patient_id: "p6", patient_name: "Sandeep Shah", patient_phone: "+91 98123 66517", status: "NO_SHOW", visit_type: "APPOINTMENT", priority: 0, wait_minutes: 0 },
-];
+export const rxQueue: RxQueue[] = [];
 
 export const rxQueueStats = {
-  total_today: 8,
-  waiting: 4,
-  in_progress: 1,
-  completed: 1,
-  no_show: 1,
+  total_today: 0,
+  waiting: 0,
+  in_progress: 0,
+  completed: 0,
+  no_show: 0,
 };
 
 export type RxAppointment = {
