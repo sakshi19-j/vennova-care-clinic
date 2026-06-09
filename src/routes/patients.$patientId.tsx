@@ -262,13 +262,7 @@ function VisitsPane({ patientId }: { patientId: string }) {
                   <span className={paid ? "text-success" : "text-amber-600"}>{String(v.payment_status)}</span>
                 )}
                 {v.visit_id && (
-                  <Link
-                    to="/consultation/$visitId"
-                    params={{ visitId: String(v.visit_id) }}
-                    className="text-primary hover:underline"
-                  >
-                    Open →
-                  </Link>
+                  <span className="text-muted-foreground">Visit #{String(v.visit_id).slice(0, 8)}</span>
                 )}
               </div>
             </li>
