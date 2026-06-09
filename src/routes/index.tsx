@@ -149,7 +149,7 @@ function Dashboard() {
             <div className="font-display text-xl mb-3">Quick actions</div>
             <div className="grid grid-cols-2 gap-2">
               {[
-                { icon: Stethoscope, label: "New consultation", to: "/consultation/V-2058" },
+                { icon: Stethoscope, label: "Open queue", to: "/queue" },
                 { icon: FileText, label: "New prescription", to: "/prescriptions" },
                 { icon: Receipt, label: "Take payment", to: "/billing" },
                 { icon: BellRing, label: "Send reminders", to: "/reminders" },
