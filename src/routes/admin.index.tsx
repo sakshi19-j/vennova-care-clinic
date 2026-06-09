@@ -211,10 +211,10 @@ function DashboardPage() {
               <Sparkles className="size-4 text-primary" /> Quick actions
             </div>
             <div className="grid gap-2">
-              <QuickAction to="/reception/patients" icon={<UserPlus className="size-4" />} label="Register patient" />
+              <QuickAction to="/patients" icon={<UserPlus className="size-4" />} label="Register patient" />
               <QuickAction to="/homeopathy/queue" icon={<PlayCircle className="size-4" />} label="Open today's queue" />
-              <QuickAction to="/reception/appointments" icon={<CalendarDays className="size-4" />} label="Manage appointments" />
-              <QuickAction to="/admin/staff-management" icon={<UserCog className="size-4" />} label="Manage staff" />
+              <QuickAction to="/appointments" icon={<CalendarDays className="size-4" />} label="Manage appointments" />
+              <QuickAction to="/staff" icon={<UserCog className="size-4" />} label="Manage staff" />
             </div>
           </Card>
         </>
