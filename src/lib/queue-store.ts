@@ -1,6 +1,5 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import {
-  rxQueue,
   rxPatients,
   rxAppointments,
   rxPendingBills,
@@ -71,23 +70,10 @@ const FEE_BY_TYPE: Record<VisitType, number> = {
   APPOINTMENT: 500,
 };
 
-function hydrate(q: RxQueue): RxQueueRow {
-  const reg = rxPatients.find((p) => p.id === q.patient_id);
-  // Completed visits start unpaid → they appear in the Billing tab as
-  // "pending payment" until reception collects cash/UPI.
-  return {
-    ...q,
-    fee: FEE_BY_TYPE[q.visit_type],
-    paid: false,
-    reg_no: reg?.reg_no,
-    created_at: Date.now() - q.wait_minutes * 60_000,
-  };
-}
-
 // ───────────────────────────────────────────────────────────
 // State
 // ───────────────────────────────────────────────────────────
-let state: RxQueueRow[] = rxQueue.map(hydrate);
+let state: RxQueueRow[] = [];
 let patients: ExtendedPatient[] = rxPatients.map((p) => ({
   ...p,
   history: [
@@ -118,6 +104,8 @@ let remindersLoading = false;
 let remindersError: string | null = null;
 
 const listeners = new Set<() => void>();
+let queuePoller: ReturnType<typeof setInterval> | null = null;
+let queuePollSubscribers = 0;
 function emit() {
   for (const l of listeners) l();
 }
@@ -136,6 +124,7 @@ function snapshot(label: string, id: string) {
 // Hooks
 // ───────────────────────────────────────────────────────────
 export function useQueue(): RxQueueRow[] {
+  useEffect(() => startQueuePolling(), []);
   return useSyncExternalStore(subscribe, () => state, () => state);
 }
 export function useRecent(): RecentAction[] {
@@ -170,6 +159,23 @@ export function useReminders(): {
     () => remindersError,
   );
   return { data, loading, error };
+}
+
+function startQueuePolling() {
+  queuePollSubscribers += 1;
+  void loadQueue();
+  if (!queuePoller) {
+    queuePoller = setInterval(() => {
+      void loadQueue();
+    }, 10_000);
+  }
+  return () => {
+    queuePollSubscribers = Math.max(0, queuePollSubscribers - 1);
+    if (queuePollSubscribers === 0 && queuePoller) {
+      clearInterval(queuePoller);
+      queuePoller = null;
+    }
+  };
 }
 
 // ───────────────────────────────────────────────────────────
@@ -214,6 +220,25 @@ export async function sendReminder(followupId: string): Promise<void> {
 // Live API loaders (Rule 3 — replace mocks with backend)
 // On failure we keep existing (mock) state so the UI never crashes.
 // ───────────────────────────────────────────────────────────
+function asArray<T>(x: unknown): T[] {
+  if (Array.isArray(x)) return x as T[];
+  if (x && typeof x === "object") {
+    const o = x as Record<string, unknown>;
+    for (const k of ["queue", "items", "data", "results"]) {
+      if (Array.isArray(o[k])) return o[k] as T[];
+    }
+  }
+  return [];
+}
+
+function normalizeQueueStatus(raw: unknown): QueueStatus {
+  const s = String(raw ?? "WAITING").toUpperCase();
+  if (s === "IN_CONSULTATION") return "IN_TREATMENT";
+  if (s === "BILLING" || s === "COMPLETED") return "DONE";
+  if (["WAITING", "CHECKED_IN", "IN_TREATMENT", "DONE", "NO_SHOW", "CANCELLED"].includes(s)) return s as QueueStatus;
+  return "WAITING";
+}
+
 function toQueueRow(raw: any): RxQueueRow {
   const visit_type: VisitType = raw.visit_type === "APPOINTMENT" ? "APPOINTMENT" : "WALKIN";
   return {
@@ -223,7 +248,7 @@ function toQueueRow(raw: any): RxQueueRow {
     patient_name: String(raw.patient_name ?? raw.full_name ?? "Patient"),
     patient_phone: String(raw.patient_phone ?? raw.phone ?? ""),
     visit_id: raw.visit_id ? String(raw.visit_id) : undefined,
-    status: (raw.status ?? "WAITING") as QueueStatus,
+    status: normalizeQueueStatus(raw.status),
     visit_type,
     priority: (raw.priority === 1 ? 1 : 0) as 0 | 1,
     wait_minutes: Number(raw.wait_minutes ?? 0),
@@ -259,11 +284,8 @@ function toPatient(raw: any): ExtendedPatient {
 export async function loadQueue(): Promise<void> {
   try {
     const data = await api.get<any>("/queue/today");
-    const rows = Array.isArray(data) ? data : data?.queue ?? [];
-    if (Array.isArray(rows)) {
-      state = rows.map(toQueueRow);
-      emit();
-    }
+    state = asArray<any>(data).map(toQueueRow);
+    emit();
   } catch (err) {
     console.warn("[queue] load failed", err);
   }
@@ -317,16 +339,6 @@ function nextToken() {
   return state.reduce((m, q) => Math.max(m, q.token_number), 0) + 1;
 }
 
-/** Backend status codes per Fix-3 spec. */
-type RemoteStatus = "WAITING" | "IN_CONSULTATION" | "BILLING" | "COMPLETED";
-
-/** Fire-and-forget PATCH /queue/{id}/status — never throws. */
-function patchStatusRemote(id: string, status: RemoteStatus): void {
-  void api
-    .patch(`/queue/${encodeURIComponent(id)}/status`, { status })
-    .catch((err) => console.warn(`[queue] PATCH status ${status} failed`, err));
-}
-
 export const queueActions = {
   setStatus(id: string, status: QueueStatus) {
     snapshot(`Status → ${status}`, id);
@@ -336,8 +348,7 @@ export const queueActions = {
   /** Move a queue row to BILLING (doctor finished, awaiting reception payment). */
   markBilling(id: string) {
     snapshot(`→ Billing`, id);
-    state = state.map((q) => (q.queue_id === id ? { ...q, status: "COMPLETED" } : q));
-    patchStatusRemote(id, "BILLING");
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "DONE" } : q));
     emit();
   },
   checkIn(id: string) {
@@ -349,11 +360,12 @@ export const queueActions = {
     );
     emit();
   },
-  callIn(id: string, doctor: "ALLOPATHY" | "HOMEOPATHY" = "ALLOPATHY") {
+  async callIn(id: string, doctor: "ALLOPATHY" | "HOMEOPATHY" = "ALLOPATHY") {
     const row = state.find((q) => q.queue_id === id);
     if (!row) return;
     // No-op if patient is already with the doctor (prevents spurious notifications)
     if (row.status === "IN_TREATMENT") return;
+    await api.post("/queue/next");
     snapshot(`Called ${row.patient_name}`, id);
     state = state.map((q) => {
       if (q.queue_id === id) return { ...q, status: "IN_TREATMENT", wait_minutes: 0 };
@@ -373,8 +385,8 @@ export const queueActions = {
         at: Date.now(),
       },
     ];
-    patchStatusRemote(id, "IN_CONSULTATION");
     emit();
+    void loadQueue();
   },
   acknowledgeCall(callId: string) {
     calls = calls.filter((c) => c.id !== callId);
@@ -397,7 +409,7 @@ export const queueActions = {
       q.queue_id === id
         ? {
             ...q,
-            status: "COMPLETED",
+            status: "DONE",
             paid: true,
             paid_with: mode,
             fee: amount ?? q.fee,
@@ -438,8 +450,7 @@ export const queueActions = {
   },
   complete(id: string) {
     snapshot(`Completed`, id);
-    state = state.map((q) => (q.queue_id === id ? { ...q, status: "COMPLETED" } : q));
-    patchStatusRemote(id, "COMPLETED");
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "DONE" } : q));
     emit();
   },
   noShow(id: string) {
@@ -452,7 +463,7 @@ export const queueActions = {
     state = state.filter((q) => q.queue_id !== id);
     emit();
   },
-  add(item: {
+  async add(item: {
     patient_id: string;
     patient_name: string;
     patient_phone: string;
@@ -460,31 +471,22 @@ export const queueActions = {
     priority?: 0 | 1;
     notes?: string;
   }) {
-    const dupe = state.find(
-      (q) =>
-        q.patient_phone.replace(/\s+/g, "") === item.patient_phone.replace(/\s+/g, "") &&
-        !["COMPLETED", "NO_SHOW", "CANCELLED"].includes(q.status),
-    );
+    const dupe = state.find((q) => {
+      const samePatient = q.patient_id === item.patient_id;
+      const samePhone = q.patient_phone.replace(/\s+/g, "") === item.patient_phone.replace(/\s+/g, "");
+      return (samePatient || samePhone) && !["DONE", "COMPLETED", "NO_SHOW", "CANCELLED"].includes(q.status);
+    });
     if (dupe) return { token: dupe.token_number, duplicate: true } as const;
-
-    const token = nextToken();
-    const reg = patients.find((p) => p.id === item.patient_id);
-    const row: RxQueueRow = {
-      queue_id: `q-${Date.now()}`,
-      token_number: token,
-      status: "WAITING",
-      wait_minutes: 0,
+    const created = await api.post<any>("/queue/add", {
+      patient_id: item.patient_id,
+      visit_type: item.visit_type,
       priority: item.priority ?? 0,
-      fee: FEE_BY_TYPE[item.visit_type],
-      paid: false,
-      reg_no: reg?.reg_no,
-      created_at: Date.now(),
-      ...item,
-    };
-    snapshot(`Added ${item.patient_name}`, row.queue_id);
-    state = [...state, row];
-    emit();
-    return { token, duplicate: false } as const;
+      notes: item.notes ?? null,
+    });
+    snapshot(`Added ${item.patient_name}`, String(created?.id ?? created?.queue_id ?? item.patient_id));
+    await loadQueue();
+    const row = state.find((q) => q.patient_id === item.patient_id && q.status === "WAITING");
+    return { token: Number(created?.token_number ?? row?.token_number ?? nextToken()), duplicate: false } as const;
   },
   createPatient(name: string, phone: string, extra?: Partial<ExtendedPatient>) {
     const existing = patients.find(
@@ -552,7 +554,7 @@ export const queueActions = {
     );
     const patient = patients.find((p) => p.id === appt.patient_id);
     if (patient) {
-      queueActions.add({
+      void queueActions.add({
         patient_id: patient.id,
         patient_name: patient.full_name,
         patient_phone: patient.phone,

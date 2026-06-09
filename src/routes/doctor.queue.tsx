@@ -11,7 +11,8 @@ export const Route = createFileRoute("/doctor/queue")({
 });
 
 type QueueItem = {
-  id: string;
+  id?: string;
+  queue_id?: string;
   token_number: number;
   patient_id: string;
   patient_name: string;
@@ -54,6 +55,17 @@ function statusBadge(s: string): string {
   return "bg-muted text-foreground/70 border-border";
 }
 
+function normalizedStatus(s: string): string {
+  const u = (s || "WAITING").toUpperCase();
+  if (u === "IN_CONSULTATION") return "IN_TREATMENT";
+  if (u === "COMPLETED" || u === "BILLING") return "DONE";
+  return u;
+}
+
+function queueId(q: QueueItem): string {
+  return String(q.id ?? q.queue_id ?? "");
+}
+
 function CaseTakingQueue() {
   const navigate = useNavigate();
   const [queue, setQueue] = useState<QueueItem[]>([]);
@@ -65,10 +77,13 @@ function CaseTakingQueue() {
   const fetchQueue = async () => {
     try {
       const res = await api.get<unknown>("/queue/today");
-      setQueue(asArray<QueueItem>(res));
+      const rows = asArray<QueueItem>(res);
+      setQueue(rows);
       setError(null);
+      return rows;
     } catch (e) {
       setError(errMsg(e));
+      return [];
     } finally {
       setLoading(false);
     }
@@ -88,11 +103,16 @@ function CaseTakingQueue() {
   };
 
   const handleCallIn = async (q: QueueItem) => {
-    setCallingId(q.id);
+    const id = queueId(q);
+    setCallingId(id);
     try {
-      try { await api.post("/queue/next"); } catch { /* still proceed */ }
-      const p = await api.get<PatientLite>(`/patients/${encodeURIComponent(q.patient_id)}`);
-      goToConsultation(q.patient_id, q.visit_type || p.patient_type || "HOMEOPATHY", Number(p?.total_visits ?? 0), q.id);
+      await api.post("/queue/next");
+      const latest = await fetchQueue();
+      const called = latest.find((x) => queueId(x) === id && normalizedStatus(x.status) === "IN_TREATMENT") ??
+        latest.find((x) => normalizedStatus(x.status) === "IN_TREATMENT") ?? q;
+      const calledId = queueId(called) || id;
+      const p = await api.get<PatientLite>(`/patients/${encodeURIComponent(called.patient_id)}`);
+      goToConsultation(called.patient_id, called.visit_type || p.patient_type || "HOMEOPATHY", Number(p?.total_visits ?? 0), calledId);
     } catch (e) {
       toast.error(errMsg(e));
     } finally {
@@ -146,10 +166,11 @@ function CaseTakingQueue() {
               .slice()
               .sort((a, b) => (a.token_number ?? 0) - (b.token_number ?? 0))
               .map((q) => {
-                const u = (q.status || "").toUpperCase();
+                const id = queueId(q);
+                const u = normalizedStatus(q.status);
                 const isWaiting = u === "WAITING";
                 return (
-                  <li key={q.id} className="px-4 sm:px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap hover:bg-muted/40">
+                  <li key={id || `${q.patient_id}-${q.token_number}`} className="px-4 sm:px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap hover:bg-muted/40">
                     <span className="font-mono text-sm w-12 text-muted-foreground shrink-0">#{q.token_number}</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{q.patient_name}</div>
@@ -158,18 +179,18 @@ function CaseTakingQueue() {
                           <Tag className="bg-muted text-foreground/70 border-border">{q.visit_type}</Tag>
                         )}
                         <span className="inline-flex items-center gap-1"><Clock className="size-3" />{q.wait_minutes ?? 0}m waiting</span>
-                        <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusBadge(q.status)}`}>
-                          {q.status}
+                        <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusBadge(u)}`}>
+                          {u}
                         </span>
                       </div>
                     </div>
                     {isWaiting && (
                       <button
                         onClick={() => handleCallIn(q)}
-                        disabled={callingId === q.id}
+                        disabled={callingId === id}
                         className="h-9 px-3 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white inline-flex items-center gap-1 disabled:opacity-50"
                       >
-                        {callingId === q.id ? <Loader2 className="size-4 animate-spin" /> : <>Call In <ArrowRight className="size-4" /></>}
+                        {callingId === id ? <Loader2 className="size-4 animate-spin" /> : <>Call In <ArrowRight className="size-4" /></>}
                       </button>
                     )}
                   </li>
