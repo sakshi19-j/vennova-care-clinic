@@ -5,7 +5,7 @@ import { Card, Tag } from "@/components/clinic/PageHeader";
 import { Loader2, ArrowRight, Clock } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 
-export const Route = createFileRoute("/doctor/queue")({
+export const Route = createFileRoute("/homeopathy/queue")({
   component: TodayList,
 });
 
