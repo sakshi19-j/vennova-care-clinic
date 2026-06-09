@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, PageHeader, Tag, Avatar } from "@/components/clinic/PageHeader";
 import {
@@ -101,12 +100,6 @@ function QueuePage() {
     staleTime: 5_000,
   });
 
-  // Backup refresh trigger
-  useEffect(() => {
-    const t = setInterval(() => qc.invalidateQueries({ queryKey: ["queue", "today"] }), 30_000);
-    return () => clearInterval(t);
-  }, [qc]);
-
   const queue = queueQ.data ?? [];
   const waiting = queue.filter((q) => q.status === "WAITING");
   const inTreatment = queue.filter((q) => q.status === "IN_TREATMENT");
@@ -116,7 +109,10 @@ function QueuePage() {
   const callMut = useMutation({
     mutationFn: async (item: QueueItem) => {
       await api.post("/queue/next");
-      return item;
+      const raw = await api.get<unknown>("/queue/today");
+      const latest = asArray<QueueItem>(raw).map((q) => ({ ...q, status: normalizedStatus(q.status) }));
+      return latest.find((q) => queueId(q) === queueId(item) && q.status === "IN_TREATMENT") ??
+        latest.find((q) => q.status === "IN_TREATMENT") ?? item;
     },
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
