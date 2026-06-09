@@ -109,10 +109,12 @@ function PatientDetail() {
               </a>
             )}
             <Link
-              to="/homeopathy/queue"
-              className="inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-sm"
+              to="/consultation/$patientId"
+              params={{ patientId: p.id }}
+              search={{ visit_type: ((p as unknown as { patient_type?: string }).patient_type || "HOMEOPATHY").toUpperCase() } as Record<string, string>}
+              className="inline-flex items-center gap-1 h-9 px-4 rounded-full bg-primary text-primary-foreground text-sm hover:bg-primary/90"
             >
-              <Stethoscope className="size-4" /> Open consultation
+              <Stethoscope className="size-4" /> Start Consultation
             </Link>
           </>
         }
