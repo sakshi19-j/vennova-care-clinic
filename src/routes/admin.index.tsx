@@ -7,17 +7,16 @@ import {
 import {
   IndianRupee, Users, CalendarDays, Stethoscope, BellRing, UserPlus,
   PlayCircle, Building2, UserCog, Loader2, AlertTriangle, ArrowRight, Sparkles,
+  TrendingDown, UserX,
 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
-import { dashboardService, type RevenuePoint } from "@/services/dashboard";
+import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin/")({
   component: DashboardPage,
 });
 
-// Pull first numeric value found under any of the given keys (defensive against
-// loose backend schemas where field names may vary).
 function pick(obj: unknown, keys: string[], fallback = 0): number {
   if (!obj || typeof obj !== "object") return fallback;
   const o = obj as Record<string, unknown>;
@@ -29,72 +28,76 @@ function pick(obj: unknown, keys: string[], fallback = 0): number {
   return fallback;
 }
 
+function get(obj: unknown, path: string[]): unknown {
+  let cur: unknown = obj;
+  for (const k of path) {
+    if (!cur || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[k];
+  }
+  return cur;
+}
+
 function inr(n: number) {
   return `₹${(n || 0).toLocaleString("en-IN")}`;
 }
 
+type DashboardData = unknown;
+type QueueStats = {
+  total_today?: number;
+  waiting?: number;
+  in_treatment?: number;
+  completed?: number;
+  no_show?: number;
+  [k: string]: unknown;
+};
+
 function DashboardPage() {
   const { profile, clinicName, role } = useAuth();
 
-  const summaryQ = useQuery({
-    queryKey: ["dashboard", "summary-today"],
-    queryFn: () => dashboardService.summaryToday(),
-    staleTime: 30_000,
-    retry: 1,
-  });
-  const monthlyQ = useQuery({
-    queryKey: ["dashboard", "revenue-monthly"],
-    queryFn: () => dashboardService.monthlyRevenue(),
+  const dashQ = useQuery({
+    queryKey: ["analytics", "dashboard"],
+    queryFn: () => api.get<DashboardData>("/analytics/dashboard"),
     staleTime: 60_000,
     retry: 1,
   });
-  const dailyQ = useQuery({
-    queryKey: ["dashboard", "revenue-daily"],
-    queryFn: () => dashboardService.dailyRevenue(),
-    staleTime: 60_000,
-    retry: 1,
-  });
-  const followupsQ = useQuery({
-    queryKey: ["dashboard", "followups-today"],
-    queryFn: () => dashboardService.followupsToday(),
-    staleTime: 30_000,
-    retry: 1,
-  });
-  const apptsQ = useQuery({
-    queryKey: ["dashboard", "appointments-today"],
-    queryFn: () => dashboardService.appointmentsToday(),
-    staleTime: 30_000,
-    retry: 1,
-  });
-  const patientsQ = useQuery({
-    queryKey: ["dashboard", "patients-count"],
-    queryFn: () => dashboardService.patientsCount(),
-    staleTime: 5 * 60_000,
+
+  const queueStatsQ = useQuery({
+    queryKey: ["queue", "stats-today"],
+    queryFn: () => api.get<QueueStats>("/queue/stats/today"),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
     retry: 1,
   });
 
-  const loading =
-    summaryQ.isLoading || monthlyQ.isLoading || dailyQ.isLoading ||
-    followupsQ.isLoading || apptsQ.isLoading || patientsQ.isLoading;
+  const loading = dashQ.isLoading || queueStatsQ.isLoading;
+  const anyError = dashQ.error || queueStatsQ.error;
 
-  const anyError =
-    summaryQ.error || monthlyQ.error || dailyQ.error ||
-    followupsQ.error || apptsQ.error || patientsQ.error;
+  const d = dashQ.data;
+  const revenueToday = pick(get(d, ["revenue", "today"]), ["revenue", "total", "amount"]);
+  const revenueMonthly = pick(get(d, ["revenue", "this_month"]), ["revenue", "total", "amount"]);
+  const totalPatients = pick(get(d, ["patients", "total"]), ["count", "total"]) ||
+    pick(get(d, ["patients"]), ["total", "count"]);
+  const missedPatients = pick(get(d, ["patients", "missed"]), ["count", "total"]);
+  const retentionRate = pick(get(d, ["patients", "retention"]), ["retention_rate", "rate"]);
+  const followupsToday = pick(get(d, ["clinical", "followups_due_today"]), ["count", "total"]);
+  const revenueLost = pick(get(d, ["intelligence"]), ["estimated_revenue_lost", "revenue_lost"]);
 
-  const revenueToday = pick(summaryQ.data, ["revenue_today", "revenue", "today", "amount"]);
-  const visitsToday = pick(summaryQ.data, ["visits_today", "visits", "visit_count"]);
-  const appointmentsToday = apptsQ.data?.length ?? pick(summaryQ.data, ["appointments_today", "appointments"]);
-  const pendingFollowups = followupsQ.data?.length ?? pick(summaryQ.data, ["pending_followups", "followups_today"]);
-  const totalPatients = patientsQ.data ?? pick(summaryQ.data, ["total_patients"]);
-  const revenueMonthly = pick(monthlyQ.data, ["total", "amount", "revenue", "monthly"]);
+  const qs = queueStatsQ.data ?? {};
+  const queueWaiting = pick(qs, ["waiting"]);
+  const queueInTreatment = pick(qs, ["in_treatment"]);
+  const queueCompleted = pick(qs, ["completed"]);
+  const visitsToday = queueCompleted + queueInTreatment;
+  const appointmentsToday = pick(qs, ["total_today"]);
 
   const chartData = useMemo(() => {
-    const pts = dailyQ.data ?? [];
-    return pts.slice(-30).map((p: RevenuePoint, i) => ({
-      d: String(p.date ?? p.day ?? p.d ?? p.label ?? i + 1).slice(5),
-      total: Number(p.total ?? p.amount ?? p.revenue ?? p.value ?? 0) || 0,
+    const week = get(d, ["revenue", "this_week", "week"]);
+    const pts = Array.isArray(week) ? week : [];
+    return pts.map((p: Record<string, unknown>, i: number) => ({
+      d: String(p.day ?? p.date ?? p.label ?? i + 1).slice(0, 10),
+      total: Number(p.revenue ?? p.amount ?? p.total ?? 0) || 0,
     }));
-  }, [dailyQ.data]);
+  }, [d]);
+
 
   // Empty-account: no patients AND no visits AND no revenue ever
   const emptyAccount =
