@@ -7,17 +7,16 @@ import {
 import {
   IndianRupee, Users, CalendarDays, Stethoscope, BellRing, UserPlus,
   PlayCircle, Building2, UserCog, Loader2, AlertTriangle, ArrowRight, Sparkles,
+  TrendingDown, UserX,
 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
-import { dashboardService, type RevenuePoint } from "@/services/dashboard";
+import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin/")({
   component: DashboardPage,
 });
 
-// Pull first numeric value found under any of the given keys (defensive against
-// loose backend schemas where field names may vary).
 function pick(obj: unknown, keys: string[], fallback = 0): number {
   if (!obj || typeof obj !== "object") return fallback;
   const o = obj as Record<string, unknown>;
@@ -29,72 +28,76 @@ function pick(obj: unknown, keys: string[], fallback = 0): number {
   return fallback;
 }
 
+function get(obj: unknown, path: string[]): unknown {
+  let cur: unknown = obj;
+  for (const k of path) {
+    if (!cur || typeof cur !== "object") return undefined;
+    cur = (cur as Record<string, unknown>)[k];
+  }
+  return cur;
+}
+
 function inr(n: number) {
   return `₹${(n || 0).toLocaleString("en-IN")}`;
 }
 
+type DashboardData = unknown;
+type QueueStats = {
+  total_today?: number;
+  waiting?: number;
+  in_treatment?: number;
+  completed?: number;
+  no_show?: number;
+  [k: string]: unknown;
+};
+
 function DashboardPage() {
   const { profile, clinicName, role } = useAuth();
 
-  const summaryQ = useQuery({
-    queryKey: ["dashboard", "summary-today"],
-    queryFn: () => dashboardService.summaryToday(),
-    staleTime: 30_000,
-    retry: 1,
-  });
-  const monthlyQ = useQuery({
-    queryKey: ["dashboard", "revenue-monthly"],
-    queryFn: () => dashboardService.monthlyRevenue(),
+  const dashQ = useQuery({
+    queryKey: ["analytics", "dashboard"],
+    queryFn: () => api.get<DashboardData>("/analytics/dashboard"),
     staleTime: 60_000,
     retry: 1,
   });
-  const dailyQ = useQuery({
-    queryKey: ["dashboard", "revenue-daily"],
-    queryFn: () => dashboardService.dailyRevenue(),
-    staleTime: 60_000,
-    retry: 1,
-  });
-  const followupsQ = useQuery({
-    queryKey: ["dashboard", "followups-today"],
-    queryFn: () => dashboardService.followupsToday(),
-    staleTime: 30_000,
-    retry: 1,
-  });
-  const apptsQ = useQuery({
-    queryKey: ["dashboard", "appointments-today"],
-    queryFn: () => dashboardService.appointmentsToday(),
-    staleTime: 30_000,
-    retry: 1,
-  });
-  const patientsQ = useQuery({
-    queryKey: ["dashboard", "patients-count"],
-    queryFn: () => dashboardService.patientsCount(),
-    staleTime: 5 * 60_000,
+
+  const queueStatsQ = useQuery({
+    queryKey: ["queue", "stats-today"],
+    queryFn: () => api.get<QueueStats>("/queue/stats/today"),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
     retry: 1,
   });
 
-  const loading =
-    summaryQ.isLoading || monthlyQ.isLoading || dailyQ.isLoading ||
-    followupsQ.isLoading || apptsQ.isLoading || patientsQ.isLoading;
+  const loading = dashQ.isLoading || queueStatsQ.isLoading;
+  const anyError = dashQ.error || queueStatsQ.error;
 
-  const anyError =
-    summaryQ.error || monthlyQ.error || dailyQ.error ||
-    followupsQ.error || apptsQ.error || patientsQ.error;
+  const d = dashQ.data;
+  const revenueToday = pick(get(d, ["revenue", "today"]), ["revenue", "total", "amount"]);
+  const revenueMonthly = pick(get(d, ["revenue", "this_month"]), ["revenue", "total", "amount"]);
+  const totalPatients = pick(get(d, ["patients", "total"]), ["count", "total"]) ||
+    pick(get(d, ["patients"]), ["total", "count"]);
+  const missedPatients = pick(get(d, ["patients", "missed"]), ["count", "total"]);
+  const retentionRate = pick(get(d, ["patients", "retention"]), ["retention_rate", "rate"]);
+  const followupsToday = pick(get(d, ["clinical", "followups_due_today"]), ["count", "total"]);
+  const revenueLost = pick(get(d, ["intelligence"]), ["estimated_revenue_lost", "revenue_lost"]);
 
-  const revenueToday = pick(summaryQ.data, ["revenue_today", "revenue", "today", "amount"]);
-  const visitsToday = pick(summaryQ.data, ["visits_today", "visits", "visit_count"]);
-  const appointmentsToday = apptsQ.data?.length ?? pick(summaryQ.data, ["appointments_today", "appointments"]);
-  const pendingFollowups = followupsQ.data?.length ?? pick(summaryQ.data, ["pending_followups", "followups_today"]);
-  const totalPatients = patientsQ.data ?? pick(summaryQ.data, ["total_patients"]);
-  const revenueMonthly = pick(monthlyQ.data, ["total", "amount", "revenue", "monthly"]);
+  const qs = queueStatsQ.data ?? {};
+  const queueWaiting = pick(qs, ["waiting"]);
+  const queueInTreatment = pick(qs, ["in_treatment"]);
+  const queueCompleted = pick(qs, ["completed"]);
+  const visitsToday = queueCompleted + queueInTreatment;
+  const appointmentsToday = pick(qs, ["total_today"]);
 
   const chartData = useMemo(() => {
-    const pts = dailyQ.data ?? [];
-    return pts.slice(-30).map((p: RevenuePoint, i) => ({
-      d: String(p.date ?? p.day ?? p.d ?? p.label ?? i + 1).slice(5),
-      total: Number(p.total ?? p.amount ?? p.revenue ?? p.value ?? 0) || 0,
+    const week = get(d, ["revenue", "this_week", "week"]);
+    const pts = Array.isArray(week) ? week : [];
+    return pts.map((p: Record<string, unknown>, i: number) => ({
+      d: String(p.day ?? p.date ?? p.label ?? i + 1).slice(0, 10),
+      total: Number(p.revenue ?? p.amount ?? p.total ?? 0) || 0,
     }));
-  }, [dailyQ.data]);
+  }, [d]);
+
 
   // Empty-account: no patients AND no visits AND no revenue ever
   const emptyAccount =
@@ -132,28 +135,47 @@ function DashboardPage() {
         <>
           {/* KPI tiles */}
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
-            label="Today's revenue" value={inr(revenueToday)} icon={<IndianRupee className="size-4" />} loading={summaryQ.isLoading} />
+            label="Today's revenue" value={inr(revenueToday)} icon={<IndianRupee className="size-4" />} loading={dashQ.isLoading} />
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
-            label="Monthly revenue" value={inr(revenueMonthly)} icon={<IndianRupee className="size-4" />} loading={monthlyQ.isLoading} />
+            label="Monthly revenue" value={inr(revenueMonthly)} icon={<IndianRupee className="size-4" />} loading={dashQ.isLoading} />
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
-            label="Total patients" value={totalPatients.toLocaleString("en-IN")} icon={<Users className="size-4" />} loading={patientsQ.isLoading} />
+            label="Total patients" value={totalPatients.toLocaleString("en-IN")} icon={<Users className="size-4" />} loading={dashQ.isLoading} />
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
-            label="Visits today" value={visitsToday.toLocaleString("en-IN")} icon={<Stethoscope className="size-4" />} loading={summaryQ.isLoading} />
+            label="Visits today" value={visitsToday.toLocaleString("en-IN")} icon={<Stethoscope className="size-4" />} loading={queueStatsQ.isLoading} />
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
-            label="Appointments today" value={appointmentsToday.toLocaleString("en-IN")} icon={<CalendarDays className="size-4" />} loading={apptsQ.isLoading} />
+            label="Queue today" value={appointmentsToday.toLocaleString("en-IN")} icon={<CalendarDays className="size-4" />} loading={queueStatsQ.isLoading} />
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
-            label="Pending followups" value={pendingFollowups.toLocaleString("en-IN")} icon={<BellRing className="size-4" />} loading={followupsQ.isLoading} />
+            label="Followups due" value={followupsToday.toLocaleString("en-IN")} icon={<BellRing className="size-4" />} loading={dashQ.isLoading} />
+
+          {/* Queue at-a-glance */}
+          <Card className="col-span-12">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-base">Today's queue</div>
+              <Link to="/queue" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                Open queue <ArrowRight className="size-3" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <MiniStat label="Waiting" value={queueWaiting} tone="gold" />
+              <MiniStat label="In treatment" value={queueInTreatment} tone="primary" />
+              <MiniStat label="Completed" value={queueCompleted} tone="success" />
+              <MiniStat label="Missed patients" value={missedPatients} tone="destructive" icon={<UserX className="size-4" />} />
+            </div>
+          </Card>
 
           {/* Revenue trend */}
           <Card className="col-span-12 lg:col-span-8">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <div className="font-display text-base">Revenue trend</div>
-                <div className="text-xs text-muted-foreground">Last 30 days · daily collections</div>
+                <div className="font-display text-base">Revenue this week</div>
+                <div className="text-xs text-muted-foreground">Daily collections · live from analytics</div>
               </div>
+              {retentionRate > 0 && (
+                <div className="text-xs text-muted-foreground">Retention {retentionRate.toFixed(0)}%</div>
+              )}
             </div>
             <div className="h-56">
-              {dailyQ.isLoading ? (
+              {dashQ.isLoading ? (
                 <Skeleton />
               ) : chartData.length === 0 ? (
                 <EmptyChart message="No collections recorded yet." />
@@ -175,7 +197,13 @@ function DashboardPage() {
                 </ResponsiveContainer>
               )}
             </div>
+            {revenueLost > 0 && (
+              <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-amber-700">
+                <TrendingDown className="size-3.5" /> Estimated revenue lost from missed patients: {inr(revenueLost)}
+              </div>
+            )}
           </Card>
+
 
           {/* Quick actions */}
           <Card className="col-span-12 lg:col-span-4">
@@ -212,6 +240,25 @@ function Kpi({
 
 function Skeleton() {
   return <div className="h-full w-full rounded-lg bg-muted/40 animate-pulse" />;
+}
+
+function MiniStat({
+  label, value, tone, icon,
+}: { label: string; value: number; tone: "gold" | "primary" | "success" | "destructive"; icon?: React.ReactNode }) {
+  const map = {
+    gold: "from-gold/20 to-gold/5 text-foreground",
+    primary: "from-primary/15 to-primary/5 text-primary",
+    success: "from-success/20 to-success/5 text-[color-mix(in_oklab,var(--success)_75%,black)]",
+    destructive: "from-destructive/15 to-destructive/5 text-destructive",
+  } as const;
+  return (
+    <div className={`rounded-xl border border-border p-4 bg-gradient-to-br ${map[tone]}`}>
+      <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
+        {icon} {label}
+      </div>
+      <div className="font-display text-3xl tabular-nums mt-0.5">{(value || 0).toLocaleString("en-IN")}</div>
+    </div>
+  );
 }
 
 function EmptyChart({ message }: { message: string }) {
