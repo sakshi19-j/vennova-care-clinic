@@ -236,7 +236,7 @@ function ConsultationPage() {
     return s.trim() === "" || !Number.isFinite(n) ? null : n;
   };
 
-  const completeAndSendToBilling = async () => {
+  const markCaseDone = async () => {
     if (!form.chief_complaint.trim()) {
       setChiefError(true);
       toast.error("Chief complaint is required");
@@ -257,7 +257,7 @@ function ConsultationPage() {
       const visitId = pickId(visitRes);
       if (!visitId) throw new Error("Visit created but no ID returned");
 
-      // Step 2 — Vitals (only if any vital filled)
+      // Step 2 — Vitals (optional)
       if (anyVitals) {
         toast.loading("Saving vitals…", { id: toastId });
         await api.post(`/visits/${encodeURIComponent(visitId)}/vitals`, {
@@ -269,55 +269,30 @@ function ConsultationPage() {
         });
       }
 
-      // Step 3 — Case details
-      toast.loading("Saving case details…", { id: toastId });
-      if (isAllo) {
-        await api.post(`/visits/${encodeURIComponent(visitId)}/allopathy`, {
-          diagnosis: form.diagnosis || null,
-          medicines: form.medicines
-            .filter((m) => m.name.trim())
-            .map((m) => ({
-              name: m.name,
-              dosage: m.dosage || "",
-              frequency: m.frequency || "",
-              duration: m.duration || "",
-            })),
-          advice: form.advice || null,
-        });
-      } else {
-        await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
-          chief_complaint: form.chief_complaint,
-          history_present: form.history_present || null,
-          history_past: form.history_past || null,
-          history_surgical: form.history_surgical || null,
-          history_family: form.history_family || null,
-          thermal_sensation: form.thermal || null,
-          appetite: form.appetite || null,
-          thirst: form.thirst || null,
-          sleep: form.sleep || null,
-          dreams: form.dreams || null,
-          mind_symptoms: form.mind_symptoms || null,
-          particulars: form.particulars ? { text: form.particulars } : null,
-          rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
-          remedy: form.remedy || null,
-          potency: form.potency || null,
-          repetition: form.repetition || null,
-          miasm: form.miasm || null,
-        });
-      }
-
-      // Step 4 — Close visit (billing pending — receptionist will collect)
-      toast.loading("Sending to billing…", { id: toastId });
-      await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
-        fee: Number(form.fee) || 0,
-        payment_mode: "CASH",
-        disease_type: "default",
-        followup_channel: "WHATSAPP",
+      // Step 3 — Case details (no remedy yet — that lives on the prescription page)
+      toast.loading("Saving case…", { id: toastId });
+      await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
+        chief_complaint: form.chief_complaint,
+        history_present: form.history_present || null,
+        history_past: form.history_past || null,
+        history_surgical: form.history_surgical || null,
+        history_family: form.history_family || null,
+        thermal_sensation: form.thermal || null,
+        appetite: form.appetite || null,
+        thirst: form.thirst || null,
+        sleep: form.sleep || null,
+        dreams: form.dreams || null,
+        mind_symptoms: form.mind_symptoms || null,
+        particulars: form.particulars ? { text: form.particulars } : null,
+        rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
       });
 
-      // Step 5 — done
-      toast.success("Case saved. Sent to billing ✓", { id: toastId });
-      navigate({ to: "/queue" });
+      toast.success("Case saved · opening prescription", { id: toastId });
+      navigate({
+        to: "/prescriptions/$visitId",
+        params: { visitId },
+        search: { patient_id: patientId, queue_id: search.queue_id },
+      });
     } catch (e) {
       toast.error(errMsg(e), { id: toastId });
     } finally {
@@ -512,26 +487,11 @@ function ConsultationPage() {
               </Collapsible>
 
               <Collapsible
-                title="Remedy"
+                title="Analysis & Notes"
                 open={open.remedy}
                 onToggle={() => setOpen((o) => ({ ...o, remedy: !o.remedy }))}
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Field label="Remedy" value={form.remedy} onChange={(v) => setField("remedy", v)} />
-                  <div>
-                    <Label>Potency</Label>
-                    <select
-                      value={form.potency}
-                      onChange={(e) => setField("potency", e.target.value)}
-                      className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-                    >
-                      <option value="">—</option>
-                      {POTENCIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <Field label="Repetition" value={form.repetition} onChange={(v) => setField("repetition", v)} placeholder="Once daily for 7 days" />
-                </div>
-                <div className="mt-3">
+                <div className="mt-1">
                   <Label>Miasm</Label>
                   <Pills options={MIASMS} value={form.miasm} onChange={(v) => setField("miasm", v)} />
                 </div>
@@ -540,44 +500,10 @@ function ConsultationPage() {
           )}
 
           {isAllo && (
-            <Block title="Diagnosis & Medicines">
+            <Block title="Diagnosis & Notes">
               <Field label="Diagnosis" value={form.diagnosis} onChange={(v) => setField("diagnosis", v)} />
               <div className="mt-3">
-                <Label>Medicines</Label>
-                <div className="space-y-2">
-                  {form.medicines.map((m, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <input
-                        placeholder="Name" value={m.name} onChange={(e) => setMedicine(i, "name", e.target.value)}
-                        className="col-span-12 md:col-span-4 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <input
-                        placeholder="Dosage" value={m.dosage} onChange={(e) => setMedicine(i, "dosage", e.target.value)}
-                        className="col-span-4 md:col-span-2 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <input
-                        placeholder="Frequency" value={m.frequency} onChange={(e) => setMedicine(i, "frequency", e.target.value)}
-                        className="col-span-4 md:col-span-3 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <input
-                        placeholder="Duration" value={m.duration} onChange={(e) => setMedicine(i, "duration", e.target.value)}
-                        className="col-span-3 md:col-span-2 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <button
-                        onClick={() => removeMedicine(i)} aria-label="Remove"
-                        className="col-span-1 size-9 grid place-items-center rounded-lg border border-border hover:bg-muted"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <Button type="button" variant="outline" className="rounded-full mt-3" onClick={addMedicine}>
-                  <Plus className="size-4 mr-1" /> Add Medicine
-                </Button>
-              </div>
-              <div className="mt-3">
-                <TextArea label="Advice" rows={3} value={form.advice} onChange={(v) => setField("advice", v)} />
+                <TextArea label="Notes" rows={3} value={form.advice} onChange={(v) => setField("advice", v)} />
               </div>
             </Block>
           )}
@@ -607,11 +533,11 @@ function ConsultationPage() {
           <div className="hidden md:flex justify-end pt-2">
             <button
               disabled={submitting}
-              onClick={completeAndSendToBilling}
+              onClick={markCaseDone}
               className="h-12 px-8 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow-lg"
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              Complete & Send to Billing
+              Mark Case Done →
             </button>
           </div>
         </section>
@@ -667,11 +593,11 @@ function ConsultationPage() {
         <div className="px-4 py-3 flex items-center gap-3 justify-end">
           <button
             disabled={submitting}
-            onClick={completeAndSendToBilling}
+            onClick={markCaseDone}
             className="w-full h-12 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center justify-center gap-2 hover:bg-teal-700 disabled:opacity-60"
           >
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            Complete & Send to Billing
+            Mark Case Done →
           </button>
         </div>
       </div>
