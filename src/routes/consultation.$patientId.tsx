@@ -487,26 +487,11 @@ function ConsultationPage() {
               </Collapsible>
 
               <Collapsible
-                title="Remedy"
+                title="Analysis & Notes"
                 open={open.remedy}
                 onToggle={() => setOpen((o) => ({ ...o, remedy: !o.remedy }))}
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Field label="Remedy" value={form.remedy} onChange={(v) => setField("remedy", v)} />
-                  <div>
-                    <Label>Potency</Label>
-                    <select
-                      value={form.potency}
-                      onChange={(e) => setField("potency", e.target.value)}
-                      className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-                    >
-                      <option value="">—</option>
-                      {POTENCIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <Field label="Repetition" value={form.repetition} onChange={(v) => setField("repetition", v)} placeholder="Once daily for 7 days" />
-                </div>
-                <div className="mt-3">
+                <div className="mt-1">
                   <Label>Miasm</Label>
                   <Pills options={MIASMS} value={form.miasm} onChange={(v) => setField("miasm", v)} />
                 </div>
@@ -515,44 +500,10 @@ function ConsultationPage() {
           )}
 
           {isAllo && (
-            <Block title="Diagnosis & Medicines">
+            <Block title="Diagnosis & Notes">
               <Field label="Diagnosis" value={form.diagnosis} onChange={(v) => setField("diagnosis", v)} />
               <div className="mt-3">
-                <Label>Medicines</Label>
-                <div className="space-y-2">
-                  {form.medicines.map((m, i) => (
-                    <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                      <input
-                        placeholder="Name" value={m.name} onChange={(e) => setMedicine(i, "name", e.target.value)}
-                        className="col-span-12 md:col-span-4 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <input
-                        placeholder="Dosage" value={m.dosage} onChange={(e) => setMedicine(i, "dosage", e.target.value)}
-                        className="col-span-4 md:col-span-2 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <input
-                        placeholder="Frequency" value={m.frequency} onChange={(e) => setMedicine(i, "frequency", e.target.value)}
-                        className="col-span-4 md:col-span-3 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <input
-                        placeholder="Duration" value={m.duration} onChange={(e) => setMedicine(i, "duration", e.target.value)}
-                        className="col-span-3 md:col-span-2 h-9 rounded-lg border border-border bg-background px-3 text-sm"
-                      />
-                      <button
-                        onClick={() => removeMedicine(i)} aria-label="Remove"
-                        className="col-span-1 size-9 grid place-items-center rounded-lg border border-border hover:bg-muted"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <Button type="button" variant="outline" className="rounded-full mt-3" onClick={addMedicine}>
-                  <Plus className="size-4 mr-1" /> Add Medicine
-                </Button>
-              </div>
-              <div className="mt-3">
-                <TextArea label="Advice" rows={3} value={form.advice} onChange={(v) => setField("advice", v)} />
+                <TextArea label="Notes" rows={3} value={form.advice} onChange={(v) => setField("advice", v)} />
               </div>
             </Block>
           )}
