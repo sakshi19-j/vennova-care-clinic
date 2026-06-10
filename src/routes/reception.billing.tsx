@@ -1,195 +1,300 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, Tag, Avatar } from "@/components/clinic/PageHeader";
-import { rxRevenueToday } from "@/lib/reception-data";
-import type { PaymentMode } from "@/lib/reception-data";
-import { queueActions, useQueue } from "@/lib/queue-store";
 import {
-  X, CheckCircle2, IndianRupee,
-  Smartphone, Banknote, CreditCard, Globe, RotateCw, Eye, FileText, ArrowRight, Download,
-  Clock, AlertCircle,
+  CheckCircle2,
+  IndianRupee,
+  Smartphone,
+  Banknote,
+  CreditCard,
+  Globe,
+  Loader2,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
-import jsPDF from "jspdf";
+import { api, ApiError } from "@/lib/api-client";
 
 export const Route = createFileRoute("/reception/billing")({
   component: BillingPage,
 });
 
+type PaymentMode = "CASH" | "UPI" | "CARD" | "ONLINE";
+
+type PendingBill = {
+  visit_id?: string;
+  id?: string;
+  patient_id?: string;
+  patient_name?: string;
+  patient?: { id?: string; full_name?: string; phone?: string };
+  token_number?: number;
+  fee?: number;
+  amount?: number;
+  visit_type?: string;
+  closed_at?: string;
+  created_at?: string;
+};
+
+function errMsg(e: unknown): string {
+  if (e instanceof ApiError) {
+    const d = e.data as { detail?: unknown } | null;
+    if (typeof d?.detail === "string") return d.detail;
+    return e.message;
+  }
+  return e instanceof Error ? e.message : "Something went wrong";
+}
+
+function asArray<T>(x: unknown): T[] {
+  if (Array.isArray(x)) return x as T[];
+  if (x && typeof x === "object") {
+    const o = x as Record<string, unknown>;
+    for (const k of ["items", "data", "results", "pending", "bills"]) {
+      if (Array.isArray(o[k])) return o[k] as T[];
+    }
+  }
+  return [];
+}
+
+function billId(b: PendingBill): string {
+  return String(b.visit_id || b.id || "");
+}
+function billName(b: PendingBill): string {
+  return b.patient_name || b.patient?.full_name || "Patient";
+}
+function billPatientId(b: PendingBill): string {
+  return b.patient_id || b.patient?.id || "";
+}
+function billFee(b: PendingBill): number {
+  return Number(b.fee ?? b.amount ?? 0);
+}
+
 function BillingPage() {
-  const queue = useQueue();
+  const qc = useQueryClient();
 
-  // Patients the doctor has marked done, awaiting payment
-  const pending = queue
-    .filter((r) => (r.status === "DONE" || r.status === "COMPLETED") && !r.paid)
-    .sort((a, b) => a.token_number - b.token_number);
+  const pendingQ = useQuery({
+    queryKey: ["billing-pending"],
+    queryFn: async () => asArray<PendingBill>(await api.get("/billing/pending")),
+    refetchInterval: 10000,
+  });
 
-  // Bills already collected → invoices sent automatically
-  const queuePaid = queue
-    .filter((r) => r.paid && (r.status === "DONE" || r.status === "COMPLETED"))
-    .sort((a, b) => (b.invoice_sent_at ?? 0) - (a.invoice_sent_at ?? 0));
+  // Polling so doctor finalization shows up live
+  useEffect(() => {
+    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["billing-pending"] }), 10000);
+    return () => clearInterval(id);
+  }, [qc]);
 
-  const [revenue] = useState({ ...rxRevenueToday });
-  const [viewingInvoice, setViewingInvoice] = useState<typeof queuePaid[number] | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+  const [todayPaid, setTodayPaid] = useState<
+    Array<{ id: string; name: string; fee: number; mode: PaymentMode; at: number }>
+  >([]);
 
-  const collect = (row: typeof pending[number], mode: PaymentMode) => {
-    const res = queueActions.collectPayment(row.queue_id, mode);
-    if (res) {
-      toast.success(
-        `${mode} ₹${res.amount} collected · invoice sent to ${row.patient_name.split(" ")[0]}`,
-      );
+  const pending = pendingQ.data ?? [];
+
+  const markPaid = async (bill: PendingBill, mode: PaymentMode) => {
+    const id = billId(bill);
+    const pid = billPatientId(bill);
+    if (!id) {
+      toast.error("Missing visit id");
+      return;
+    }
+    setPaying(id);
+    const toastId = toast.loading(`Collecting ${mode} ₹${billFee(bill)}…`);
+    try {
+      // 1) Mark paid + receipt PDF
+      await api.post(`/billing/receipt/${encodeURIComponent(id)}`, {
+        payment_mode: mode,
+        amount: billFee(bill),
+      });
+
+      // 2) Thank-you WhatsApp (non-fatal)
+      if (pid) {
+        try {
+          await api.post(`/whatsapp/send/thankyou/${encodeURIComponent(pid)}`);
+        } catch (e) {
+          console.warn("thank-you whatsapp failed", e);
+        }
+      }
+
+      // 3) Schedule follow-up reminders (3/7/15 days) — non-fatal
+      try {
+        await api.post("/reminders/schedule", {
+          visit_id: id,
+          patient_id: pid,
+          offsets_days: [3, 7, 15],
+          channel: "WHATSAPP",
+        });
+      } catch (e) {
+        console.warn("reminders/schedule failed", e);
+      }
+
+      toast.success(`${mode} ₹${billFee(bill)} collected · receipt sent`, { id: toastId });
+      setTodayPaid((arr) => [
+        { id, name: billName(bill), fee: billFee(bill), mode, at: Date.now() },
+        ...arr,
+      ]);
+      qc.invalidateQueries({ queryKey: ["billing-pending"] });
+    } catch (e) {
+      toast.error(errMsg(e), { id: toastId });
+    } finally {
+      setPaying(null);
     }
   };
 
+  const totalToday = todayPaid.reduce((s, p) => s + p.fee, 0);
+  const byMode: Record<PaymentMode, number> = { CASH: 0, UPI: 0, CARD: 0, ONLINE: 0 };
+  for (const p of todayPaid) byMode[p.mode] += p.fee;
+
   return (
     <div className="grid grid-cols-12 gap-5">
-      {/* ── Main column ── */}
       <div className="col-span-12 lg:col-span-8 space-y-5">
-        {/* Pending payment */}
-        {pending.length > 0 ? (
+        <Card className="p-0 overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3 border-b clinic-divider">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Awaiting payment
+              </div>
+              <div className="font-display text-lg">Collect payment</div>
+            </div>
+            <Tag className="bg-amber-500/15 text-amber-700 border-amber-500/30">
+              <Clock className="size-3" /> {pending.length}
+            </Tag>
+          </div>
+
+          {pendingQ.isLoading ? (
+            <div className="px-5 py-10 text-center text-sm text-muted-foreground inline-flex items-center justify-center gap-2 w-full">
+              <Loader2 className="size-4 animate-spin" /> Loading pending bills…
+            </div>
+          ) : pendingQ.error ? (
+            <div className="px-5 py-10 text-center text-sm text-destructive">
+              {errMsg(pendingQ.error)}
+            </div>
+          ) : pending.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-10 text-center">
+              <div className="size-12 rounded-full bg-muted grid place-items-center mb-3">
+                <AlertCircle className="size-5 text-muted-foreground" />
+              </div>
+              <h3 className="font-display text-base">No payments pending</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                Patients sent from the doctor will appear here for collection.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y clinic-divider">
+              {pending.map((r) => {
+                const id = billId(r);
+                const busy = paying === id;
+                return (
+                  <li
+                    key={id || billName(r)}
+                    className="px-4 sm:px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap"
+                  >
+                    {r.token_number !== undefined && (
+                      <span className="font-mono text-sm w-10 text-muted-foreground shrink-0">
+                        #{r.token_number}
+                      </span>
+                    )}
+                    <Avatar name={billName(r)} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{billName(r)}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {r.visit_type || "Consultation"}
+                      </div>
+                    </div>
+                    <div className="hidden sm:block font-display text-lg text-foreground tabular-nums shrink-0">
+                      ₹{billFee(r)}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {(["CASH", "UPI", "CARD"] as const).map((m) => (
+                        <button
+                          key={m}
+                          disabled={busy}
+                          onClick={() => markPaid(r, m)}
+                          className={`h-9 px-3 text-xs rounded-md inline-flex items-center gap-1.5 disabled:opacity-50 ${
+                            m === "CASH"
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                              : m === "UPI"
+                              ? "bg-amber-500 text-white hover:bg-amber-600"
+                              : "border border-border hover:bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {busy ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : m === "CASH" ? (
+                            <Banknote className="size-3.5" />
+                          ) : m === "UPI" ? (
+                            <Smartphone className="size-3.5" />
+                          ) : (
+                            <CreditCard className="size-3.5" />
+                          )}
+                          {m === "CASH" ? "Mark Paid · Cash" : m === "UPI" ? "UPI" : "Card"}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        {todayPaid.length > 0 && (
           <Card className="p-0 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-3 border-b clinic-divider">
               <div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Sent from doctor — awaiting payment</div>
-                <div className="font-display text-lg">Collect payment</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  This session
+                </div>
+                <div className="font-display text-lg">Receipts sent</div>
               </div>
-              <Tag className="bg-amber-500/15 text-amber-700 border-amber-500/30">
-                <Clock className="size-3" /> {pending.length}
+              <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+                {todayPaid.length}
               </Tag>
             </div>
             <ul className="divide-y clinic-divider">
-              {pending.map((r) => (
-                <li key={r.queue_id} className="px-5 py-3 flex items-center gap-3">
-                  <span className="font-mono text-sm w-10 text-muted-foreground shrink-0">#{r.token_number}</span>
-                  <Avatar name={r.patient_name} />
+              {todayPaid.map((p) => (
+                <li key={p.id + p.at} className="px-5 py-3 flex items-center gap-3">
+                  <Avatar name={p.name} />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{r.patient_name}</div>
-                    <div className="text-xs text-muted-foreground truncate">
-                      {r.visit_type} · {r.patient_phone}
-                    </div>
-                  </div>
-                  <div className="hidden sm:block font-display text-lg text-foreground tabular-nums shrink-0">
-                    ₹{r.fee}
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => collect(r, "CASH")}
-                      className="h-8 px-3 text-xs rounded-md bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1.5"
-                    >
-                      <Banknote className="size-3.5" /> Cash
-                    </button>
-                    <button
-                      onClick={() => collect(r, "UPI")}
-                      className="h-8 px-3 text-xs rounded-md bg-amber-500 text-white hover:bg-amber-600 inline-flex items-center gap-1.5"
-                    >
-                      <Smartphone className="size-3.5" /> UPI
-                    </button>
-                    <button
-                      onClick={() => collect(r, "CARD")}
-                      className="h-8 px-2.5 text-xs rounded-md border border-border hover:bg-muted inline-flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <CreditCard className="size-3.5" /> Card
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-10 text-center">
-            <div className="size-12 rounded-full bg-muted grid place-items-center mb-3">
-              <AlertCircle className="size-5 text-muted-foreground" />
-            </div>
-            <h3 className="font-display text-base">No payments pending</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-              Patients sent from the doctor will appear here for collection.
-            </p>
-          </div>
-        )}
-
-        {/* Invoices sent */}
-        {queuePaid.length > 0 ? (
-          <Card className="p-0 overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b clinic-divider">
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Today — invoices sent</div>
-                <div className="font-display text-lg">Paid visits</div>
-              </div>
-              <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">{queuePaid.length}</Tag>
-            </div>
-            <ul className="divide-y clinic-divider">
-              {queuePaid.map((r) => (
-                <li key={r.queue_id} className="px-5 py-3 flex items-center gap-3">
-                  <span className="font-mono text-sm w-10 text-muted-foreground shrink-0">#{r.token_number}</span>
-                  <Avatar name={r.patient_name} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{r.patient_name}</div>
+                    <div className="font-medium">{p.name}</div>
                     <div className="text-xs text-muted-foreground">
-                      {r.visit_type} · Paid {r.paid_with} ₹{r.fee}
+                      Paid {p.mode} ₹{p.fee} · reminders scheduled
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
-                      <CheckCircle2 className="size-3" /> Invoice sent
-                    </Tag>
-                    <button
-                      onClick={() => setViewingInvoice(r)}
-                      title="View invoice"
-                      className="h-8 px-3 text-xs rounded-lg border border-border hover:bg-muted inline-flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <Eye className="size-3.5" /> View
-                    </button>
-                    <button
-                      onClick={() => {
-                        queueActions.resendInvoice(r.queue_id);
-                        toast.success(`Invoice re-sent on WhatsApp to ${r.patient_name.split(" ")[0]}`);
-                      }}
-                      title="Re-send invoice manually"
-                      className="h-8 px-3 text-xs rounded-lg border border-border hover:bg-muted inline-flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <RotateCw className="size-3.5" /> Resend
-                    </button>
-                  </div>
+                  <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
+                    <CheckCircle2 className="size-3" /> Done
+                  </Tag>
                 </li>
               ))}
             </ul>
           </Card>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 p-10 text-center">
-            <div className="size-12 rounded-full bg-muted grid place-items-center mb-3">
-              <FileText className="size-5 text-muted-foreground" />
-            </div>
-            <h3 className="font-display text-base">No invoices yet</h3>
-            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-              Once you collect a payment above, the invoice is generated and sent automatically.
-            </p>
-            <a
-              href="/reception"
-              className="mt-4 h-9 px-5 rounded-full bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1.5 hover:bg-primary/90"
-            >
-              Go to queue <ArrowRight className="size-3.5" />
-            </a>
-          </div>
         )}
       </div>
 
-
-      {/* ── Revenue sidebar ── */}
       <div className="col-span-12 lg:col-span-4 space-y-5">
         <Card>
-          <div className="font-display text-xl mb-1">Today's revenue</div>
+          <div className="font-display text-xl mb-1">Session revenue</div>
           <div className="font-display text-5xl text-primary inline-flex items-center mt-1">
-            <IndianRupee className="size-7" />{revenue.total.toLocaleString("en-IN")}
+            <IndianRupee className="size-7" />
+            {totalToday.toLocaleString("en-IN")}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">{revenue.count} paid visits</div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {todayPaid.length} paid visit{todayPaid.length === 1 ? "" : "s"}
+          </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {(["CASH", "UPI", "CARD", "ONLINE"] as const).map((m) => (
-              <div key={m} className="rounded-xl border border-border p-3 flex items-center gap-2">
+              <div
+                key={m}
+                className="rounded-xl border border-border p-3 flex items-center gap-2"
+              >
                 <PayIcon mode={m} />
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{m}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {m}
+                  </div>
                   <div className="font-display text-base inline-flex items-center">
-                    <IndianRupee className="size-3" />{(revenue[m] ?? 0).toLocaleString("en-IN")}
+                    <IndianRupee className="size-3" />
+                    {byMode[m].toLocaleString("en-IN")}
                   </div>
                 </div>
               </div>
@@ -197,57 +302,6 @@ function BillingPage() {
           </div>
         </Card>
       </div>
-
-      {/* ── Invoice viewer ── */}
-      {viewingInvoice && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-foreground/30 backdrop-blur-sm p-4"
-          onClick={() => setViewingInvoice(null)}
-        >
-          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md clinic-card p-6 bg-card">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Invoice</div>
-                <h2 className="font-display text-2xl">{viewingInvoice.patient_name}</h2>
-                <div className="text-xs text-muted-foreground">Token #{viewingInvoice.token_number}</div>
-              </div>
-              <button onClick={() => setViewingInvoice(null)} className="size-9 rounded-full hover:bg-muted grid place-items-center"><X className="size-4" /></button>
-            </div>
-            <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm space-y-2">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="font-display text-base">Vedic Homeopathic Clinic</div>
-                  <div className="text-xs text-muted-foreground">Invoice #{viewingInvoice.queue_id}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] text-muted-foreground">Date</div>
-                  <div className="text-xs">{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
-                </div>
-              </div>
-              <div className="border-t border-border pt-2 space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-muted-foreground">Patient</span><span className="font-medium">{viewingInvoice.patient_name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Consultation ({viewingInvoice.visit_type})</span><span>₹{viewingInvoice.fee}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Paid via</span><span>{viewingInvoice.paid_with}</span></div>
-              </div>
-              <div className="border-t border-border pt-2 flex justify-between font-display text-base">
-                <span>Total</span>
-                <span className="text-primary">₹{viewingInvoice.fee}</span>
-              </div>
-            </div>
-            <div className="mt-5 flex gap-2">
-              <button
-                onClick={() => downloadInvoicePdf(viewingInvoice)}
-                className="flex-1 h-10 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center justify-center gap-1.5"
-              >
-                <Download className="size-4" /> Download PDF
-              </button>
-              <button onClick={() => setViewingInvoice(null)} className="flex-1 h-10 rounded-full bg-primary text-primary-foreground text-sm hover:bg-primary/90">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -261,29 +315,3 @@ function PayIcon({ mode }: { mode: string }) {
   };
   return <>{icons[mode] ?? null}</>;
 }
-
-function downloadInvoicePdf(r: { queue_id: string; patient_name: string; token_number: number; visit_type: string; fee: number; paid_with?: string | null }) {
-  const doc = new jsPDF({ unit: "pt", format: "a5" });
-  const date = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
-  doc.setFont("helvetica", "bold"); doc.setFontSize(16);
-  doc.text("Vedic Homeopathic Clinic", 40, 50);
-  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
-  doc.text(`Invoice #${r.queue_id}`, 40, 68);
-  doc.text(`Date: ${date}`, 40, 82);
-  doc.line(40, 95, 380, 95);
-  doc.setFontSize(11);
-  doc.text(`Patient: ${r.patient_name}`, 40, 115);
-  doc.text(`Token: #${r.token_number}`, 40, 132);
-  doc.text(`Consultation (${r.visit_type})`, 40, 160);
-  doc.text(`Rs. ${r.fee}`, 320, 160, { align: "right" });
-  doc.text(`Paid via`, 40, 178);
-  doc.text(r.paid_with ?? "—", 320, 178, { align: "right" });
-  doc.line(40, 195, 380, 195);
-  doc.setFont("helvetica", "bold"); doc.setFontSize(13);
-  doc.text("Total", 40, 215);
-  doc.text(`Rs. ${r.fee}`, 320, 215, { align: "right" });
-  doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-  doc.text("Thank you for your visit.", 40, 250);
-  doc.save(`invoice-${r.queue_id}.pdf`);
-}
-
