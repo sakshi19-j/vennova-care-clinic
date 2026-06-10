@@ -593,11 +593,11 @@ function ConsultationPage() {
         <div className="px-4 py-3 flex items-center gap-3 justify-end">
           <button
             disabled={submitting}
-            onClick={completeAndSendToBilling}
+            onClick={markCaseDone}
             className="w-full h-12 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center justify-center gap-2 hover:bg-teal-700 disabled:opacity-60"
           >
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            Complete & Send to Billing
+            Mark Case Done →
           </button>
         </div>
       </div>
