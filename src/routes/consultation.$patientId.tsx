@@ -533,11 +533,11 @@ function ConsultationPage() {
           <div className="hidden md:flex justify-end pt-2">
             <button
               disabled={submitting}
-              onClick={completeAndSendToBilling}
+              onClick={markCaseDone}
               className="h-12 px-8 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow-lg"
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              Complete & Send to Billing
+              Mark Case Done →
             </button>
           </div>
         </section>
