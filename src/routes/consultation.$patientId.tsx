@@ -236,7 +236,7 @@ function ConsultationPage() {
     return s.trim() === "" || !Number.isFinite(n) ? null : n;
   };
 
-  const completeAndSendToBilling = async () => {
+  const markCaseDone = async () => {
     if (!form.chief_complaint.trim()) {
       setChiefError(true);
       toast.error("Chief complaint is required");
@@ -257,7 +257,7 @@ function ConsultationPage() {
       const visitId = pickId(visitRes);
       if (!visitId) throw new Error("Visit created but no ID returned");
 
-      // Step 2 — Vitals (only if any vital filled)
+      // Step 2 — Vitals (optional)
       if (anyVitals) {
         toast.loading("Saving vitals…", { id: toastId });
         await api.post(`/visits/${encodeURIComponent(visitId)}/vitals`, {
@@ -269,55 +269,30 @@ function ConsultationPage() {
         });
       }
 
-      // Step 3 — Case details
-      toast.loading("Saving case details…", { id: toastId });
-      if (isAllo) {
-        await api.post(`/visits/${encodeURIComponent(visitId)}/allopathy`, {
-          diagnosis: form.diagnosis || null,
-          medicines: form.medicines
-            .filter((m) => m.name.trim())
-            .map((m) => ({
-              name: m.name,
-              dosage: m.dosage || "",
-              frequency: m.frequency || "",
-              duration: m.duration || "",
-            })),
-          advice: form.advice || null,
-        });
-      } else {
-        await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
-          chief_complaint: form.chief_complaint,
-          history_present: form.history_present || null,
-          history_past: form.history_past || null,
-          history_surgical: form.history_surgical || null,
-          history_family: form.history_family || null,
-          thermal_sensation: form.thermal || null,
-          appetite: form.appetite || null,
-          thirst: form.thirst || null,
-          sleep: form.sleep || null,
-          dreams: form.dreams || null,
-          mind_symptoms: form.mind_symptoms || null,
-          particulars: form.particulars ? { text: form.particulars } : null,
-          rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
-          remedy: form.remedy || null,
-          potency: form.potency || null,
-          repetition: form.repetition || null,
-          miasm: form.miasm || null,
-        });
-      }
-
-      // Step 4 — Close visit (billing pending — receptionist will collect)
-      toast.loading("Sending to billing…", { id: toastId });
-      await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
-        fee: Number(form.fee) || 0,
-        payment_mode: "CASH",
-        disease_type: "default",
-        followup_channel: "WHATSAPP",
+      // Step 3 — Case details (no remedy yet — that lives on the prescription page)
+      toast.loading("Saving case…", { id: toastId });
+      await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
+        chief_complaint: form.chief_complaint,
+        history_present: form.history_present || null,
+        history_past: form.history_past || null,
+        history_surgical: form.history_surgical || null,
+        history_family: form.history_family || null,
+        thermal_sensation: form.thermal || null,
+        appetite: form.appetite || null,
+        thirst: form.thirst || null,
+        sleep: form.sleep || null,
+        dreams: form.dreams || null,
+        mind_symptoms: form.mind_symptoms || null,
+        particulars: form.particulars ? { text: form.particulars } : null,
+        rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
       });
 
-      // Step 5 — done
-      toast.success("Case saved. Sent to billing ✓", { id: toastId });
-      navigate({ to: "/queue" });
+      toast.success("Case saved · opening prescription", { id: toastId });
+      navigate({
+        to: "/prescriptions/$visitId",
+        params: { visitId },
+        search: { patient_id: patientId, queue_id: search.queue_id },
+      });
     } catch (e) {
       toast.error(errMsg(e), { id: toastId });
     } finally {

@@ -33,6 +33,7 @@ import { Route as ReceptionPatientsRouteImport } from './routes/reception.patien
 import { Route as ReceptionFollowupsRouteImport } from './routes/reception.followups'
 import { Route as ReceptionBillingRouteImport } from './routes/reception.billing'
 import { Route as ReceptionAppointmentsRouteImport } from './routes/reception.appointments'
+import { Route as PrescriptionsVisitIdRouteImport } from './routes/prescriptions.$visitId'
 import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
 import { Route as HomeopathyQueueRouteImport } from './routes/homeopathy.queue'
 import { Route as DoctorQueueRouteImport } from './routes/doctor.queue'
@@ -171,6 +172,11 @@ const ReceptionAppointmentsRoute = ReceptionAppointmentsRouteImport.update({
   path: '/appointments',
   getParentRoute: () => ReceptionRoute,
 } as any)
+const PrescriptionsVisitIdRoute = PrescriptionsVisitIdRouteImport.update({
+  id: '/$visitId',
+  path: '/$visitId',
+  getParentRoute: () => PrescriptionsRoute,
+} as any)
 const PatientsPatientIdRoute = PatientsPatientIdRouteImport.update({
   id: '/$patientId',
   path: '/$patientId',
@@ -269,7 +275,7 @@ export interface FileRoutesByFullPath {
   '/doctor': typeof DoctorRouteWithChildren
   '/homeopathy': typeof HomeopathyRouteWithChildren
   '/patients': typeof PatientsRouteWithChildren
-  '/prescriptions': typeof PrescriptionsRoute
+  '/prescriptions': typeof PrescriptionsRouteWithChildren
   '/queue': typeof QueueRoute
   '/reception': typeof ReceptionRouteWithChildren
   '/reminders': typeof RemindersRoute
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
+  '/prescriptions/$visitId': typeof PrescriptionsVisitIdRoute
   '/reception/appointments': typeof ReceptionAppointmentsRoute
   '/reception/billing': typeof ReceptionBillingRoute
   '/reception/followups': typeof ReceptionFollowupsRoute
@@ -309,7 +316,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/billing': typeof BillingRoute
   '/patients': typeof PatientsRouteWithChildren
-  '/prescriptions': typeof PrescriptionsRoute
+  '/prescriptions': typeof PrescriptionsRouteWithChildren
   '/queue': typeof QueueRoute
   '/reminders': typeof RemindersRoute
   '/settings': typeof SettingsRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
+  '/prescriptions/$visitId': typeof PrescriptionsVisitIdRoute
   '/reception/appointments': typeof ReceptionAppointmentsRoute
   '/reception/billing': typeof ReceptionBillingRoute
   '/reception/followups': typeof ReceptionFollowupsRoute
@@ -351,7 +359,7 @@ export interface FileRoutesById {
   '/doctor': typeof DoctorRouteWithChildren
   '/homeopathy': typeof HomeopathyRouteWithChildren
   '/patients': typeof PatientsRouteWithChildren
-  '/prescriptions': typeof PrescriptionsRoute
+  '/prescriptions': typeof PrescriptionsRouteWithChildren
   '/queue': typeof QueueRoute
   '/reception': typeof ReceptionRouteWithChildren
   '/reminders': typeof RemindersRoute
@@ -368,6 +376,7 @@ export interface FileRoutesById {
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
   '/patients/$patientId': typeof PatientsPatientIdRoute
+  '/prescriptions/$visitId': typeof PrescriptionsVisitIdRoute
   '/reception/appointments': typeof ReceptionAppointmentsRoute
   '/reception/billing': typeof ReceptionBillingRoute
   '/reception/followups': typeof ReceptionFollowupsRoute
@@ -413,6 +422,7 @@ export interface FileRouteTypes {
     | '/doctor/queue'
     | '/homeopathy/queue'
     | '/patients/$patientId'
+    | '/prescriptions/$visitId'
     | '/reception/appointments'
     | '/reception/billing'
     | '/reception/followups'
@@ -451,6 +461,7 @@ export interface FileRouteTypes {
     | '/doctor/queue'
     | '/homeopathy/queue'
     | '/patients/$patientId'
+    | '/prescriptions/$visitId'
     | '/reception/appointments'
     | '/reception/billing'
     | '/reception/followups'
@@ -494,6 +505,7 @@ export interface FileRouteTypes {
     | '/doctor/queue'
     | '/homeopathy/queue'
     | '/patients/$patientId'
+    | '/prescriptions/$visitId'
     | '/reception/appointments'
     | '/reception/billing'
     | '/reception/followups'
@@ -521,7 +533,7 @@ export interface RootRouteChildren {
   DoctorRoute: typeof DoctorRouteWithChildren
   HomeopathyRoute: typeof HomeopathyRouteWithChildren
   PatientsRoute: typeof PatientsRouteWithChildren
-  PrescriptionsRoute: typeof PrescriptionsRoute
+  PrescriptionsRoute: typeof PrescriptionsRouteWithChildren
   QueueRoute: typeof QueueRoute
   ReceptionRoute: typeof ReceptionRouteWithChildren
   RemindersRoute: typeof RemindersRoute
@@ -700,6 +712,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reception/appointments'
       preLoaderRoute: typeof ReceptionAppointmentsRouteImport
       parentRoute: typeof ReceptionRoute
+    }
+    '/prescriptions/$visitId': {
+      id: '/prescriptions/$visitId'
+      path: '/$visitId'
+      fullPath: '/prescriptions/$visitId'
+      preLoaderRoute: typeof PrescriptionsVisitIdRouteImport
+      parentRoute: typeof PrescriptionsRoute
     }
     '/patients/$patientId': {
       id: '/patients/$patientId'
@@ -908,6 +927,18 @@ const PatientsRouteWithChildren = PatientsRoute._addFileChildren(
   PatientsRouteChildren,
 )
 
+interface PrescriptionsRouteChildren {
+  PrescriptionsVisitIdRoute: typeof PrescriptionsVisitIdRoute
+}
+
+const PrescriptionsRouteChildren: PrescriptionsRouteChildren = {
+  PrescriptionsVisitIdRoute: PrescriptionsVisitIdRoute,
+}
+
+const PrescriptionsRouteWithChildren = PrescriptionsRoute._addFileChildren(
+  PrescriptionsRouteChildren,
+)
+
 interface ReceptionRouteChildren {
   ReceptionAppointmentsRoute: typeof ReceptionAppointmentsRoute
   ReceptionBillingRoute: typeof ReceptionBillingRoute
@@ -938,7 +969,7 @@ const rootRouteChildren: RootRouteChildren = {
   DoctorRoute: DoctorRouteWithChildren,
   HomeopathyRoute: HomeopathyRouteWithChildren,
   PatientsRoute: PatientsRouteWithChildren,
-  PrescriptionsRoute: PrescriptionsRoute,
+  PrescriptionsRoute: PrescriptionsRouteWithChildren,
   QueueRoute: QueueRoute,
   ReceptionRoute: ReceptionRouteWithChildren,
   RemindersRoute: RemindersRoute,
@@ -950,13 +981,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
