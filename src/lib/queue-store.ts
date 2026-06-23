@@ -342,9 +342,9 @@ export async function loadAppointments(): Promise<void> {
     if (Array.isArray(rows)) {
       appointments = rows.map((a: any) => ({
         id: String(a.id ?? a.appointment_id),
-        patient_id: String(a.patient_id ?? ""),
-        patient_name: String(a.patient_name ?? a.full_name ?? "Patient"),
-        patient_phone: String(a.patient_phone ?? a.phone ?? ""),
+        patient_id: String(a.patient_id ?? a.patient?.id ?? ""),
+        patient_name: joinPatientName(a),
+        patient_phone: joinPatientPhone(a),
         scheduled_at: String(a.scheduled_at ?? a.slot_at ?? new Date().toISOString()),
         visit_type: "HOMEOPATHY",
         status: (a.status ?? "SCHEDULED") as ApptStatus,
