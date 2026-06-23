@@ -394,9 +394,12 @@ function FollowupRowView({
   row, bucket, busy, onSend,
 }: { row: Followup; bucket: Bucket; busy: boolean; onSend: () => void }) {
   const due = rowDueDate(row);
+  const visitDate = rowVisitDate(row);
   const cd = countdownLabel(row);
   const status = rowStatus(row);
   const phone = rowPhone(row);
+  const name = rowName(row);
+  const type = rowType(row);
   const canSend = bucket === "today" || bucket === "missed";
   const toneClass =
     cd.tone === "danger" ? "bg-red-500/15 text-red-700 border-red-500/30"
@@ -407,13 +410,16 @@ function FollowupRowView({
   return (
     <li className="px-5 py-4">
       <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-        <Avatar name={rowName(row)} />
+        <Avatar name={name || "?"} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">{rowName(row)}</span>
+            <span className="font-medium truncate">{name || <span className="text-muted-foreground italic">Unnamed patient</span>}</span>
             <Tag className={toneClass}>
               <Clock className="size-3" /> {cd.text}
             </Tag>
+            {type && (
+              <Tag className="bg-primary/10 text-primary border-primary/20">{type}</Tag>
+            )}
             {status && status !== "PENDING" && (
               <Tag className="bg-card border-border text-foreground/70">{status}</Tag>
             )}
@@ -422,13 +428,19 @@ function FollowupRowView({
             <span className="font-mono tabular-nums">{phone || "—"}</span>
             <span>·</span>
             <span>Due {fmtDate(due)}</span>
-            {row.preset && <><span>·</span><span>{row.preset}</span></>}
+            {visitDate && (
+              <>
+                <span>·</span>
+                <span>Visit {fmtDate(visitDate)}</span>
+              </>
+            )}
           </div>
         </div>
         {canSend && (
           <button
             onClick={onSend}
-            disabled={busy}
+            disabled={busy || !phone}
+            title={!phone ? "No phone number on file" : undefined}
             className="h-9 px-4 rounded-full bg-[#25D366] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:bg-[#1ebe5d] disabled:opacity-60 shrink-0"
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
