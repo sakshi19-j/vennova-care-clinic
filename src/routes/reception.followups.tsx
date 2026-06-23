@@ -17,7 +17,8 @@ export const Route = createFileRoute("/reception/followups")({
 });
 
 // ─────────────────────────── Model ───────────────────────────
-// Permissive shape — backend may use slightly different field names.
+// Permissive shape — backend may use slightly different field names and may
+// embed the joined patient as a nested object.
 type Followup = {
   id?: string;
   followup_id?: string;
@@ -25,15 +26,38 @@ type Followup = {
   patient_id?: string;
   patient_name?: string;
   full_name?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
   patient_phone?: string;
   phone?: string;
+  phone_mobile?: string;
+  mobile?: string;
+  patient?: {
+    id?: string;
+    full_name?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    phone?: string;
+    phone_mobile?: string;
+    mobile?: string;
+  };
+  visit_id?: string;
+  visit_date?: string;
+  visit_at?: string;
+  visit?: { id?: string; visit_date?: string; created_at?: string; closed_at?: string };
+  type?: string;             // FollowUpCreate uses `type`
+  followup_type?: string;
+  preset?: string;
   due_date?: string;          // YYYY-MM-DD
   due_at?: string;            // ISO timestamp
   scheduled_at?: string;
   status?: string;            // PENDING | SENT | RESPONDED | COMPLETED | MISSED | CANCELLED
   channel?: string;
   sent_at?: string | null;
-  preset?: string;
 };
 
 type Bucket = "today" | "upcoming" | "missed" | "completed";
@@ -60,13 +84,34 @@ function rowId(r: Followup): string {
   return String(r.id || r.followup_id || r.reminder_id || "");
 }
 function rowName(r: Followup): string {
-  return r.patient_name || r.full_name || "Patient";
+  const direct = r.patient_name || r.full_name || r.patient?.full_name;
+  if (direct && direct.trim()) return direct.trim();
+  const parts = [
+    r.patient?.first_name ?? r.first_name ?? r.patient_first_name,
+    r.patient?.middle_name ?? r.middle_name,
+    r.patient?.last_name ?? r.last_name ?? r.patient_last_name,
+  ].filter(Boolean);
+  return parts.join(" ").trim();
 }
 function rowPhone(r: Followup): string {
-  return r.patient_phone || r.phone || "";
+  return String(
+    r.patient_phone || r.phone || r.phone_mobile || r.mobile ||
+    r.patient?.phone || r.patient?.phone_mobile || r.patient?.mobile || "",
+  );
+}
+function rowType(r: Followup): string {
+  return String(r.followup_type || r.type || r.preset || "").trim();
 }
 function rowDueDate(r: Followup): Date | null {
   const raw = r.due_at || r.scheduled_at || r.due_date;
+  if (!raw) return null;
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
+}
+function rowVisitDate(r: Followup): Date | null {
+  const raw =
+    r.visit_date || r.visit_at || r.visit?.visit_date ||
+    r.visit?.closed_at || r.visit?.created_at;
   if (!raw) return null;
   const d = new Date(raw);
   return isNaN(d.getTime()) ? null : d;
