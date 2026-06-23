@@ -228,10 +228,11 @@ function FollowupsPage() {
     const id = rowId(row);
     if (!id) return;
     setSending(id);
-    const tid = toast.loading(`Sending WhatsApp to ${rowName(row)}…`);
+    const who = rowName(row) || "patient";
+    const tid = toast.loading(`Sending WhatsApp to ${who}…`);
     try {
       await api.post(`/reminders/${encodeURIComponent(id)}/send`);
-      toast.success(`Reminder sent to ${rowName(row)}`, { id: tid });
+      toast.success(`Reminder sent to ${who}`, { id: tid });
       qc.invalidateQueries({ queryKey: ["followups", "today"] });
       qc.invalidateQueries({ queryKey: ["followups", "upcoming"] });
       qc.invalidateQueries({ queryKey: ["reminders", "due"] });
