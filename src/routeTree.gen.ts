@@ -9,38 +9,721 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StaffRouteImport } from './routes/staff'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RemindersRouteImport } from './routes/reminders'
+import { Route as ReceptionRouteImport } from './routes/reception'
+import { Route as QueueRouteImport } from './routes/queue'
+import { Route as PrescriptionsRouteImport } from './routes/prescriptions'
+import { Route as PatientsRouteImport } from './routes/patients'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ImportsRouteImport } from './routes/imports'
+import { Route as HomeopathyRouteImport } from './routes/homeopathy'
+import { Route as ExportsRouteImport } from './routes/exports'
+import { Route as DoctorRouteImport } from './routes/doctor'
+import { Route as BillingRouteImport } from './routes/billing'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AppointmentsRouteImport } from './routes/appointments'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReceptionIndexRouteImport } from './routes/reception.index'
+import { Route as HomeopathyIndexRouteImport } from './routes/homeopathy.index'
+import { Route as DoctorIndexRouteImport } from './routes/doctor.index'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as ReceptionPatientsRouteImport } from './routes/reception.patients'
+import { Route as ReceptionFollowupsRouteImport } from './routes/reception.followups'
+import { Route as ReceptionBillingRouteImport } from './routes/reception.billing'
+import { Route as ReceptionAppointmentsRouteImport } from './routes/reception.appointments'
+import { Route as PrescriptionVisitIdRouteImport } from './routes/prescription.$visitId'
+import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
+import { Route as HomeopathyQueueRouteImport } from './routes/homeopathy.queue'
+import { Route as DoctorQueueRouteImport } from './routes/doctor.queue'
+import { Route as ConsultationPatientIdRouteImport } from './routes/consultation.$patientId'
+import { Route as AdminStaffManagementRouteImport } from './routes/admin.staff-management'
+import { Route as AdminStaffRouteImport } from './routes/admin.staff'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminPerformanceRouteImport } from './routes/admin.performance'
+import { Route as AdminMonitorRouteImport } from './routes/admin.monitor'
+import { Route as AdminBillingRouteImport } from './routes/admin.billing'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin.settings.index'
+import { Route as PatientsPatientIdWorkspaceRouteImport } from './routes/patients.$patientId.workspace'
+import { Route as HomeopathyPatientsIdRouteImport } from './routes/homeopathy.patients.$id'
+import { Route as DoctorPatientsIdRouteImport } from './routes/doctor.patients.$id'
+import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
+import { Route as AdminSettingsPrescriptionRouteImport } from './routes/admin.settings.prescription'
+import { Route as AdminSettingsBillingRouteImport } from './routes/admin.settings.billing'
+import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
 
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RemindersRoute = RemindersRouteImport.update({
+  id: '/reminders',
+  path: '/reminders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReceptionRoute = ReceptionRouteImport.update({
+  id: '/reception',
+  path: '/reception',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueueRoute = QueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrescriptionsRoute = PrescriptionsRouteImport.update({
+  id: '/prescriptions',
+  path: '/prescriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientsRoute = PatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportsRoute = ImportsRouteImport.update({
+  id: '/imports',
+  path: '/imports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeopathyRoute = HomeopathyRouteImport.update({
+  id: '/homeopathy',
+  path: '/homeopathy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExportsRoute = ExportsRouteImport.update({
+  id: '/exports',
+  path: '/exports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DoctorRoute = DoctorRouteImport.update({
+  id: '/doctor',
+  path: '/doctor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BillingRoute = BillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppointmentsRoute = AppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReceptionIndexRoute = ReceptionIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ReceptionRoute,
+} as any)
+const HomeopathyIndexRoute = HomeopathyIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => HomeopathyRoute,
+} as any)
+const DoctorIndexRoute = DoctorIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DoctorRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ReceptionPatientsRoute = ReceptionPatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => ReceptionRoute,
+} as any)
+const ReceptionFollowupsRoute = ReceptionFollowupsRouteImport.update({
+  id: '/followups',
+  path: '/followups',
+  getParentRoute: () => ReceptionRoute,
+} as any)
+const ReceptionBillingRoute = ReceptionBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => ReceptionRoute,
+} as any)
+const ReceptionAppointmentsRoute = ReceptionAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => ReceptionRoute,
+} as any)
+const PrescriptionVisitIdRoute = PrescriptionVisitIdRouteImport.update({
+  id: '/prescription/$visitId',
+  path: '/prescription/$visitId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientsPatientIdRoute = PatientsPatientIdRouteImport.update({
+  id: '/$patientId',
+  path: '/$patientId',
+  getParentRoute: () => PatientsRoute,
+} as any)
+const HomeopathyQueueRoute = HomeopathyQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => HomeopathyRoute,
+} as any)
+const DoctorQueueRoute = DoctorQueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
+  getParentRoute: () => DoctorRoute,
+} as any)
+const ConsultationPatientIdRoute = ConsultationPatientIdRouteImport.update({
+  id: '/consultation/$patientId',
+  path: '/consultation/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminStaffManagementRoute = AdminStaffManagementRouteImport.update({
+  id: '/staff-management',
+  path: '/staff-management',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminStaffRoute = AdminStaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPerformanceRoute = AdminPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMonitorRoute = AdminMonitorRouteImport.update({
+  id: '/monitor',
+  path: '/monitor',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminBillingRoute = AdminBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
+const PatientsPatientIdWorkspaceRoute =
+  PatientsPatientIdWorkspaceRouteImport.update({
+    id: '/workspace',
+    path: '/workspace',
+    getParentRoute: () => PatientsPatientIdRoute,
+  } as any)
+const HomeopathyPatientsIdRoute = HomeopathyPatientsIdRouteImport.update({
+  id: '/patients/$id',
+  path: '/patients/$id',
+  getParentRoute: () => HomeopathyRoute,
+} as any)
+const DoctorPatientsIdRoute = DoctorPatientsIdRouteImport.update({
+  id: '/patients/$id',
+  path: '/patients/$id',
+  getParentRoute: () => DoctorRoute,
+} as any)
+const AdminSettingsSubscriptionRoute =
+  AdminSettingsSubscriptionRouteImport.update({
+    id: '/subscription',
+    path: '/subscription',
+    getParentRoute: () => AdminSettingsRoute,
+  } as any)
+const AdminSettingsPrescriptionRoute =
+  AdminSettingsPrescriptionRouteImport.update({
+    id: '/prescription',
+    path: '/prescription',
+    getParentRoute: () => AdminSettingsRoute,
+  } as any)
+const AdminSettingsBillingRoute = AdminSettingsBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
+const AdminSettingsBackupsRoute = AdminSettingsBackupsRouteImport.update({
+  id: '/backups',
+  path: '/backups',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/analytics': typeof AnalyticsRoute
+  '/appointments': typeof AppointmentsRoute
+  '/auth': typeof AuthRoute
+  '/billing': typeof BillingRoute
+  '/doctor': typeof DoctorRouteWithChildren
+  '/exports': typeof ExportsRoute
+  '/homeopathy': typeof HomeopathyRouteWithChildren
+  '/imports': typeof ImportsRoute
+  '/onboarding': typeof OnboardingRoute
+  '/patients': typeof PatientsRouteWithChildren
+  '/prescriptions': typeof PrescriptionsRoute
+  '/queue': typeof QueueRoute
+  '/reception': typeof ReceptionRouteWithChildren
+  '/reminders': typeof RemindersRoute
+  '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/staff': typeof StaffRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/monitor': typeof AdminMonitorRoute
+  '/admin/performance': typeof AdminPerformanceRoute
+  '/admin/settings': typeof AdminSettingsRouteWithChildren
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/queue': typeof DoctorQueueRoute
+  '/homeopathy/queue': typeof HomeopathyQueueRoute
+  '/patients/$patientId': typeof PatientsPatientIdRouteWithChildren
+  '/prescription/$visitId': typeof PrescriptionVisitIdRoute
+  '/reception/appointments': typeof ReceptionAppointmentsRoute
+  '/reception/billing': typeof ReceptionBillingRoute
+  '/reception/followups': typeof ReceptionFollowupsRoute
+  '/reception/patients': typeof ReceptionPatientsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/doctor/': typeof DoctorIndexRoute
+  '/homeopathy/': typeof HomeopathyIndexRoute
+  '/reception/': typeof ReceptionIndexRoute
+  '/admin/settings/backups': typeof AdminSettingsBackupsRoute
+  '/admin/settings/billing': typeof AdminSettingsBillingRoute
+  '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
+  '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/doctor/patients/$id': typeof DoctorPatientsIdRoute
+  '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
+  '/patients/$patientId/workspace': typeof PatientsPatientIdWorkspaceRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/analytics': typeof AnalyticsRoute
+  '/appointments': typeof AppointmentsRoute
+  '/auth': typeof AuthRoute
+  '/billing': typeof BillingRoute
+  '/exports': typeof ExportsRoute
+  '/imports': typeof ImportsRoute
+  '/onboarding': typeof OnboardingRoute
+  '/patients': typeof PatientsRouteWithChildren
+  '/prescriptions': typeof PrescriptionsRoute
+  '/queue': typeof QueueRoute
+  '/reminders': typeof RemindersRoute
+  '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/staff': typeof StaffRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/monitor': typeof AdminMonitorRoute
+  '/admin/performance': typeof AdminPerformanceRoute
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/queue': typeof DoctorQueueRoute
+  '/homeopathy/queue': typeof HomeopathyQueueRoute
+  '/patients/$patientId': typeof PatientsPatientIdRouteWithChildren
+  '/prescription/$visitId': typeof PrescriptionVisitIdRoute
+  '/reception/appointments': typeof ReceptionAppointmentsRoute
+  '/reception/billing': typeof ReceptionBillingRoute
+  '/reception/followups': typeof ReceptionFollowupsRoute
+  '/reception/patients': typeof ReceptionPatientsRoute
+  '/admin': typeof AdminIndexRoute
+  '/doctor': typeof DoctorIndexRoute
+  '/homeopathy': typeof HomeopathyIndexRoute
+  '/reception': typeof ReceptionIndexRoute
+  '/admin/settings/backups': typeof AdminSettingsBackupsRoute
+  '/admin/settings/billing': typeof AdminSettingsBillingRoute
+  '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
+  '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/doctor/patients/$id': typeof DoctorPatientsIdRoute
+  '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
+  '/patients/$patientId/workspace': typeof PatientsPatientIdWorkspaceRoute
+  '/admin/settings': typeof AdminSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/analytics': typeof AnalyticsRoute
+  '/appointments': typeof AppointmentsRoute
+  '/auth': typeof AuthRoute
+  '/billing': typeof BillingRoute
+  '/doctor': typeof DoctorRouteWithChildren
+  '/exports': typeof ExportsRoute
+  '/homeopathy': typeof HomeopathyRouteWithChildren
+  '/imports': typeof ImportsRoute
+  '/onboarding': typeof OnboardingRoute
+  '/patients': typeof PatientsRouteWithChildren
+  '/prescriptions': typeof PrescriptionsRoute
+  '/queue': typeof QueueRoute
+  '/reception': typeof ReceptionRouteWithChildren
+  '/reminders': typeof RemindersRoute
+  '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/staff': typeof StaffRoute
+  '/admin/billing': typeof AdminBillingRoute
+  '/admin/monitor': typeof AdminMonitorRoute
+  '/admin/performance': typeof AdminPerformanceRoute
+  '/admin/settings': typeof AdminSettingsRouteWithChildren
+  '/admin/staff': typeof AdminStaffRoute
+  '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/queue': typeof DoctorQueueRoute
+  '/homeopathy/queue': typeof HomeopathyQueueRoute
+  '/patients/$patientId': typeof PatientsPatientIdRouteWithChildren
+  '/prescription/$visitId': typeof PrescriptionVisitIdRoute
+  '/reception/appointments': typeof ReceptionAppointmentsRoute
+  '/reception/billing': typeof ReceptionBillingRoute
+  '/reception/followups': typeof ReceptionFollowupsRoute
+  '/reception/patients': typeof ReceptionPatientsRoute
+  '/admin/': typeof AdminIndexRoute
+  '/doctor/': typeof DoctorIndexRoute
+  '/homeopathy/': typeof HomeopathyIndexRoute
+  '/reception/': typeof ReceptionIndexRoute
+  '/admin/settings/backups': typeof AdminSettingsBackupsRoute
+  '/admin/settings/billing': typeof AdminSettingsBillingRoute
+  '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
+  '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/doctor/patients/$id': typeof DoctorPatientsIdRoute
+  '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
+  '/patients/$patientId/workspace': typeof PatientsPatientIdWorkspaceRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/analytics'
+    | '/appointments'
+    | '/auth'
+    | '/billing'
+    | '/doctor'
+    | '/exports'
+    | '/homeopathy'
+    | '/imports'
+    | '/onboarding'
+    | '/patients'
+    | '/prescriptions'
+    | '/queue'
+    | '/reception'
+    | '/reminders'
+    | '/settings'
+    | '/sitemap.xml'
+    | '/staff'
+    | '/admin/billing'
+    | '/admin/monitor'
+    | '/admin/performance'
+    | '/admin/settings'
+    | '/admin/staff'
+    | '/admin/staff-management'
+    | '/consultation/$patientId'
+    | '/doctor/queue'
+    | '/homeopathy/queue'
+    | '/patients/$patientId'
+    | '/prescription/$visitId'
+    | '/reception/appointments'
+    | '/reception/billing'
+    | '/reception/followups'
+    | '/reception/patients'
+    | '/admin/'
+    | '/doctor/'
+    | '/homeopathy/'
+    | '/reception/'
+    | '/admin/settings/backups'
+    | '/admin/settings/billing'
+    | '/admin/settings/prescription'
+    | '/admin/settings/subscription'
+    | '/doctor/patients/$id'
+    | '/homeopathy/patients/$id'
+    | '/patients/$patientId/workspace'
+    | '/admin/settings/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/analytics'
+    | '/appointments'
+    | '/auth'
+    | '/billing'
+    | '/exports'
+    | '/imports'
+    | '/onboarding'
+    | '/patients'
+    | '/prescriptions'
+    | '/queue'
+    | '/reminders'
+    | '/settings'
+    | '/sitemap.xml'
+    | '/staff'
+    | '/admin/billing'
+    | '/admin/monitor'
+    | '/admin/performance'
+    | '/admin/staff'
+    | '/admin/staff-management'
+    | '/consultation/$patientId'
+    | '/doctor/queue'
+    | '/homeopathy/queue'
+    | '/patients/$patientId'
+    | '/prescription/$visitId'
+    | '/reception/appointments'
+    | '/reception/billing'
+    | '/reception/followups'
+    | '/reception/patients'
+    | '/admin'
+    | '/doctor'
+    | '/homeopathy'
+    | '/reception'
+    | '/admin/settings/backups'
+    | '/admin/settings/billing'
+    | '/admin/settings/prescription'
+    | '/admin/settings/subscription'
+    | '/doctor/patients/$id'
+    | '/homeopathy/patients/$id'
+    | '/patients/$patientId/workspace'
+    | '/admin/settings'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/analytics'
+    | '/appointments'
+    | '/auth'
+    | '/billing'
+    | '/doctor'
+    | '/exports'
+    | '/homeopathy'
+    | '/imports'
+    | '/onboarding'
+    | '/patients'
+    | '/prescriptions'
+    | '/queue'
+    | '/reception'
+    | '/reminders'
+    | '/settings'
+    | '/sitemap.xml'
+    | '/staff'
+    | '/admin/billing'
+    | '/admin/monitor'
+    | '/admin/performance'
+    | '/admin/settings'
+    | '/admin/staff'
+    | '/admin/staff-management'
+    | '/consultation/$patientId'
+    | '/doctor/queue'
+    | '/homeopathy/queue'
+    | '/patients/$patientId'
+    | '/prescription/$visitId'
+    | '/reception/appointments'
+    | '/reception/billing'
+    | '/reception/followups'
+    | '/reception/patients'
+    | '/admin/'
+    | '/doctor/'
+    | '/homeopathy/'
+    | '/reception/'
+    | '/admin/settings/backups'
+    | '/admin/settings/billing'
+    | '/admin/settings/prescription'
+    | '/admin/settings/subscription'
+    | '/doctor/patients/$id'
+    | '/homeopathy/patients/$id'
+    | '/patients/$patientId/workspace'
+    | '/admin/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  AnalyticsRoute: typeof AnalyticsRoute
+  AppointmentsRoute: typeof AppointmentsRoute
+  AuthRoute: typeof AuthRoute
+  BillingRoute: typeof BillingRoute
+  DoctorRoute: typeof DoctorRouteWithChildren
+  ExportsRoute: typeof ExportsRoute
+  HomeopathyRoute: typeof HomeopathyRouteWithChildren
+  ImportsRoute: typeof ImportsRoute
+  OnboardingRoute: typeof OnboardingRoute
+  PatientsRoute: typeof PatientsRouteWithChildren
+  PrescriptionsRoute: typeof PrescriptionsRoute
+  QueueRoute: typeof QueueRoute
+  ReceptionRoute: typeof ReceptionRouteWithChildren
+  RemindersRoute: typeof RemindersRoute
+  SettingsRoute: typeof SettingsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StaffRoute: typeof StaffRoute
+  ConsultationPatientIdRoute: typeof ConsultationPatientIdRoute
+  PrescriptionVisitIdRoute: typeof PrescriptionVisitIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reminders': {
+      id: '/reminders'
+      path: '/reminders'
+      fullPath: '/reminders'
+      preLoaderRoute: typeof RemindersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reception': {
+      id: '/reception'
+      path: '/reception'
+      fullPath: '/reception'
+      preLoaderRoute: typeof ReceptionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queue': {
+      id: '/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof QueueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prescriptions': {
+      id: '/prescriptions'
+      path: '/prescriptions'
+      fullPath: '/prescriptions'
+      preLoaderRoute: typeof PrescriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patients': {
+      id: '/patients'
+      path: '/patients'
+      fullPath: '/patients'
+      preLoaderRoute: typeof PatientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/imports': {
+      id: '/imports'
+      path: '/imports'
+      fullPath: '/imports'
+      preLoaderRoute: typeof ImportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/homeopathy': {
+      id: '/homeopathy'
+      path: '/homeopathy'
+      fullPath: '/homeopathy'
+      preLoaderRoute: typeof HomeopathyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exports': {
+      id: '/exports'
+      path: '/exports'
+      fullPath: '/exports'
+      preLoaderRoute: typeof ExportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/doctor': {
+      id: '/doctor'
+      path: '/doctor'
+      fullPath: '/doctor'
+      preLoaderRoute: typeof DoctorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/billing': {
+      id: '/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof BillingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/appointments': {
+      id: '/appointments'
+      path: '/appointments'
+      fullPath: '/appointments'
+      preLoaderRoute: typeof AppointmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +731,337 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reception/': {
+      id: '/reception/'
+      path: '/'
+      fullPath: '/reception/'
+      preLoaderRoute: typeof ReceptionIndexRouteImport
+      parentRoute: typeof ReceptionRoute
+    }
+    '/homeopathy/': {
+      id: '/homeopathy/'
+      path: '/'
+      fullPath: '/homeopathy/'
+      preLoaderRoute: typeof HomeopathyIndexRouteImport
+      parentRoute: typeof HomeopathyRoute
+    }
+    '/doctor/': {
+      id: '/doctor/'
+      path: '/'
+      fullPath: '/doctor/'
+      preLoaderRoute: typeof DoctorIndexRouteImport
+      parentRoute: typeof DoctorRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/reception/patients': {
+      id: '/reception/patients'
+      path: '/patients'
+      fullPath: '/reception/patients'
+      preLoaderRoute: typeof ReceptionPatientsRouteImport
+      parentRoute: typeof ReceptionRoute
+    }
+    '/reception/followups': {
+      id: '/reception/followups'
+      path: '/followups'
+      fullPath: '/reception/followups'
+      preLoaderRoute: typeof ReceptionFollowupsRouteImport
+      parentRoute: typeof ReceptionRoute
+    }
+    '/reception/billing': {
+      id: '/reception/billing'
+      path: '/billing'
+      fullPath: '/reception/billing'
+      preLoaderRoute: typeof ReceptionBillingRouteImport
+      parentRoute: typeof ReceptionRoute
+    }
+    '/reception/appointments': {
+      id: '/reception/appointments'
+      path: '/appointments'
+      fullPath: '/reception/appointments'
+      preLoaderRoute: typeof ReceptionAppointmentsRouteImport
+      parentRoute: typeof ReceptionRoute
+    }
+    '/prescription/$visitId': {
+      id: '/prescription/$visitId'
+      path: '/prescription/$visitId'
+      fullPath: '/prescription/$visitId'
+      preLoaderRoute: typeof PrescriptionVisitIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patients/$patientId': {
+      id: '/patients/$patientId'
+      path: '/$patientId'
+      fullPath: '/patients/$patientId'
+      preLoaderRoute: typeof PatientsPatientIdRouteImport
+      parentRoute: typeof PatientsRoute
+    }
+    '/homeopathy/queue': {
+      id: '/homeopathy/queue'
+      path: '/queue'
+      fullPath: '/homeopathy/queue'
+      preLoaderRoute: typeof HomeopathyQueueRouteImport
+      parentRoute: typeof HomeopathyRoute
+    }
+    '/doctor/queue': {
+      id: '/doctor/queue'
+      path: '/queue'
+      fullPath: '/doctor/queue'
+      preLoaderRoute: typeof DoctorQueueRouteImport
+      parentRoute: typeof DoctorRoute
+    }
+    '/consultation/$patientId': {
+      id: '/consultation/$patientId'
+      path: '/consultation/$patientId'
+      fullPath: '/consultation/$patientId'
+      preLoaderRoute: typeof ConsultationPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/staff-management': {
+      id: '/admin/staff-management'
+      path: '/staff-management'
+      fullPath: '/admin/staff-management'
+      preLoaderRoute: typeof AdminStaffManagementRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/staff': {
+      id: '/admin/staff'
+      path: '/staff'
+      fullPath: '/admin/staff'
+      preLoaderRoute: typeof AdminStaffRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/performance': {
+      id: '/admin/performance'
+      path: '/performance'
+      fullPath: '/admin/performance'
+      preLoaderRoute: typeof AdminPerformanceRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/monitor': {
+      id: '/admin/monitor'
+      path: '/monitor'
+      fullPath: '/admin/monitor'
+      preLoaderRoute: typeof AdminMonitorRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/billing': {
+      id: '/admin/billing'
+      path: '/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AdminBillingRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings/': {
+      id: '/admin/settings/'
+      path: '/'
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
+    '/patients/$patientId/workspace': {
+      id: '/patients/$patientId/workspace'
+      path: '/workspace'
+      fullPath: '/patients/$patientId/workspace'
+      preLoaderRoute: typeof PatientsPatientIdWorkspaceRouteImport
+      parentRoute: typeof PatientsPatientIdRoute
+    }
+    '/homeopathy/patients/$id': {
+      id: '/homeopathy/patients/$id'
+      path: '/patients/$id'
+      fullPath: '/homeopathy/patients/$id'
+      preLoaderRoute: typeof HomeopathyPatientsIdRouteImport
+      parentRoute: typeof HomeopathyRoute
+    }
+    '/doctor/patients/$id': {
+      id: '/doctor/patients/$id'
+      path: '/patients/$id'
+      fullPath: '/doctor/patients/$id'
+      preLoaderRoute: typeof DoctorPatientsIdRouteImport
+      parentRoute: typeof DoctorRoute
+    }
+    '/admin/settings/subscription': {
+      id: '/admin/settings/subscription'
+      path: '/subscription'
+      fullPath: '/admin/settings/subscription'
+      preLoaderRoute: typeof AdminSettingsSubscriptionRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
+    '/admin/settings/prescription': {
+      id: '/admin/settings/prescription'
+      path: '/prescription'
+      fullPath: '/admin/settings/prescription'
+      preLoaderRoute: typeof AdminSettingsPrescriptionRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
+    '/admin/settings/billing': {
+      id: '/admin/settings/billing'
+      path: '/billing'
+      fullPath: '/admin/settings/billing'
+      preLoaderRoute: typeof AdminSettingsBillingRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
+    '/admin/settings/backups': {
+      id: '/admin/settings/backups'
+      path: '/backups'
+      fullPath: '/admin/settings/backups'
+      preLoaderRoute: typeof AdminSettingsBackupsRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
   }
 }
 
+interface AdminSettingsRouteChildren {
+  AdminSettingsBackupsRoute: typeof AdminSettingsBackupsRoute
+  AdminSettingsBillingRoute: typeof AdminSettingsBillingRoute
+  AdminSettingsPrescriptionRoute: typeof AdminSettingsPrescriptionRoute
+  AdminSettingsSubscriptionRoute: typeof AdminSettingsSubscriptionRoute
+  AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
+}
+
+const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
+  AdminSettingsBackupsRoute: AdminSettingsBackupsRoute,
+  AdminSettingsBillingRoute: AdminSettingsBillingRoute,
+  AdminSettingsPrescriptionRoute: AdminSettingsPrescriptionRoute,
+  AdminSettingsSubscriptionRoute: AdminSettingsSubscriptionRoute,
+  AdminSettingsIndexRoute: AdminSettingsIndexRoute,
+}
+
+const AdminSettingsRouteWithChildren = AdminSettingsRoute._addFileChildren(
+  AdminSettingsRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminBillingRoute: typeof AdminBillingRoute
+  AdminMonitorRoute: typeof AdminMonitorRoute
+  AdminPerformanceRoute: typeof AdminPerformanceRoute
+  AdminSettingsRoute: typeof AdminSettingsRouteWithChildren
+  AdminStaffRoute: typeof AdminStaffRoute
+  AdminStaffManagementRoute: typeof AdminStaffManagementRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminBillingRoute: AdminBillingRoute,
+  AdminMonitorRoute: AdminMonitorRoute,
+  AdminPerformanceRoute: AdminPerformanceRoute,
+  AdminSettingsRoute: AdminSettingsRouteWithChildren,
+  AdminStaffRoute: AdminStaffRoute,
+  AdminStaffManagementRoute: AdminStaffManagementRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface DoctorRouteChildren {
+  DoctorQueueRoute: typeof DoctorQueueRoute
+  DoctorIndexRoute: typeof DoctorIndexRoute
+  DoctorPatientsIdRoute: typeof DoctorPatientsIdRoute
+}
+
+const DoctorRouteChildren: DoctorRouteChildren = {
+  DoctorQueueRoute: DoctorQueueRoute,
+  DoctorIndexRoute: DoctorIndexRoute,
+  DoctorPatientsIdRoute: DoctorPatientsIdRoute,
+}
+
+const DoctorRouteWithChildren =
+  DoctorRoute._addFileChildren(DoctorRouteChildren)
+
+interface HomeopathyRouteChildren {
+  HomeopathyQueueRoute: typeof HomeopathyQueueRoute
+  HomeopathyIndexRoute: typeof HomeopathyIndexRoute
+  HomeopathyPatientsIdRoute: typeof HomeopathyPatientsIdRoute
+}
+
+const HomeopathyRouteChildren: HomeopathyRouteChildren = {
+  HomeopathyQueueRoute: HomeopathyQueueRoute,
+  HomeopathyIndexRoute: HomeopathyIndexRoute,
+  HomeopathyPatientsIdRoute: HomeopathyPatientsIdRoute,
+}
+
+const HomeopathyRouteWithChildren = HomeopathyRoute._addFileChildren(
+  HomeopathyRouteChildren,
+)
+
+interface PatientsPatientIdRouteChildren {
+  PatientsPatientIdWorkspaceRoute: typeof PatientsPatientIdWorkspaceRoute
+}
+
+const PatientsPatientIdRouteChildren: PatientsPatientIdRouteChildren = {
+  PatientsPatientIdWorkspaceRoute: PatientsPatientIdWorkspaceRoute,
+}
+
+const PatientsPatientIdRouteWithChildren =
+  PatientsPatientIdRoute._addFileChildren(PatientsPatientIdRouteChildren)
+
+interface PatientsRouteChildren {
+  PatientsPatientIdRoute: typeof PatientsPatientIdRouteWithChildren
+}
+
+const PatientsRouteChildren: PatientsRouteChildren = {
+  PatientsPatientIdRoute: PatientsPatientIdRouteWithChildren,
+}
+
+const PatientsRouteWithChildren = PatientsRoute._addFileChildren(
+  PatientsRouteChildren,
+)
+
+interface ReceptionRouteChildren {
+  ReceptionAppointmentsRoute: typeof ReceptionAppointmentsRoute
+  ReceptionBillingRoute: typeof ReceptionBillingRoute
+  ReceptionFollowupsRoute: typeof ReceptionFollowupsRoute
+  ReceptionPatientsRoute: typeof ReceptionPatientsRoute
+  ReceptionIndexRoute: typeof ReceptionIndexRoute
+}
+
+const ReceptionRouteChildren: ReceptionRouteChildren = {
+  ReceptionAppointmentsRoute: ReceptionAppointmentsRoute,
+  ReceptionBillingRoute: ReceptionBillingRoute,
+  ReceptionFollowupsRoute: ReceptionFollowupsRoute,
+  ReceptionPatientsRoute: ReceptionPatientsRoute,
+  ReceptionIndexRoute: ReceptionIndexRoute,
+}
+
+const ReceptionRouteWithChildren = ReceptionRoute._addFileChildren(
+  ReceptionRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  AnalyticsRoute: AnalyticsRoute,
+  AppointmentsRoute: AppointmentsRoute,
+  AuthRoute: AuthRoute,
+  BillingRoute: BillingRoute,
+  DoctorRoute: DoctorRouteWithChildren,
+  ExportsRoute: ExportsRoute,
+  HomeopathyRoute: HomeopathyRouteWithChildren,
+  ImportsRoute: ImportsRoute,
+  OnboardingRoute: OnboardingRoute,
+  PatientsRoute: PatientsRouteWithChildren,
+  PrescriptionsRoute: PrescriptionsRoute,
+  QueueRoute: QueueRoute,
+  ReceptionRoute: ReceptionRouteWithChildren,
+  RemindersRoute: RemindersRoute,
+  SettingsRoute: SettingsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StaffRoute: StaffRoute,
+  ConsultationPatientIdRoute: ConsultationPatientIdRoute,
+  PrescriptionVisitIdRoute: PrescriptionVisitIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

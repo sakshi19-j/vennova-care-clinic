@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useEffect } from "react";
 import {
   Outlet,
   Link,
@@ -7,10 +8,11 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { AppLayout } from "@/components/clinic/AppLayout";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/hooks/use-auth";
 
 function NotFoundComponent() {
   return (
@@ -37,9 +39,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -78,18 +77,35 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { name: "author", content: "Vedic Homeopathic Clinic" },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Vedic Homeopathic Clinic" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { property: "og:title", content: "Lovable App" },
+      { name: "twitter:title", content: "Lovable App" },
+      { name: "description", content: "Vital Clinic Flow is a production clinic management application for streamlining patient care and operations." },
+      { property: "og:description", content: "Vital Clinic Flow is a production clinic management application for streamlining patient care and operations." },
+      { name: "twitter:description", content: "Vital Clinic Flow is a production clinic management application for streamlining patient care and operations." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2a0906b4-5c6c-4793-8cab-67cc950a5e26/id-preview-4d0e58a3--22a33134-8e41-45f5-97a0-c1830502b0cf.lovable.app-1781338511914.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2a0906b4-5c6c-4793-8cab-67cc950a5e26/id-preview-4d0e58a3--22a33134-8e41-45f5-97a0-c1830502b0cf.lovable.app-1781338511914.png" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "MedicalBusiness",
+          name: "Vedic Homeopathic Clinic",
+          url: "https://care-flow-fix.lovable.app",
+          medicalSpecialty: ["Homeopathic", "GeneralPractice"],
+        }),
       },
     ],
   }),
@@ -99,7 +115,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: ReactNode }) {
+function RootShell({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -116,10 +132,61 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const oldPrefix = "sb-grsqrlllyhtprhrjicfn";
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(oldPrefix)) {
+        localStorage.removeItem(key);
+      }
+    }
+  }, []);
+
+  // Multi-clinic isolation: when the signed-in identity changes, drop every
+  // cached row (React Query + the in-memory queue store) so clinic A never
+  // sees clinic B's patients, queue, billing, followups, or analytics.
+  useEffect(() => {
+    let cancelled = false;
+    let lastUserId: string | null | undefined;
+    (async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { resetClinicCaches } = await import("@/lib/queue-store");
+      const { data } = await supabase.auth.getSession();
+      lastUserId = data.session?.user?.id ?? null;
+      const { data: sub } = supabase.auth.onAuthStateChange(async (evt, s) => {
+        if (cancelled) return;
+        if (evt !== "SIGNED_IN" && evt !== "SIGNED_OUT" && evt !== "USER_UPDATED") return;
+        const nextId = s?.user?.id ?? null;
+        if (evt === "SIGNED_OUT") {
+          await queryClient.cancelQueries();
+          queryClient.clear();
+          resetClinicCaches();
+          lastUserId = null;
+          return;
+        }
+        if (nextId !== lastUserId) {
+          // Identity changed — purge stale tenant data before refetching.
+          await queryClient.cancelQueries();
+          queryClient.clear();
+          resetClinicCaches();
+          lastUserId = nextId;
+        }
+      });
+      return () => sub.subscription.unsubscribe();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <AuthProvider>
+        <AppLayout />
+        <Toaster />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
+
