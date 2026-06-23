@@ -235,14 +235,44 @@ const ACTIVE_QUEUE_STATUSES: ReadonlySet<QueueStatus> = new Set([
   "BILLING_PENDING",
 ]);
 
+export function joinPatientName(raw: any): string {
+  if (!raw) return "";
+  const direct =
+    raw.patient_name ??
+    raw.full_name ??
+    raw.patient?.full_name ??
+    raw.patient?.patient_name;
+  if (direct && String(direct).trim()) return String(direct).trim();
+  const parts = [
+    raw.patient?.first_name ?? raw.first_name ?? raw.patient_first_name,
+    raw.patient?.middle_name ?? raw.middle_name ?? raw.patient_middle_name,
+    raw.patient?.last_name ?? raw.last_name ?? raw.patient_last_name,
+  ].filter(Boolean);
+  return parts.join(" ").trim();
+}
+
+export function joinPatientPhone(raw: any): string {
+  if (!raw) return "";
+  return String(
+    raw.patient_phone ??
+    raw.phone ??
+    raw.phone_mobile ??
+    raw.mobile ??
+    raw.patient?.phone ??
+    raw.patient?.phone_mobile ??
+    raw.patient?.mobile ??
+    "",
+  );
+}
+
 function toQueueRow(raw: any): RxQueueRow {
   const visit_type: VisitType = raw.visit_type === "APPOINTMENT" ? "APPOINTMENT" : "WALKIN";
   return {
     queue_id: String(raw.queue_id ?? raw.id ?? `q-${Math.random().toString(36).slice(2)}`),
     token_number: Number(raw.token_number ?? raw.token ?? 0),
-    patient_id: String(raw.patient_id ?? ""),
-    patient_name: String(raw.patient_name ?? raw.full_name ?? "Patient"),
-    patient_phone: String(raw.patient_phone ?? raw.phone ?? ""),
+    patient_id: String(raw.patient_id ?? raw.patient?.id ?? ""),
+    patient_name: joinPatientName(raw),
+    patient_phone: joinPatientPhone(raw),
     visit_id: raw.visit_id ? String(raw.visit_id) : undefined,
     status: normalizeQueueStatus(raw.status),
     visit_type,
@@ -252,7 +282,7 @@ function toQueueRow(raw: any): RxQueueRow {
     fee: Number(raw.fee ?? FEE_BY_TYPE[visit_type]),
     paid: Boolean(raw.paid ?? false),
     paid_with: (raw.paid_with ?? null) as PaidWith,
-    reg_no: raw.reg_no ?? undefined,
+    reg_no: raw.reg_no ?? raw.patient?.reg_no ?? undefined,
     created_at: raw.check_in_time
       ? new Date(raw.check_in_time).getTime()
       : raw.created_at
