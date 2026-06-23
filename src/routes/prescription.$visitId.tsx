@@ -227,7 +227,7 @@ function PrescriptionPage() {
     );
   }
 
-  const patientName = visit.patient?.full_name || "Patient";
+  const patientName = visit.patient?.full_name || "";
 
   return (
     <div className="max-w-[1200px] mx-auto pb-16">

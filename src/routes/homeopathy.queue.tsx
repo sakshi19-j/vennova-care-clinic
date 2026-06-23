@@ -274,7 +274,7 @@ function WalkInSearch({ onClose, onSelect }: { onClose: () => void; onSelect: (p
               {results.map((p) => {
                 const rec = p as unknown as Record<string, unknown>;
                 const name = (typeof rec.full_name === "string" && rec.full_name) ||
-                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "Patient";
+                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
                 const phone = (typeof rec.phone === "string" && rec.phone) || p.phone_mobile || "";
                 const reg = typeof p.reg_no === "number" && p.reg_no > 0 ? `VNC-${String(p.reg_no).padStart(4, "0")}` : "";
                 return (

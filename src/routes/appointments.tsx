@@ -67,7 +67,7 @@ function Appointments() {
 }
 
 function Row({ a }: { a: Appointment }) {
-  const name = a.patient_name || a.name || "Patient";
+  const name = a.patient_name || a.name || "";
   const when = a.slot_at || a.time;
   const time = when ? new Date(String(when)).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—";
   const status = String(a.status ?? "").toUpperCase();

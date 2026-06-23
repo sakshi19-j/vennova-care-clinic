@@ -101,7 +101,7 @@ type LastVisit = {
 function displayName(p?: Patient | null): string {
   if (!p) return "Patient";
   if (p.full_name) return p.full_name;
-  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "Patient";
+  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
 }
 function displayPhone(p?: Patient | null): string {
   if (!p) return "";

@@ -100,7 +100,7 @@ function Reminders() {
 
 function ReminderRow({ r, onChanged }: { r: Reminder; onChanged: () => void }) {
   const id = reminderId(r);
-  const name = r.patient_name || "Patient";
+  const name = r.patient_name || "";
   const status = String(r.status ?? "PENDING").toUpperCase();
 
   const send = useMutation({
