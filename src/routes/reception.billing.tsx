@@ -184,6 +184,11 @@ function BillingPage() {
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
       qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
       qc.invalidateQueries({ queryKey: ["analytics"] });
+      // Refresh followups — scheduling a reminder above creates rows the
+      // followups page must display immediately.
+      qc.invalidateQueries({ queryKey: ["followups", "today"] });
+      qc.invalidateQueries({ queryKey: ["followups", "upcoming"] });
+      qc.invalidateQueries({ queryKey: ["reminders", "due"] });
       // Hard refetch shared queue store so doctor + reception stay in sync.
       void loadQueue();
     } catch (e) {
