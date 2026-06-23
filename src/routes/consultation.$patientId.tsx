@@ -99,7 +99,7 @@ type LastVisit = {
 };
 
 function displayName(p?: Patient | null): string {
-  if (!p) return "Patient";
+  if (!p) return "";
   if (p.full_name) return p.full_name;
   return [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
 }
