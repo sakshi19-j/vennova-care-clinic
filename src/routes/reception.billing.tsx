@@ -104,12 +104,15 @@ function BillingPage() {
   const pendingQ = useQuery({
     queryKey: ["billing-pending"],
     queryFn: async () => asArray<PendingBill>(await api.get("/billing/pending")),
-    refetchInterval: 15000,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 
-  // Polling so doctor finalization shows up live (every 15s per spec)
+  // Poll a bit faster than the query interval so doctor finalizations show
+  // up in the billing queue within seconds, not the next minute.
   useEffect(() => {
-    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["billing-pending"] }), 15000);
+    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["billing-pending"] }), 8000);
     return () => clearInterval(id);
   }, [qc]);
 
