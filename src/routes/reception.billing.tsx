@@ -28,7 +28,23 @@ type PendingBill = {
   id?: string;
   patient_id?: string;
   patient_name?: string;
-  patient?: { id?: string; full_name?: string; phone?: string };
+  full_name?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_phone?: string;
+  phone?: string;
+  patient?: {
+    id?: string;
+    full_name?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    phone?: string;
+    phone_mobile?: string;
+  };
   token_number?: number;
   fee?: number;
   amount?: number;
@@ -38,11 +54,6 @@ type PendingBill = {
   closed_at?: string;
   created_at?: string;
 };
-
-// Fallback consultation fee when the backend doesn't yet have one persisted
-// for a visit. Prevents the "₹0 collected" bug while still allowing real
-// per-visit fees to take precedence.
-const DEFAULT_CONSULTATION_FEE = 500;
 
 function errMsg(e: unknown): string {
   if (e instanceof ApiError) {
@@ -68,7 +79,14 @@ function billId(b: PendingBill): string {
   return String(b.visit_id || b.id || "");
 }
 function billName(b: PendingBill): string {
-  return b.patient_name || b.patient?.full_name || "Patient";
+  const direct = b.patient_name || b.full_name || b.patient?.full_name;
+  if (direct && direct.trim()) return direct.trim();
+  const parts = [
+    b.patient?.first_name ?? b.first_name ?? b.patient_first_name,
+    b.patient?.middle_name ?? b.middle_name,
+    b.patient?.last_name ?? b.last_name ?? b.patient_last_name,
+  ].filter(Boolean);
+  return parts.join(" ").trim();
 }
 function billPatientId(b: PendingBill): string {
   return b.patient_id || b.patient?.id || "";
@@ -77,8 +95,7 @@ function billFee(b: PendingBill): number {
   const raw = Number(
     b.fee ?? b.consultation_fee ?? b.amount ?? b.total_amount ?? 0,
   );
-  if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_CONSULTATION_FEE;
-  return raw;
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
 }
 
 function BillingPage() {
