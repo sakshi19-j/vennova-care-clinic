@@ -473,6 +473,7 @@ function ConsultationPage() {
         { timeoutMs: 30000 },
       );
 
+      clearDraft();
       toast.success("Consultation saved", { id: toastId });
       navigate({
         to: "/prescription/$visitId",
