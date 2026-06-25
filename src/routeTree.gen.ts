@@ -51,6 +51,7 @@ import { Route as AdminSettingsIndexRouteImport } from './routes/admin.settings.
 import { Route as PatientsPatientIdWorkspaceRouteImport } from './routes/patients.$patientId.workspace'
 import { Route as HomeopathyPatientsIdRouteImport } from './routes/homeopathy.patients.$id'
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor.patients.$id'
+import { Route as ConsultationEditVisitIdRouteImport } from './routes/consultation.edit.$visitId'
 import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
 import { Route as AdminSettingsPrescriptionRouteImport } from './routes/admin.settings.prescription'
 import { Route as AdminSettingsBillingRouteImport } from './routes/admin.settings.billing'
@@ -267,6 +268,11 @@ const DoctorPatientsIdRoute = DoctorPatientsIdRouteImport.update({
   path: '/patients/$id',
   getParentRoute: () => DoctorRoute,
 } as any)
+const ConsultationEditVisitIdRoute = ConsultationEditVisitIdRouteImport.update({
+  id: '/consultation/edit/$visitId',
+  path: '/consultation/edit/$visitId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSettingsSubscriptionRoute =
   AdminSettingsSubscriptionRouteImport.update({
     id: '/subscription',
@@ -333,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
   '/patients/$patientId/workspace': typeof PatientsPatientIdWorkspaceRoute
@@ -376,6 +383,7 @@ export interface FileRoutesByTo {
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
   '/patients/$patientId/workspace': typeof PatientsPatientIdWorkspaceRoute
@@ -425,6 +433,7 @@ export interface FileRoutesById {
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
   '/patients/$patientId/workspace': typeof PatientsPatientIdWorkspaceRoute
@@ -475,6 +484,7 @@ export interface FileRouteTypes {
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
     | '/admin/settings/subscription'
+    | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
     | '/patients/$patientId/workspace'
@@ -518,6 +528,7 @@ export interface FileRouteTypes {
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
     | '/admin/settings/subscription'
+    | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
     | '/patients/$patientId/workspace'
@@ -566,6 +577,7 @@ export interface FileRouteTypes {
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
     | '/admin/settings/subscription'
+    | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
     | '/patients/$patientId/workspace'
@@ -594,6 +606,7 @@ export interface RootRouteChildren {
   StaffRoute: typeof StaffRoute
   ConsultationPatientIdRoute: typeof ConsultationPatientIdRoute
   PrescriptionVisitIdRoute: typeof PrescriptionVisitIdRoute
+  ConsultationEditVisitIdRoute: typeof ConsultationEditVisitIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -892,6 +905,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorPatientsIdRouteImport
       parentRoute: typeof DoctorRoute
     }
+    '/consultation/edit/$visitId': {
+      id: '/consultation/edit/$visitId'
+      path: '/consultation/edit/$visitId'
+      fullPath: '/consultation/edit/$visitId'
+      preLoaderRoute: typeof ConsultationEditVisitIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/settings/subscription': {
       id: '/admin/settings/subscription'
       path: '/subscription'
@@ -1061,17 +1081,8 @@ const rootRouteChildren: RootRouteChildren = {
   StaffRoute: StaffRoute,
   ConsultationPatientIdRoute: ConsultationPatientIdRoute,
   PrescriptionVisitIdRoute: PrescriptionVisitIdRoute,
+  ConsultationEditVisitIdRoute: ConsultationEditVisitIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
