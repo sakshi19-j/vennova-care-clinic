@@ -72,7 +72,13 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.first_name.trim()) return toast.error("First name is required");
-    if (!/^[0-9+\s-]{7,}$/.test(f.phone_mobile.trim())) return toast.error("Enter a valid mobile number");
+    {
+      const raw = f.phone_mobile.trim();
+      const digits = raw.replace(/[^\d]/g, "");
+      if (!/^[+\d\s-]{6,20}$/.test(raw) || digits.length < 6 || digits.length > 15) {
+        return toast.error("Enter a valid mobile number (6–15 digits, +, spaces allowed)");
+      }
+    }
 
     const fullName = [f.title, f.first_name, f.middle_name, f.last_name]
       .map((s) => s.trim()).filter(Boolean).join(" ");
@@ -103,9 +109,14 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
 
     setSaving(true);
     try {
-      const created = await api.post<{ id?: string; reg_no?: string }>("/patients", payload);
-      // Mirror into local store so the patients table updates immediately.
-      const local = queueActions.createPatient(fullName, f.phone_mobile.trim(), {
+      const created = await api.post<{ id?: string; reg_no?: string | number }>("/patients", payload);
+      if (!created?.id) {
+        toast.error("Patient created but no id returned");
+        return;
+      }
+      const reg_no = created.reg_no != null ? String(created.reg_no) : "";
+      // Mirror into local store using the backend id (never fake)
+      queueActions.createPatient(created.id, reg_no, fullName, f.phone_mobile.trim(), {
         city: f.res_city,
         patient_type: "HOMEOPATHY",
         age: f.age ? Number(f.age) : undefined,
@@ -114,10 +125,8 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
         email: f.email || undefined,
         address: f.res_address || undefined,
       });
-      const id = created?.id ?? local.patient.id;
-      const reg_no = created?.reg_no ?? local.patient.reg_no;
-      toast.success(`Patient ${reg_no} registered`);
-      onRegistered?.({ id, full_name: fullName, reg_no, phone: f.phone_mobile.trim() });
+      toast.success(`Patient ${reg_no || created.id} registered`);
+      onRegistered?.({ id: created.id, full_name: fullName, reg_no, phone: f.phone_mobile.trim() });
       onOpenChange(false);
       reset();
     } catch (err) {
@@ -188,15 +197,15 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
 
         <div className={Section}>Contact</div>
         <div className="grid grid-cols-12 gap-3">
-          <div className="col-span-4"><label className={L}>Mobile *</label><input inputMode="tel" placeholder="+91 98xxx xxxxx" className={T} value={f.phone_mobile} onChange={(e) => set("phone_mobile", e.target.value)} /></div>
-          <div className="col-span-4"><label className={L}>Residence phone</label><input inputMode="tel" className={T} value={f.phone_res} onChange={(e) => set("phone_res", e.target.value)} /></div>
+          <div className="col-span-4"><label className={L}>Mobile *</label><input type="tel" autoComplete="tel" inputMode="tel" maxLength={20} placeholder="+91 98xxx xxxxx" className={`${T} tabular-nums`} value={f.phone_mobile} onChange={(e) => set("phone_mobile", e.target.value)} /></div>
+          <div className="col-span-4"><label className={L}>Residence phone</label><input type="tel" autoComplete="tel" inputMode="tel" maxLength={20} className={`${T} tabular-nums`} value={f.phone_res} onChange={(e) => set("phone_res", e.target.value)} /></div>
           <div className="col-span-4"><label className={L}>Email</label><input type="email" className={T} value={f.email} onChange={(e) => set("email", e.target.value)} /></div>
         </div>
 
         <div className={Section}>Referral</div>
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-6"><label className={L}>Referred by (name)</label><input className={T} value={f.referred_by_name} onChange={(e) => set("referred_by_name", e.target.value)} placeholder="e.g. Existing patient or doctor" /></div>
-          <div className="col-span-6"><label className={L}>Referred by (phone)</label><input inputMode="tel" className={T} value={f.referred_by_contact} onChange={(e) => set("referred_by_contact", e.target.value)} /></div>
+          <div className="col-span-6"><label className={L}>Referred by (phone)</label><input type="tel" autoComplete="tel" inputMode="tel" maxLength={20} className={`${T} tabular-nums`} value={f.referred_by_contact} onChange={(e) => set("referred_by_contact", e.target.value)} /></div>
         </div>
 
         <div className={Section}>Preferences</div>

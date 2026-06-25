@@ -2,7 +2,6 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { useEffect } from "react";
 import { Stethoscope, ListChecks, Bell } from "lucide-react";
 import { useQueue, refreshAll } from "@/lib/queue-store";
-import { rxPatients } from "@/lib/reception-data";
 
 
 export const Route = createFileRoute("/homeopathy")({
@@ -10,10 +9,12 @@ export const Route = createFileRoute("/homeopathy")({
   component: HomeopathyLayout,
 });
 
-// Helper used across this module: only patients eligible for homeopathy
-export function isHomeoPatient(patientId: string) {
-  const p = rxPatients.find((x) => x.id === patientId);
-  return p ? p.patient_type === "HOMEOPATHY" || p.patient_type === "BOTH" : true;
+// Helper used across this module. Backend queue is already scoped to the
+// clinic; treat every queued patient as eligible. (Per-discipline filtering
+// will move server-side when clinic-type onboarding ships.)
+export function isHomeoPatient(_patientId: string) {
+  void _patientId;
+  return true;
 }
 
 function HomeopathyLayout() {

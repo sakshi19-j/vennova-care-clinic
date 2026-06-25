@@ -15,6 +15,7 @@ import {
   Clock,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
+import { loadQueue } from "@/lib/queue-store";
 
 export const Route = createFileRoute("/reception/billing")({
   component: BillingPage,
@@ -27,10 +28,28 @@ type PendingBill = {
   id?: string;
   patient_id?: string;
   patient_name?: string;
-  patient?: { id?: string; full_name?: string; phone?: string };
+  full_name?: string;
+  first_name?: string;
+  middle_name?: string;
+  last_name?: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  patient_phone?: string;
+  phone?: string;
+  patient?: {
+    id?: string;
+    full_name?: string;
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    phone?: string;
+    phone_mobile?: string;
+  };
   token_number?: number;
   fee?: number;
   amount?: number;
+  consultation_fee?: number;
+  total_amount?: number;
   visit_type?: string;
   closed_at?: string;
   created_at?: string;
@@ -49,7 +68,7 @@ function asArray<T>(x: unknown): T[] {
   if (Array.isArray(x)) return x as T[];
   if (x && typeof x === "object") {
     const o = x as Record<string, unknown>;
-    for (const k of ["items", "data", "results", "pending", "bills"]) {
+    for (const k of ["pending_visits", "items", "data", "results", "pending", "bills"]) {
       if (Array.isArray(o[k])) return o[k] as T[];
     }
   }
@@ -60,13 +79,23 @@ function billId(b: PendingBill): string {
   return String(b.visit_id || b.id || "");
 }
 function billName(b: PendingBill): string {
-  return b.patient_name || b.patient?.full_name || "Patient";
+  const direct = b.patient_name || b.full_name || b.patient?.full_name;
+  if (direct && direct.trim()) return direct.trim();
+  const parts = [
+    b.patient?.first_name ?? b.first_name ?? b.patient_first_name,
+    b.patient?.middle_name ?? b.middle_name,
+    b.patient?.last_name ?? b.last_name ?? b.patient_last_name,
+  ].filter(Boolean);
+  return parts.join(" ").trim();
 }
 function billPatientId(b: PendingBill): string {
   return b.patient_id || b.patient?.id || "";
 }
 function billFee(b: PendingBill): number {
-  return Number(b.fee ?? b.amount ?? 0);
+  const raw = Number(
+    b.fee ?? b.consultation_fee ?? b.amount ?? b.total_amount ?? 0,
+  );
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
 }
 
 function BillingPage() {
@@ -75,12 +104,15 @@ function BillingPage() {
   const pendingQ = useQuery({
     queryKey: ["billing-pending"],
     queryFn: async () => asArray<PendingBill>(await api.get("/billing/pending")),
-    refetchInterval: 10000,
+    refetchInterval: 8000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
   });
 
-  // Polling so doctor finalization shows up live
+  // Poll a bit faster than the query interval so doctor finalizations show
+  // up in the billing queue within seconds, not the next minute.
   useEffect(() => {
-    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["billing-pending"] }), 10000);
+    const id = setInterval(() => qc.invalidateQueries({ queryKey: ["billing-pending"] }), 8000);
     return () => clearInterval(id);
   }, [qc]);
 
@@ -100,14 +132,28 @@ function BillingPage() {
     }
     setPaying(id);
     const toastId = toast.loading(`Collecting ${mode} ₹${billFee(bill)}…`);
+
+    // Optimistically remove from billing queue so it disappears INSTANTLY.
+    qc.setQueryData<PendingBill[]>(["billing-pending"], (prev) =>
+      (prev ?? []).filter((b) => billId(b) !== id),
+    );
+
     try {
-      // 1) Mark paid + receipt PDF
-      await api.post(`/billing/receipt/${encodeURIComponent(id)}`, {
+      // 1) Close visit with chosen payment_mode + fee → status COMPLETED
+      await api.post(`/visits/${encodeURIComponent(id)}/close`, {
+        fee: billFee(bill),
+        payment_mode: mode,
+        disease_type: "default",
+        followup_channel: "WHATSAPP",
+      });
+
+      // 2) Mark paid (canonical billing endpoint) — receipt PDF is generated server-side.
+      await api.post(`/billing/${encodeURIComponent(id)}/mark-paid`, {
         payment_mode: mode,
         amount: billFee(bill),
       });
 
-      // 2) Thank-you WhatsApp (non-fatal)
+      // 3) Thank-you WhatsApp (non-fatal)
       if (pid) {
         try {
           await api.post(`/whatsapp/send/thankyou/${encodeURIComponent(pid)}`);
@@ -116,7 +162,7 @@ function BillingPage() {
         }
       }
 
-      // 3) Schedule follow-up reminders (3/7/15 days) — non-fatal
+      // 4) Schedule follow-up reminders (non-fatal)
       try {
         await api.post("/reminders/schedule", {
           visit_id: id,
@@ -134,7 +180,20 @@ function BillingPage() {
         ...arr,
       ]);
       qc.invalidateQueries({ queryKey: ["billing-pending"] });
+      qc.invalidateQueries({ queryKey: ["billing"] });
+      qc.invalidateQueries({ queryKey: ["queue", "today"] });
+      qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
+      // Refresh followups — scheduling a reminder above creates rows the
+      // followups page must display immediately.
+      qc.invalidateQueries({ queryKey: ["followups", "today"] });
+      qc.invalidateQueries({ queryKey: ["followups", "upcoming"] });
+      qc.invalidateQueries({ queryKey: ["reminders", "due"] });
+      // Hard refetch shared queue store so doctor + reception stay in sync.
+      void loadQueue();
     } catch (e) {
+      // Roll back the optimistic removal on failure.
+      qc.invalidateQueries({ queryKey: ["billing-pending"] });
       toast.error(errMsg(e), { id: toastId });
     } finally {
       setPaying(null);
@@ -174,7 +233,7 @@ function BillingPage() {
               <div className="size-12 rounded-full bg-muted grid place-items-center mb-3">
                 <AlertCircle className="size-5 text-muted-foreground" />
               </div>
-              <h3 className="font-display text-base">No payments pending</h3>
+              <h3 className="font-display text-base">No pending payments</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs">
                 Patients sent from the doctor will appear here for collection.
               </p>
@@ -190,13 +249,15 @@ function BillingPage() {
                     className="px-4 sm:px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap"
                   >
                     {r.token_number !== undefined && (
-                      <span className="font-mono text-sm w-10 text-muted-foreground shrink-0">
+                      <span className="font-mono text-sm w-14 text-right tabular-nums text-muted-foreground shrink-0">
                         #{r.token_number}
                       </span>
                     )}
-                    <Avatar name={billName(r)} />
+                    <Avatar name={billName(r) || "?"} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{billName(r)}</div>
+                      <div className="font-medium truncate">
+                        {billName(r) || <span className="text-muted-foreground italic">Unnamed patient</span>}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {r.visit_type || "Consultation"}
                       </div>

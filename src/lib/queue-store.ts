@@ -74,28 +74,12 @@ const FEE_BY_TYPE: Record<VisitType, number> = {
 // State
 // ───────────────────────────────────────────────────────────
 let state: RxQueueRow[] = [];
-let patients: ExtendedPatient[] = rxPatients.map((p) => ({
-  ...p,
-  history: [
-    // seed some history for demo
-    ...(p.total_visits > 0
-      ? [
-          {
-            visit_id: `v-hist-${p.id}-1`,
-            date: p.last_visit ?? "2026-05-01",
-            chief_complaint: "Routine checkup",
-            doctor_name: "Dr. R. Sharma",
-            diagnosis: "General wellness",
-            prescription: "Rest & fluids",
-            fee: FEE_BY_TYPE["APPOINTMENT"],
-            paid_with: "UPI" as PaymentMode,
-          },
-        ]
-      : []),
-  ],
-}));
-let appointments: RxAppointment[] = [...rxAppointments];
-let bills: RxBill[] = [...rxPendingBills];
+// FIX 10 — no mock seeding. Live API loaders populate these.
+let patients: ExtendedPatient[] = [];
+let appointments: RxAppointment[] = [];
+let bills: RxBill[] = [];
+// Keep mock imports referenced so TS doesn't drop them; unused at runtime.
+void rxPatients; void rxAppointments; void rxPendingBills; void FEE_BY_TYPE;
 let recent: RecentAction[] = [];
 let calls: CallNotification[] = [];
 let undoStack: RxQueueRow[][] = [];
@@ -165,9 +149,10 @@ function startQueuePolling() {
   queuePollSubscribers += 1;
   void loadQueue();
   if (!queuePoller) {
+    // FIX 5: poll every 15s
     queuePoller = setInterval(() => {
       void loadQueue();
-    }, 10_000);
+    }, 15_000);
   }
   return () => {
     queuePollSubscribers = Math.max(0, queuePollSubscribers - 1);
@@ -231,12 +216,53 @@ function asArray<T>(x: unknown): T[] {
   return [];
 }
 
-function normalizeQueueStatus(raw: unknown): QueueStatus {
+// Normalize EVERY backend status into one of the 4 canonical lifecycle states.
+// WAITING · IN_TREATMENT · BILLING_PENDING · COMPLETED
+export function normalizeQueueStatus(raw: unknown): QueueStatus {
   const s = String(raw ?? "WAITING").toUpperCase();
-  if (s === "IN_CONSULTATION") return "IN_TREATMENT";
-  if (s === "BILLING" || s === "COMPLETED") return "DONE";
-  if (["WAITING", "CHECKED_IN", "IN_TREATMENT", "DONE", "NO_SHOW", "CANCELLED"].includes(s)) return s as QueueStatus;
+  if (s === "IN_CONSULTATION" || s === "IN_TREATMENT") return "IN_TREATMENT";
+  if (s === "BILLING" || s === "PENDING_BILLING" || s === "BILLING_PENDING") return "BILLING_PENDING";
+  if (s === "DONE" || s === "COMPLETED" || s === "NO_SHOW" || s === "CANCELLED") return "COMPLETED";
+  // WAITING, CHECKED_IN, anything else → WAITING (active queue)
   return "WAITING";
+}
+
+// The only statuses that allow a patient to be re-added to today's queue.
+// COMPLETED must NEVER block re-add — it's a terminal state.
+const ACTIVE_QUEUE_STATUSES: ReadonlySet<QueueStatus> = new Set([
+  "WAITING",
+  "IN_TREATMENT",
+  "BILLING_PENDING",
+]);
+
+export function joinPatientName(raw: any): string {
+  if (!raw) return "";
+  const direct =
+    raw.patient_name ??
+    raw.full_name ??
+    raw.patient?.full_name ??
+    raw.patient?.patient_name;
+  if (direct && String(direct).trim()) return String(direct).trim();
+  const parts = [
+    raw.patient?.first_name ?? raw.first_name ?? raw.patient_first_name,
+    raw.patient?.middle_name ?? raw.middle_name ?? raw.patient_middle_name,
+    raw.patient?.last_name ?? raw.last_name ?? raw.patient_last_name,
+  ].filter(Boolean);
+  return parts.join(" ").trim();
+}
+
+export function joinPatientPhone(raw: any): string {
+  if (!raw) return "";
+  return String(
+    raw.patient_phone ??
+    raw.phone ??
+    raw.phone_mobile ??
+    raw.mobile ??
+    raw.patient?.phone ??
+    raw.patient?.phone_mobile ??
+    raw.patient?.mobile ??
+    "",
+  );
 }
 
 function toQueueRow(raw: any): RxQueueRow {
@@ -244,9 +270,9 @@ function toQueueRow(raw: any): RxQueueRow {
   return {
     queue_id: String(raw.queue_id ?? raw.id ?? `q-${Math.random().toString(36).slice(2)}`),
     token_number: Number(raw.token_number ?? raw.token ?? 0),
-    patient_id: String(raw.patient_id ?? ""),
-    patient_name: String(raw.patient_name ?? raw.full_name ?? "Patient"),
-    patient_phone: String(raw.patient_phone ?? raw.phone ?? ""),
+    patient_id: String(raw.patient_id ?? raw.patient?.id ?? ""),
+    patient_name: joinPatientName(raw),
+    patient_phone: joinPatientPhone(raw),
     visit_id: raw.visit_id ? String(raw.visit_id) : undefined,
     status: normalizeQueueStatus(raw.status),
     visit_type,
@@ -256,8 +282,13 @@ function toQueueRow(raw: any): RxQueueRow {
     fee: Number(raw.fee ?? FEE_BY_TYPE[visit_type]),
     paid: Boolean(raw.paid ?? false),
     paid_with: (raw.paid_with ?? null) as PaidWith,
-    reg_no: raw.reg_no ?? undefined,
-    created_at: raw.created_at ? new Date(raw.created_at).getTime() : Date.now(),
+    reg_no: raw.reg_no ?? raw.patient?.reg_no ?? undefined,
+    created_at: raw.check_in_time
+      ? new Date(raw.check_in_time).getTime()
+      : raw.created_at
+      ? new Date(raw.created_at).getTime()
+      : Date.now(),
+
   };
 }
 
@@ -311,9 +342,9 @@ export async function loadAppointments(): Promise<void> {
     if (Array.isArray(rows)) {
       appointments = rows.map((a: any) => ({
         id: String(a.id ?? a.appointment_id),
-        patient_id: String(a.patient_id ?? ""),
-        patient_name: String(a.patient_name ?? a.full_name ?? "Patient"),
-        patient_phone: String(a.patient_phone ?? a.phone ?? ""),
+        patient_id: String(a.patient_id ?? a.patient?.id ?? ""),
+        patient_name: joinPatientName(a),
+        patient_phone: joinPatientPhone(a),
         scheduled_at: String(a.scheduled_at ?? a.slot_at ?? new Date().toISOString()),
         visit_type: "HOMEOPATHY",
         status: (a.status ?? "SCHEDULED") as ApptStatus,
@@ -331,6 +362,27 @@ export async function refreshAll(): Promise<void> {
   await Promise.allSettled([loadQueue(), loadPatients(), loadAppointments()]);
 }
 
+/**
+ * Multi-clinic safety: wipe ALL in-memory clinic data so signing in as a
+ * different user (or different clinic) never sees the previous session's
+ * patients/queue/billing/reminders. Called from the root auth listener on
+ * SIGNED_IN / SIGNED_OUT.
+ */
+export function resetClinicCaches(): void {
+  state = [];
+  patients = [];
+  appointments = [];
+  bills = [];
+  reminders = [];
+  remindersLoading = false;
+  remindersError = null;
+  recent = [];
+  calls = [];
+  undoStack = [];
+  emit();
+}
+
+
 
 // ───────────────────────────────────────────────────────────
 // Actions
@@ -345,10 +397,10 @@ export const queueActions = {
     state = state.map((q) => (q.queue_id === id ? { ...q, status } : q));
     emit();
   },
-  /** Move a queue row to BILLING (doctor finished, awaiting reception payment). */
+  /** Move a queue row to BILLING_PENDING (doctor finished, awaiting reception payment). */
   markBilling(id: string) {
     snapshot(`→ Billing`, id);
-    state = state.map((q) => (q.queue_id === id ? { ...q, status: "DONE" } : q));
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "BILLING_PENDING" } : q));
     emit();
   },
   checkIn(id: string) {
@@ -409,7 +461,7 @@ export const queueActions = {
       q.queue_id === id
         ? {
             ...q,
-            status: "DONE",
+            status: "COMPLETED",
             paid: true,
             paid_with: mode,
             fee: amount ?? q.fee,
@@ -450,7 +502,7 @@ export const queueActions = {
   },
   complete(id: string) {
     snapshot(`Completed`, id);
-    state = state.map((q) => (q.queue_id === id ? { ...q, status: "DONE" } : q));
+    state = state.map((q) => (q.queue_id === id ? { ...q, status: "COMPLETED" } : q));
     emit();
   },
   noShow(id: string) {
@@ -471,10 +523,12 @@ export const queueActions = {
     priority?: 0 | 1;
     notes?: string;
   }) {
+    const norm = (s: string) => s.replace(/\s+/g, "");
     const dupe = state.find((q) => {
       const samePatient = q.patient_id === item.patient_id;
-      const samePhone = q.patient_phone.replace(/\s+/g, "") === item.patient_phone.replace(/\s+/g, "");
-      return (samePatient || samePhone) && !["DONE", "COMPLETED", "NO_SHOW", "CANCELLED"].includes(q.status);
+      const samePhone = !!item.patient_phone && norm(q.patient_phone) === norm(item.patient_phone);
+      // Only an ACTIVE row blocks — COMPLETED (terminal) must never block.
+      return (samePatient || samePhone) && ACTIVE_QUEUE_STATUSES.has(q.status);
     });
     if (dupe) return { token: dupe.token_number, duplicate: true } as const;
     const created = await api.post<any>("/queue/add", {
@@ -488,13 +542,20 @@ export const queueActions = {
     const row = state.find((q) => q.patient_id === item.patient_id && q.status === "WAITING");
     return { token: Number(created?.token_number ?? row?.token_number ?? nextToken()), duplicate: false } as const;
   },
-  createPatient(name: string, phone: string, extra?: Partial<ExtendedPatient>) {
-    const existing = patients.find(
-      (p) => p.phone.replace(/\s+/g, "") === phone.replace(/\s+/g, ""),
-    );
+  /**
+   * Mirror a backend-created patient into the local store.
+   * Requires a real backend id + reg_no — never generates fake ids.
+   */
+  createPatient(
+    id: string,
+    reg_no: string,
+    name: string,
+    phone: string,
+    extra?: Partial<ExtendedPatient>,
+  ) {
+    if (!id) throw new Error("createPatient: backend id is required");
+    const existing = patients.find((p) => p.id === id);
     if (existing) return { patient: existing, created: false } as const;
-    const id = `p-${Date.now()}`;
-    const reg_no = `VHC-${1042 + patients.length + 1}`;
     const np: ExtendedPatient = {
       id,
       reg_no,
@@ -552,12 +613,14 @@ export const queueActions = {
     appointments = appointments.map((a) =>
       a.id === apptId ? { ...a, status: "COMPLETED" } : a,
     );
-    const patient = patients.find((p) => p.id === appt.patient_id);
-    if (patient) {
+    // Use appointment's own patient data — do NOT depend on the local
+    // patients cache (it may be empty when appointments are loaded from
+    // the backend before patients have been fetched).
+    if (appt.patient_id) {
       void queueActions.add({
-        patient_id: patient.id,
-        patient_name: patient.full_name,
-        patient_phone: patient.phone,
+        patient_id: appt.patient_id,
+        patient_name: appt.patient_name,
+        patient_phone: appt.patient_phone,
         visit_type: "APPOINTMENT",
         notes: appt.chief_complaint,
       });

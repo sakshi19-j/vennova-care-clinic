@@ -1,6 +1,6 @@
 // Mock data matching backend schemas (receptionist role)
 
-export type QueueStatus = "WAITING" | "CHECKED_IN" | "IN_TREATMENT" | "DONE" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
+export type QueueStatus = "WAITING" | "CHECKED_IN" | "IN_TREATMENT" | "BILLING_PENDING" | "DONE" | "COMPLETED" | "NO_SHOW" | "CANCELLED";
 export type VisitType = "WALKIN" | "APPOINTMENT";
 export type ClinicType = "HOMEOPATHY" | "ALLOPATHY";
 export type PatientType = "HOMEOPATHY" | "ALLOPATHY" | "BOTH";
@@ -25,17 +25,8 @@ export type RxPatient = {
   gender?: "MALE" | "FEMALE" | "OTHER";
 };
 
-export const rxPatients: RxPatient[] = [
-  { id: "p1", reg_no: "VHC-1042", full_name: "Anjali Mehta", phone: "+91 98200 11122", city: "Mumbai", patient_type: "HOMEOPATHY", total_visits: 12, last_visit: "2026-05-10", is_missed: false, age: 34, gender: "FEMALE" },
-  { id: "p2", reg_no: "VHC-1041", full_name: "Ravi Kumar", phone: "+91 99300 22113", city: "Pune", patient_type: "BOTH", total_visits: 8, last_visit: "2026-05-09", is_missed: false, age: 47, gender: "MALE" },
-  { id: "p3", reg_no: "VHC-1040", full_name: "Priya Singh", phone: "+91 90100 33214", city: "Mumbai", patient_type: "HOMEOPATHY", total_visits: 3, last_visit: "2026-05-06", is_missed: false, age: 28, gender: "FEMALE" },
-  { id: "p4", reg_no: "VHC-1039", full_name: "Mahesh Iyer", phone: "+91 98765 44315", city: "Thane", patient_type: "ALLOPATHY", total_visits: 21, last_visit: "2026-05-04", is_missed: false, age: 52, gender: "MALE" },
-  { id: "p5", reg_no: "VHC-1038", full_name: "Neha Gupta", phone: "+91 99887 55416", city: "Navi Mumbai", patient_type: "HOMEOPATHY", total_visits: 5, last_visit: "2026-04-27", is_missed: false, age: 31, gender: "FEMALE" },
-  { id: "p6", reg_no: "VHC-1037", full_name: "Sandeep Shah", phone: "+91 98123 66517", city: "Mumbai", patient_type: "BOTH", total_visits: 17, last_visit: "2026-04-13", is_missed: true, age: 60, gender: "MALE" },
-  { id: "p7", reg_no: "VHC-1036", full_name: "Kavita Rao", phone: "+91 98801 77711", city: "Pune", patient_type: "HOMEOPATHY", total_visits: 9, last_visit: "2026-05-08", is_missed: false, age: 41, gender: "FEMALE" },
-  { id: "p8", reg_no: "VHC-1035", full_name: "Arjun Patel", phone: "+91 90901 11220", city: "Mumbai", patient_type: "HOMEOPATHY", total_visits: 2, last_visit: "2026-05-04", is_missed: false, age: 7, gender: "MALE" },
-  { id: "p9", reg_no: "VHC-1034", full_name: "Sunita Desai", phone: "+91 98345 88823", city: "Mumbai", patient_type: "HOMEOPATHY", total_visits: 14, last_visit: "2026-03-21", is_missed: true, age: 58, gender: "FEMALE" },
-];
+// Live data only — populated by queue-store loaders from the backend.
+export const rxPatients: RxPatient[] = [];
 
 export type RxQueue = {
   queue_id: string;
@@ -74,17 +65,7 @@ export type RxAppointment = {
   notes?: string;
 };
 
-const today = new Date();
-const at = (h: number, m: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, m).toISOString();
-
-export const rxAppointments: RxAppointment[] = [
-  { id: "a1", patient_id: "p1", patient_name: "Anjali Mehta", patient_phone: "+91 98200 11122", scheduled_at: at(10, 0), visit_type: "HOMEOPATHY", status: "COMPLETED", chief_complaint: "Anxiety, insomnia", duration_mins: 30 },
-  { id: "a2", patient_id: "p2", patient_name: "Ravi Kumar", patient_phone: "+91 99300 22113", scheduled_at: at(10, 30), visit_type: "HOMEOPATHY", status: "CONFIRMED", chief_complaint: "Diabetes follow-up", duration_mins: 30 },
-  { id: "a3", patient_id: "p4", patient_name: "Mahesh Iyer", patient_phone: "+91 98765 44315", scheduled_at: at(11, 0), visit_type: "ALLOPATHY", status: "SCHEDULED", chief_complaint: "Chest discomfort", duration_mins: 45 },
-  { id: "a4", patient_id: "p7", patient_name: "Kavita Rao", patient_phone: "+91 98801 77711", scheduled_at: at(11, 45), visit_type: "HOMEOPATHY", status: "SCHEDULED", chief_complaint: "Migraine review", duration_mins: 30 },
-  { id: "a5", patient_id: "p3", patient_name: "Priya Singh", patient_phone: "+91 90100 33214", scheduled_at: at(14, 0), visit_type: "HOMEOPATHY", status: "SCHEDULED", chief_complaint: "Skin allergy", duration_mins: 30 },
-  { id: "a6", patient_id: "p9", patient_name: "Sunita Desai", patient_phone: "+91 98345 88823", scheduled_at: at(15, 30), visit_type: "HOMEOPATHY", status: "CANCELLED", chief_complaint: "Routine", duration_mins: 30 },
-];
+export const rxAppointments: RxAppointment[] = [];
 
 export type RxBill = {
   visit_id: string;
@@ -99,19 +80,15 @@ export type RxBill = {
   suggested_fee: number;
 };
 
-export const rxPendingBills: RxBill[] = [
-  { visit_id: "v-2055", queue_id: "q7", token_number: 13, patient_id: "p7", patient_name: "Kavita Rao", visit_type: "HOMEOPATHY", chief_complaint: "Migraine review", doctor_name: "Dr. R. Sharma", payment_status: "PENDING", suggested_fee: 600 },
-  { visit_id: "v-2054", queue_id: "q9", token_number: 11, patient_id: "p5", patient_name: "Neha Gupta", visit_type: "HOMEOPATHY", chief_complaint: "Allergy follow-up", doctor_name: "Dr. R. Sharma", payment_status: "PENDING", suggested_fee: 500 },
-  { visit_id: "v-2053", queue_id: "q10", token_number: 10, patient_id: "p4", patient_name: "Mahesh Iyer", visit_type: "ALLOPATHY", chief_complaint: "Hypertension review", doctor_name: "Dr. Meera Joshi", payment_status: "PENDING", suggested_fee: 800 },
-];
+export const rxPendingBills: RxBill[] = [];
 
 export const rxRevenueToday = {
-  total: 6800,
-  CASH: 1800,
-  UPI: 3600,
+  total: 0,
+  CASH: 0,
+  UPI: 0,
   CARD: 0,
-  ONLINE: 1400,
-  count: 9,
+  ONLINE: 0,
+  count: 0,
 };
 
 export type RxReminder = {
@@ -126,14 +103,7 @@ export type RxReminder = {
   sent_at?: string;
 };
 
-export const rxReminders: RxReminder[] = [
-  { followup_id: "f1", patient_id: "p1", patient_name: "Anjali Mehta", patient_phone: "+91 98200 11122", followup_type: "SEVEN_DAY", due_date: today.toISOString(), status: "PENDING", channel: "WHATSAPP" },
-  { followup_id: "f2", patient_id: "p2", patient_name: "Ravi Kumar", patient_phone: "+91 99300 22113", followup_type: "FIFTEEN_DAY", due_date: today.toISOString(), status: "SENT", channel: "WHATSAPP", sent_at: at(9, 30) },
-  { followup_id: "f3", patient_id: "p4", patient_name: "Mahesh Iyer", patient_phone: "+91 98765 44315", followup_type: "THREE_DAY", due_date: today.toISOString(), status: "PENDING", channel: "SMS" },
-  { followup_id: "f4", patient_id: "p6", patient_name: "Sandeep Shah", patient_phone: "+91 98123 66517", followup_type: "MONTHLY", due_date: today.toISOString(), status: "FAILED", channel: "WHATSAPP" },
-  { followup_id: "f5", patient_id: "p7", patient_name: "Kavita Rao", patient_phone: "+91 98801 77711", followup_type: "CUSTOM", due_date: today.toISOString(), status: "DONE", channel: "VOICE", sent_at: at(8, 15) },
-  { followup_id: "f6", patient_id: "p9", patient_name: "Sunita Desai", patient_phone: "+91 98345 88823", followup_type: "MONTHLY", due_date: today.toISOString(), status: "PENDING", channel: "EMAIL" },
-];
+export const rxReminders: RxReminder[] = [];
 
 // ---------- helpers ----------
 
@@ -141,6 +111,7 @@ export const queueStatusStyles: Record<QueueStatus, { dot: string; pill: string;
   WAITING:      { dot: "bg-amber-500",  pill: "bg-amber-500/15 text-amber-700 border-amber-500/30",     label: "Waiting" },
   CHECKED_IN:   { dot: "bg-blue-500",   pill: "bg-blue-500/15 text-blue-700 border-blue-500/30",        label: "Checked-in" },
   IN_TREATMENT: { dot: "bg-success",    pill: "bg-success/15 text-[color-mix(in_oklab,var(--success)_70%,black)] border-success/30", label: "In treatment" },
+  BILLING_PENDING: { dot: "bg-violet-500", pill: "bg-violet-500/15 text-violet-700 border-violet-500/30", label: "Billing" },
   DONE:         { dot: "bg-muted-foreground", pill: "bg-muted text-muted-foreground border-border",     label: "Done" },
   COMPLETED:    { dot: "bg-muted-foreground", pill: "bg-muted text-muted-foreground border-border",     label: "Completed" },
   NO_SHOW:      { dot: "bg-destructive",pill: "bg-destructive/15 text-destructive border-destructive/30", label: "No show" },

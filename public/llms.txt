@@ -1,9 +1,0 @@
-# Vedic Homeopathic Clinic — Doctor OS
-
-> A clinic operating system built around the doctor's workflow — live queue, consultation workspace, prescriptions, billing and follow-ups for homeopathic and allopathic clinics.
-
-Vennova / Vedic Clinic is a multi-role SaaS for clinic operations. The owner registers the clinic, then issues credentials for reception, doctors, and admins. Patient data is scoped per clinic.
-
-## Pages
-
-- [Sign in / Register clinic](/auth): Owner registration and staff sign-in.

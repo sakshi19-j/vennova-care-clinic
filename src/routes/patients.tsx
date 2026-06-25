@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
-  Search, Plus, Stethoscope, ArrowRight, Users, Loader2, AlertTriangle, ChevronLeft, ChevronRight, UserPlus,
+  Search, Plus, Stethoscope, ArrowRight, Users, Loader2, AlertTriangle, ChevronLeft, ChevronRight, UserPlus, Upload, Download,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, PageHeader, Avatar } from "@/components/clinic/PageHeader";
 import { Button } from "@/components/ui/button";
 import { RegisterPatientModal } from "@/components/reception/RegisterPatientModal";
 import { patientsService, patientDisplayName, patientPhone, type Patient } from "@/services/patients";
+import { importsExportsService } from "@/services/imports-exports";
 
 export const Route = createFileRoute("/patients")({
   head: () => ({
@@ -64,9 +66,31 @@ function PatientsPage() {
         title="Patients"
         subtitle="Search, register and open patient records — connected live to your clinic."
         actions={
-          <Button onClick={() => setRegOpen(true)} className="rounded-full bg-primary">
-            <Plus className="size-4 mr-1" /> Add patient
-          </Button>
+          <>
+            <Link to="/imports" className="inline-flex">
+              <Button variant="outline" className="rounded-full">
+                <Upload className="size-4 mr-1" /> Import
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={async () => {
+                const tid = toast.loading("Preparing patients CSV…");
+                try {
+                  await importsExportsService.downloadPatientsCsv();
+                  toast.success("Download started", { id: tid });
+                } catch (e) {
+                  toast.error((e as Error).message || "Export failed", { id: tid });
+                }
+              }}
+            >
+              <Download className="size-4 mr-1" /> Export
+            </Button>
+            <Button onClick={() => setRegOpen(true)} className="rounded-full bg-primary">
+              <Plus className="size-4 mr-1" /> Add patient
+            </Button>
+          </>
         }
       />
 
@@ -234,7 +258,12 @@ function PatientsTable({ items, onOpen }: { items: Patient[]; onOpen: (id: strin
                     <Link
                       to="/consultation/$patientId"
                       params={{ patientId: p.id }}
-                      search={{ visit_type: (patientType || "HOMEOPATHY").toUpperCase() } as Record<string, string>}
+                      search={(() => {
+                        const ALLOWED = ["HOMEOPATHY", "ALLOPATHY", "AYURVEDIC"] as const;
+                        const upper = (patientType || "HOMEOPATHY").toUpperCase();
+                        const safe = (ALLOWED as readonly string[]).includes(upper) ? upper : "HOMEOPATHY";
+                        return { visit_type: safe } as Record<string, string>;
+                      })()}
                       className="h-8 px-3 rounded-full bg-primary text-primary-foreground inline-flex items-center gap-1 text-xs hover:bg-primary/90"
                     >
                       <Stethoscope className="size-3.5" /> Consult

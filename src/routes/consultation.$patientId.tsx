@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Loader2, AlertTriangle, Plus, Trash2, ArrowLeft, ChevronDown, ChevronRight, X,
+  Loader2, AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, X,
   Sparkles, RotateCw, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
+import { useAuth } from "@/hooks/use-auth";
 
 type ConsultationSearch = {
   queue_id?: string;
@@ -50,7 +51,7 @@ function errMsg(e: unknown): string {
 function pickId(o: unknown): string | null {
   if (!o || typeof o !== "object") return null;
   const r = o as Record<string, unknown>;
-  for (const k of ["id", "visit_id", "ID"]) {
+  for (const k of ["visit_id", "id", "ID"]) {
     const v = r[k];
     if (typeof v === "string" && v) return v;
   }
@@ -98,9 +99,9 @@ type LastVisit = {
 };
 
 function displayName(p?: Patient | null): string {
-  if (!p) return "Patient";
+  if (!p) return "";
   if (p.full_name) return p.full_name;
-  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "Patient";
+  return [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
 }
 function displayPhone(p?: Patient | null): string {
   if (!p) return "";
@@ -131,7 +132,7 @@ type FormState = {
   particulars: string; rubrics: string[]; rubricInput: string;
   remedy: string; potency: string; repetition: string; miasm: string;
   diagnosis: string; medicines: Medicine[]; advice: string;
-  fee: string; payment_mode: "CASH" | "UPI" | "CARD" | "ONLINE";
+  fee: string;
 };
 
 const initialForm = (): FormState => ({
@@ -142,7 +143,7 @@ const initialForm = (): FormState => ({
   particulars: "", rubrics: [], rubricInput: "",
   remedy: "", potency: "", repetition: "", miasm: "",
   diagnosis: "", medicines: [{ name: "", dosage: "", frequency: "", duration: "" }], advice: "",
-  fee: "500", payment_mode: "CASH",
+  fee: "500",
 });
 
 // ---------- Page ----------
@@ -150,6 +151,7 @@ function ConsultationPage() {
   const { patientId } = Route.useParams();
   const search = useSearch({ from: "/consultation/$patientId" });
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
 
   const patientQ = useQuery({
     queryKey: ["patient", patientId],
@@ -161,7 +163,7 @@ function ConsultationPage() {
   const lastVisitQ = useQuery({
     queryKey: ["last-visit", patientId],
     queryFn: async () => {
-      const raw = await api.get<unknown>("/visits/", { query: { patient_id: patientId, limit: 1 } });
+      const raw = await api.get<unknown>(`/visits/patient/${encodeURIComponent(patientId)}`, { query: { limit: 1 } });
       const arr = asArray<LastVisit>(raw);
       return arr.length > 0 ? arr[0] : null;
     },
@@ -169,23 +171,49 @@ function ConsultationPage() {
     enabled: explicitMode !== "new",
   });
 
+  // Guard: if patient has no ACTIVE queue row (WAITING/IN_TREATMENT), redirect
+  // to the read-only Patient Workspace. Consultation editor is for active visits only.
+  useEffect(() => {
+    if (!search.queue_id && explicitMode !== "new") {
+      // No queue context AND not a fresh new-case session → workspace
+      navigate({ to: "/patients/$patientId/workspace", params: { patientId }, replace: true });
+    }
+  }, [search.queue_id, explicitMode, patientId, navigate]);
+
   const patient = patientQ.data;
   const lastVisit = lastVisitQ.data ?? null;
   const isFollowup = explicitMode ? explicitMode === "followup" : !!lastVisit;
 
-  const visitType = (
+  // Backend VisitType enum ONLY accepts: HOMEOPATHY | ALLOPATHY | AYURVEDIC.
+  // Queue rows carry their own non-medical visit_type values (WALKIN /
+  // APPOINTMENT / WAITING / IN_TREATMENT / BOOKED) — those MUST NEVER reach
+  // POST /visits. We always coerce to a valid medical enum here.
+  const ALLOWED_VISIT_TYPES = ["HOMEOPATHY", "ALLOPATHY", "AYURVEDIC"] as const;
+  const rawVisitType = (
     search.visit_type ||
     (patient?.patient_type as string | undefined) ||
     "HOMEOPATHY"
   ).toUpperCase();
+  const visitType = (ALLOWED_VISIT_TYPES as readonly string[]).includes(rawVisitType)
+    ? rawVisitType
+    : "HOMEOPATHY";
   const isAllo = visitType === "ALLOPATHY";
 
-  const [form, setForm] = useState<FormState>(initialForm);
+  // FIX 3: ALWAYS start from a fresh blank form. Keyed on patientId + mode so
+  // navigating from one patient to another (or new vs followup) wipes state.
+  const [form, setForm] = useState<FormState>(() => initialForm());
   const [chiefError, setChiefError] = useState(false);
   const [prefilled, setPrefilled] = useState(false);
 
-  // Pre-fill from last visit
   useEffect(() => {
+    setForm(initialForm());
+    setPrefilled(false);
+    setChiefError(false);
+  }, [patientId, explicitMode]);
+
+  // Pre-fill from last visit — ONLY when this is explicitly a follow-up.
+  useEffect(() => {
+    if (explicitMode === "new") return; // FIX 3: never prefill on a new case
     if (!lastVisit || prefilled) return;
     const homeo = lastVisit.homeopathy || {};
     const rubrics = Array.isArray(homeo.rubrics)
@@ -202,7 +230,7 @@ function ConsultationPage() {
       rubrics: rubrics.length ? rubrics : f.rubrics,
     }));
     setPrefilled(true);
-  }, [lastVisit, prefilled]);
+  }, [lastVisit, prefilled, explicitMode]);
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -237,6 +265,7 @@ function ConsultationPage() {
   };
 
   const markCaseDone = async () => {
+    if (submitting) return; // prevent double-submit
     if (!form.chief_complaint.trim()) {
       setChiefError(true);
       toast.error("Chief complaint is required");
@@ -246,55 +275,118 @@ function ConsultationPage() {
     setSubmitting(true);
 
     const toastId = toast.loading("Creating visit…");
+    let stage: "visit" | "vitals" | "homeopathy" = "visit";
     try {
-      // Step 1 — Create visit
-      const visitRes = await api.post<unknown>("/visits/", {
-        patient_id: patientId,
-        visit_type: visitType || "HOMEOPATHY",
-        chief_complaint: form.chief_complaint,
-        disease_type: "default",
-      });
-      const visitId = pickId(visitRes);
-      if (!visitId) throw new Error("Visit created but no ID returned");
-
-      // Step 2 — Vitals (optional)
-      if (anyVitals) {
-        toast.loading("Saving vitals…", { id: toastId });
-        await api.post(`/visits/${encodeURIComponent(visitId)}/vitals`, {
-          weight_kg: numOrNull(form.weight),
-          bp_systolic: numOrNull(form.bp_sys),
-          bp_diastolic: numOrNull(form.bp_dia),
-          temperature: numOrNull(form.temperature),
-          pulse_rate: numOrNull(form.pulse),
-        });
+      if (!user?.id) {
+        throw new Error("Not signed in. Please log in again.");
       }
 
-      // Step 3 — Case details (no remedy yet — that lives on the prescription page)
-      toast.loading("Saving case…", { id: toastId });
-      await api.post(`/visits/${encodeURIComponent(visitId)}/homeopathy`, {
-        chief_complaint: form.chief_complaint,
-        history_present: form.history_present || null,
-        history_past: form.history_past || null,
-        history_surgical: form.history_surgical || null,
-        history_family: form.history_family || null,
-        thermal_sensation: form.thermal || null,
-        appetite: form.appetite || null,
-        thirst: form.thirst || null,
-        sleep: form.sleep || null,
-        dreams: form.dreams || null,
-        mind_symptoms: form.mind_symptoms || null,
-        particulars: form.particulars ? { text: form.particulars } : null,
-        rubrics: form.rubrics.map((r) => ({ text: r, grade: 1 })),
-      });
+      // ---- 1) Create visit. Backend VisitCreate schema (required):
+      //   patient_id, doctor_id, type   (+ optional chief_complaint, notes)
+      // doctor_id is derived from the signed-in Supabase user (auth.users.id);
+      // backend resolves the clinic via the bearer.
+      const doctorId = profile?.id || user.id;
+      if (!doctorId) {
+        throw new Error("Doctor profile not loaded. Please sign in again.");
+      }
+      const visitPayload = {
+        patient_id: patientId,
+        doctor_id: doctorId,
+        type: visitType || "HOMEOPATHY",
+        chief_complaint: form.chief_complaint.trim(),
+      };
+      console.log("VISIT PAYLOAD", visitPayload);
 
-      toast.success("Case saved · opening prescription", { id: toastId });
+
+      const visitRes = await api.post<unknown>("/visits/", visitPayload, {
+        timeoutMs: 30000,
+      });
+      console.log("[consultation] VISIT RESPONSE", visitRes);
+      const visitId = pickId(visitRes);
+      if (!visitId) throw new Error("Visit ID missing in backend response");
+
+      // ---- 2) Vitals (only when at least one field is filled; non-fatal).
+      if (anyVitals) {
+        stage = "vitals";
+        toast.loading("Saving vitals…", { id: toastId });
+        try {
+          const vitalsPayload: Record<string, number> = {};
+          const w = numOrNull(form.weight);
+          const bs = numOrNull(form.bp_sys);
+          const bd = numOrNull(form.bp_dia);
+          const t = numOrNull(form.temperature);
+          const p = numOrNull(form.pulse);
+          if (w !== null) vitalsPayload.weight_kg = w;
+          if (bs !== null) vitalsPayload.bp_systolic = bs;
+          if (bd !== null) vitalsPayload.bp_diastolic = bd;
+          if (t !== null) vitalsPayload.temperature = t;
+          if (p !== null) vitalsPayload.pulse_rate = p;
+          console.log("[consultation] VITALS PAYLOAD", vitalsPayload);
+          await api.post(
+            `/visits/${encodeURIComponent(visitId)}/vitals`,
+            vitalsPayload,
+            { timeoutMs: 20000 },
+          );
+        } catch (e) {
+          console.warn("[consultation] vitals save non-fatal:", e);
+          toast.message("Vitals could not be saved — continuing", {
+            description: errMsg(e),
+          });
+        }
+      }
+
+      // ---- 3) Homeopathy case — strictly the backend HomeopathyCaseCreate
+      // schema. No `analysis`, no `advice` (those don't exist server-side).
+      stage = "homeopathy";
+      toast.loading("Saving case…", { id: toastId });
+      const homeoPayload: Record<string, unknown> = {
+        chief_complaint: form.chief_complaint.trim(),
+      };
+      const setIf = (k: string, v: string) => {
+        const s = v.trim();
+        if (s) homeoPayload[k] = s;
+      };
+      setIf("history_present", form.history_present);
+      setIf("history_past", form.history_past);
+      setIf("history_surgical", form.history_surgical);
+      setIf("history_family", form.history_family);
+      setIf("thermal_sensation", form.thermal);
+      setIf("appetite", form.appetite);
+      setIf("thirst", form.thirst);
+      setIf("sleep", form.sleep);
+      setIf("dreams", form.dreams);
+      setIf("mind_symptoms", form.mind_symptoms);
+      setIf("remedy", form.remedy);
+      setIf("potency", form.potency);
+      setIf("repetition", form.repetition);
+      setIf("miasm", form.miasm);
+      if (form.particulars.trim()) {
+        homeoPayload.particulars = { text: form.particulars.trim() };
+      }
+      if (form.rubrics.length > 0) {
+        homeoPayload.rubrics = form.rubrics.map((r) => ({ text: r, grade: 1 }));
+      }
+      console.log("[consultation] HOMEOPATHY PAYLOAD", homeoPayload);
+      await api.post(
+        `/visits/${encodeURIComponent(visitId)}/homeopathy`,
+        homeoPayload,
+        { timeoutMs: 30000 },
+      );
+
+      toast.success("Consultation saved", { id: toastId });
       navigate({
-        to: "/prescriptions/$visitId",
+        to: "/prescription/$visitId",
         params: { visitId },
         search: { patient_id: patientId, queue_id: search.queue_id },
       });
     } catch (e) {
-      toast.error(errMsg(e), { id: toastId });
+      console.error(`CONSULTATION_SAVE_ERROR [stage=${stage}]`, e);
+      const stageLabel =
+        stage === "visit" ? "Visit save failed"
+        : stage === "vitals" ? "Vitals save failed"
+        : "Case save failed";
+      toast.error(`${stageLabel}: ${errMsg(e) || "Unknown error"}`, { id: toastId });
+      return;
     } finally {
       setSubmitting(false);
     }
@@ -317,7 +409,7 @@ function ConsultationPage() {
           <AlertTriangle className="size-4" /> Could not load patient: {errMsg(patientQ.error)}
         </div>
         <div className="mt-4">
-          <Link to="/queue" className="text-primary text-sm hover:underline">← Back to queue</Link>
+          <Link to="/doctor/queue" className="text-primary text-sm hover:underline">← Back to queue</Link>
         </div>
       </div>
     );
@@ -340,7 +432,7 @@ function ConsultationPage() {
             </div>
             <div className="font-display text-xl leading-tight">{displayName(patient)}</div>
             <div className="text-xs text-muted-foreground mt-0.5 font-mono">{regFmt(patient)}</div>
-            <div className="text-sm text-muted-foreground mt-2">{displayPhone(patient) || "—"}</div>
+            <div className="text-sm text-muted-foreground mt-2 whitespace-nowrap tabular-nums break-keep">{displayPhone(patient) || "—"}</div>
             {patient.city && <div className="text-xs text-muted-foreground mt-0.5">{patient.city}</div>}
             <span className={`mt-3 inline-flex text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border ${typeBadgeClass}`}>
               {ptype}
@@ -358,7 +450,7 @@ function ConsultationPage() {
               </div>
             </div>
             <button
-              onClick={() => navigate({ to: "/queue" })}
+              onClick={() => navigate({ to: "/doctor/queue" })}
               className="mt-4 w-full h-9 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center justify-center gap-1"
             >
               <ArrowLeft className="size-4" /> Back to Queue
@@ -508,23 +600,80 @@ function ConsultationPage() {
             </Block>
           )}
 
-          {/* Billing */}
-          <Block title="Billing">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Fee (₹)</Label>
-                <input
-                  type="number" min={0} value={form.fee} onChange={(e) => setField("fee", e.target.value)}
-                  className="w-full h-12 rounded-lg border border-border bg-background px-3 text-lg font-display tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
-                />
+          {/* Medicines (free-form list — saved with the prescription) */}
+          <Block title="Medicines">
+            <div className="space-y-3">
+              {form.medicines.map((m, i) => (
+                <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-12 md:col-span-4">
+                    <Label>Name</Label>
+                    <input
+                      value={m.name}
+                      onChange={(e) => setMedicine(i, "name", e.target.value)}
+                      placeholder="e.g. Pulsatilla / Paracetamol"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                  </div>
+                  <div className="col-span-4 md:col-span-2">
+                    <Label>Dosage</Label>
+                    <input
+                      value={m.dosage}
+                      onChange={(e) => setMedicine(i, "dosage", e.target.value)}
+                      placeholder="30C / 500mg"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                  </div>
+                  <div className="col-span-4 md:col-span-2">
+                    <Label>Timing</Label>
+                    <input
+                      value={m.frequency}
+                      onChange={(e) => setMedicine(i, "frequency", e.target.value)}
+                      placeholder="BD / TDS"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                  </div>
+                  <div className="col-span-3 md:col-span-2">
+                    <Label>Days</Label>
+                    <input
+                      value={m.duration}
+                      onChange={(e) => setMedicine(i, "duration", e.target.value)}
+                      placeholder="7"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-2 flex justify-end">
+                    {form.medicines.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMedicine(i)}
+                        className="size-9 grid place-items-center rounded-lg border border-border hover:bg-muted text-destructive"
+                        aria-label="Remove medicine"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+              <Button type="button" variant="outline" className="rounded-full" onClick={addMedicine}>
+                + Add medicine
+              </Button>
+              <div className="text-xs text-muted-foreground">
+                Detailed BOX-style prescription is finalized on the next screen.
               </div>
-              <div>
-                <Label>Payment mode</Label>
-                <Pills
-                  options={["CASH", "UPI", "CARD", "ONLINE"]}
-                  value={form.payment_mode}
-                  onChange={(v) => setField("payment_mode", (v || "CASH") as FormState["payment_mode"])}
-                />
+            </div>
+          </Block>
+
+          {/* Consultation fee — receptionist will choose payment mode later */}
+          <Block title="Consultation Fee">
+            <div className="max-w-xs">
+              <Label>Fee (₹)</Label>
+              <input
+                type="number" min={0} value={form.fee} onChange={(e) => setField("fee", e.target.value)}
+                className="w-full h-12 rounded-lg border border-border bg-background px-3 text-lg font-display tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
+              />
+              <div className="text-xs text-muted-foreground mt-1.5">
+                Payment mode is selected by reception at billing.
               </div>
             </div>
           </Block>

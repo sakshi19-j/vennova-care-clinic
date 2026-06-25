@@ -28,6 +28,8 @@ import {
   Stethoscope,
   Sparkles,
 } from "lucide-react";
+import { api } from "@/lib/api-client";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/reception/")({
   component: QueuePage,
@@ -48,6 +50,8 @@ function QueuePage() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickPrefill, setQuickPrefill] = useState<{ name?: string; phone?: string }>({});
+  // FIX 6: disable add for 2s after click to prevent rapid double-add
+  const [addDisabled, setAddDisabled] = useState(false);
 
   // Toast + (optional) ping whenever a brand-new call notification arrives
   const seenCallIds = useRef<Set<string>>(new Set());
@@ -65,14 +69,12 @@ function QueuePage() {
   const calledQueueIds = useMemo(() => new Set(calls.map((c) => c.queue_id)), [calls]);
 
   const queue = useMemo(() => {
-    const order: Record<string, number> = {
-      IN_TREATMENT: 0, CHECKED_IN: 1, WAITING: 2, DONE: 3, COMPLETED: 3, NO_SHOW: 4, CANCELLED: 5,
-    };
+    // Reception active queue: WAITING only.
+    // IN_TREATMENT / BILLING_PENDING are surfaced as KPIs.
+    // COMPLETED is removed instantly.
     return [...list]
-      .filter((r) => r.status !== "CANCELLED")
+      .filter((r) => r.status === "WAITING")
       .sort((a, b) => {
-        const so = order[a.status] - order[b.status];
-        if (so !== 0) return so;
         if (a.priority !== b.priority) return b.priority - a.priority;
         return b.wait_minutes - a.wait_minutes;
       });
@@ -88,6 +90,21 @@ function QueuePage() {
 
   const addExisting = useCallback(
     async (p: RxPatient) => {
+      if (addDisabled) return;
+      // FIX 6: local pre-check — block if patient is already in an active state
+      const ACTIVE = new Set(["WAITING", "IN_TREATMENT", "BILLING_PENDING"]);
+      const existing = list.find(
+        (q) =>
+          (q.patient_id === p.id ||
+            q.patient_phone.replace(/\s+/g, "") === (p.phone || "").replace(/\s+/g, "")) &&
+          ACTIVE.has(q.status),
+      );
+      if (existing) {
+        toast.error("Patient already in queue");
+        return;
+      }
+      setAddDisabled(true);
+      setTimeout(() => setAddDisabled(false), 2000);
       try {
         const res = await queueActions.add({
           patient_id: p.id,
@@ -95,8 +112,11 @@ function QueuePage() {
           patient_phone: p.phone,
           visit_type: visitType,
         });
-        if (res.duplicate) toast.warning(`${p.full_name} already in queue · token #${res.token}`);
-        else toast.success(`#${res.token} · ${p.full_name} added to queue`);
+        if (res.duplicate) {
+          toast.error("Patient already in queue");
+        } else {
+          toast.success(`#${res.token} · ${p.full_name} added to queue`);
+        }
         setQ(""); setPicked(null);
         searchRef.current?.focus();
       } catch (e) {
@@ -104,7 +124,7 @@ function QueuePage() {
         toast.error(message);
       }
     },
-    [visitType],
+    [visitType, list, addDisabled],
   );
 
   const openQuickFromSearch = useCallback(() => {
@@ -154,15 +174,29 @@ function QueuePage() {
 
   useEffect(() => { searchRef.current?.focus(); }, []);
 
+  // FIX 3: waiting/in/billing/done counts come from /queue/stats/today
+  // (single backend source of truth). Revenue stays local until backend exposes it.
+  const statsQ = useQuery({
+    queryKey: ["queue", "stats-today"],
+    queryFn: () => api.get<Record<string, unknown>>("/queue/stats/today"),
+    refetchInterval: 15_000,
+    staleTime: 5_000,
+    retry: 1,
+  });
   const stats = useMemo(() => {
-    const s = { waiting: 0, in: 0, done: 0, revenue: 0 };
-    for (const r of list) {
-      if (r.status === "WAITING" || r.status === "CHECKED_IN") s.waiting++;
-      else if (r.status === "IN_TREATMENT") s.in++;
-      else if (r.status === "DONE" || r.status === "COMPLETED") { s.done++; if (r.paid) s.revenue += r.fee; }
-    }
-    return s;
-  }, [list]);
+    let revenue = 0;
+    for (const r of list) if (r.status === "COMPLETED" && r.paid) revenue += r.fee;
+    const sd = (statsQ.data ?? {}) as Record<string, unknown>;
+    const n = (v: unknown) =>
+      typeof v === "number" ? v : typeof v === "string" && !Number.isNaN(Number(v)) ? Number(v) : 0;
+    return {
+      waiting: n(sd.waiting),
+      in: n(sd.in_treatment),
+      billing: n(sd.billing_pending ?? sd.billing),
+      done: n(sd.completed),
+      revenue,
+    };
+  }, [list, statsQ.data]);
 
   return (
     <Card className="p-0 overflow-hidden">
@@ -246,8 +280,9 @@ function QueuePage() {
           {/* Right cluster */}
           <div className="flex items-center gap-2 shrink-0">
             <button
+              disabled={addDisabled}
               onClick={() => { setQuickPrefill({}); setQuickOpen(true); }}
-              className="h-11 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2 hover:bg-primary/90"
+              className="h-11 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50"
             >
               <UserPlus className="size-4" /> Quick add
             </button>
@@ -265,6 +300,7 @@ function QueuePage() {
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs">
           <Stat label="In queue" value={stats.waiting} tone="amber" />
           <Stat label="With doctor" value={stats.in} tone="primary" />
+          <Stat label="Billing" value={stats.billing} tone="gold" />
           <Stat label="Done" value={stats.done} tone="success" />
           <Stat label="Today" value={`₹${stats.revenue}`} tone="gold" />
           {recent.length > 0 && (
@@ -314,10 +350,28 @@ function QueuePage() {
         prefill={quickPrefill}
         visitType={visitType}
         setVisitType={setVisitType}
-        onSubmit={({ name, phone }) => {
-          const { patient } = queueActions.createPatient(name, phone);
-          addExisting(patient);
-          setQuickOpen(false);
+        onSubmit={async ({ name, phone }) => {
+          try {
+            const created = await api.post<{ id?: string; reg_no?: string | number }>("/patients", {
+              first_name: name.split(" ")[0] || name,
+              last_name: name.split(" ").slice(1).join(" ") || null,
+              phone_mobile: phone,
+              patient_type: "HOMEOPATHY",
+            });
+            if (!created?.id) {
+              toast.error("Patient created but no id returned");
+              return;
+            }
+            const reg_no = created.reg_no != null ? String(created.reg_no) : "";
+            const { patient } = queueActions.createPatient(created.id, reg_no, name, phone, {
+              patient_type: "HOMEOPATHY",
+            });
+            await addExisting(patient);
+            setQuickOpen(false);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "Failed to create patient";
+            toast.error(msg);
+          }
         }}
       />
     </Card>
@@ -354,7 +408,13 @@ function QuickAddDialog({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Name is required");
-    if (!/^[+\d\s-]{6,}$/.test(phone.trim())) return toast.error("Enter a valid phone");
+    {
+      const raw = phone.trim();
+      const digits = raw.replace(/[^\d]/g, "");
+      if (!/^[+\d\s-]{6,20}$/.test(raw) || digits.length < 6 || digits.length > 15) {
+        return toast.error("Enter a valid phone (6–15 digits, +, spaces allowed)");
+      }
+    }
     onSubmit({ name: name.trim(), phone: phone.trim() });
   };
 
@@ -392,9 +452,10 @@ function QuickAddDialog({
               {(["WALKIN", "APPOINTMENT"] as const).map((v) => (
                 <button type="button" key={v} onClick={() => setVisitType(v)}
                   className={`flex-1 h-10 rounded-lg border text-xs font-medium ${visitType === v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border hover:bg-muted"}`}>
-                  {v === "WALKIN" ? `Walk-in · ₹${feeFor("WALKIN")}` : `Booked · ₹${feeFor("APPOINTMENT")}`}
+                  {v === "WALKIN" ? "Walk-in" : "Booked"}
                 </button>
               ))}
+
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground">Patient is added directly to queue. More details can be filled from the patient profile.</p>
@@ -488,12 +549,13 @@ function VirtualList({
 
 const STATUS_LABEL: Record<string, string> = {
   WAITING: "Waiting", CHECKED_IN: "Ready", IN_TREATMENT: "With doctor",
-  DONE: "Done", COMPLETED: "Done", NO_SHOW: "No-show", CANCELLED: "Cancelled",
+  BILLING_PENDING: "Billing", DONE: "Done", COMPLETED: "Done", NO_SHOW: "No-show", CANCELLED: "Cancelled",
 };
 const STATUS_TONE: Record<string, string> = {
   WAITING: "bg-amber-500/10 text-amber-700 border-amber-500/30",
   CHECKED_IN: "bg-sky-500/10 text-sky-700 border-sky-500/30",
   IN_TREATMENT: "bg-primary/15 text-primary border-primary/30",
+  BILLING_PENDING: "bg-violet-500/15 text-violet-700 border-violet-500/30",
   DONE: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
   COMPLETED: "bg-emerald-500/10 text-emerald-700 border-emerald-500/30",
   NO_SHOW: "bg-destructive/10 text-destructive border-destructive/30",
@@ -515,7 +577,12 @@ function QueueRow({
   const canSkip = row.status === "WAITING" || row.status === "CHECKED_IN";
   const isDone = row.status === "DONE" || row.status === "COMPLETED";
   const awaitingPayment = isDone && !row.paid;
-  const delayed = row.wait_minutes > 20;
+  // Live wait derived from queue check-in time (stored as ms in queue-store).
+  const liveWait = row.created_at
+    ? Math.max(0, Math.floor((Date.now() - row.created_at) / 60000))
+    : row.wait_minutes;
+  const delayed = liveWait > 20;
+
 
   return (
     <div
@@ -531,7 +598,7 @@ function QueueRow({
         row.status === "NO_SHOW" ? "opacity-70" : "",
       ].join(" ")}
     >
-      <div className="w-10 font-mono text-sm text-muted-foreground tabular-nums">
+      <div className="shrink-0 min-w-[3rem] sm:min-w-[3.5rem] font-mono text-sm text-muted-foreground tabular-nums">
         #{row.token_number}
       </div>
       <div className="flex-1 min-w-0">
@@ -545,11 +612,12 @@ function QueueRow({
             </span>
           )}
         </div>
-        <div className="text-[11px] text-muted-foreground tabular-nums truncate">
-          {row.patient_phone}
-          {row.reg_no && <> · {row.reg_no}</>}
-          {row.notes && <> · {row.notes}</>}
+        <div className="text-[11px] text-muted-foreground tabular-nums flex items-center gap-1 min-w-0">
+          <span className="font-mono whitespace-nowrap shrink-0">{row.patient_phone}</span>
+          {row.reg_no && <span className="whitespace-nowrap shrink-0">· {row.reg_no}</span>}
+          {row.notes && <span className="truncate">· {row.notes}</span>}
         </div>
+
       </div>
 
       <div className={[
@@ -570,7 +638,7 @@ function QueueRow({
         "hidden md:block w-10 text-right text-[11px] tabular-nums",
         delayed ? "text-destructive font-medium" : "text-muted-foreground",
       ].join(" ")}>
-        {isDone || row.status === "NO_SHOW" ? "—" : `${row.wait_minutes}m`}
+        {isDone || row.status === "NO_SHOW" ? "—" : `${liveWait}m`}
       </div>
 
       <div className="flex items-center gap-1.5">

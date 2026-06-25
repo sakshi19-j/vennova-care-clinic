@@ -4,7 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card, Tag } from "@/components/clinic/PageHeader";
 import { UserPlus, Mail, Trash2, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { createStaffMember, deleteStaffMember } from "@/lib/auth.functions";
+import { deleteStaffMember } from "@/lib/auth.functions";
+import { api } from "@/lib/api-client";
 import { useAuth, type Role } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
@@ -24,7 +25,6 @@ function StaffManagement() {
   const { profile } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [open, setOpen] = useState(false);
-  const create = useServerFn(createStaffMember);
   const remove = useServerFn(deleteStaffMember);
 
   const load = async () => {
@@ -64,7 +64,13 @@ function StaffManagement() {
           <AddStaffForm
             onSubmit={async (data) => {
               try {
-                await create({ data });
+                await api.post("/auth/staff", {
+                  name: data.fullName,
+                  email: data.email,
+                  password: data.password,
+                  role: data.role,
+                  phone: "",
+                });
                 toast.success(`Created ${data.email}`);
                 setOpen(false);
                 await load();

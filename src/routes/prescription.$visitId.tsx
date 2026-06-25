@@ -1,17 +1,21 @@
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, ArrowLeft, Send, Download, AlertTriangle, Zap, FileText } from "lucide-react";
+import {
+  Loader2, Plus, Trash2, ArrowLeft, Send, AlertTriangle, Zap, FileText,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
+import { loadQueue, queueActions } from "@/lib/queue-store";
 
 type PrescriptionSearch = {
   patient_id?: string;
   queue_id?: string;
 };
 
-export const Route = createFileRoute("/prescriptions/$visitId")({
+export const Route = createFileRoute("/prescription/$visitId")({
   validateSearch: (s: Record<string, unknown>): PrescriptionSearch => ({
     patient_id: typeof s.patient_id === "string" ? s.patient_id : undefined,
     queue_id: typeof s.queue_id === "string" ? s.queue_id : undefined,
@@ -61,8 +65,9 @@ const TIMINGS = ["OD", "BD", "TDS", "QID", "HS", "SOS"];
 
 function PrescriptionPage() {
   const { visitId } = Route.useParams();
-  const search = useSearch({ from: "/prescriptions/$visitId" });
+  const search = useSearch({ from: "/prescription/$visitId" });
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const visitQ = useQuery({
     queryKey: ["visit", visitId],
@@ -77,8 +82,29 @@ function PrescriptionPage() {
     { box: "1", remedy: "", potency: "30C", timing: "BD", food: "After food", days: "7" },
   ]);
   const [advice, setAdvice] = useState("");
-  const [fee, setFee] = useState("500");
-  const [submitting, setSubmitting] = useState(false);
+  const [sending, setSending] = useState(false);
+
+  // FOLLOW-UP PLAN — saved alongside prescription; triggers backend POST /followups
+  const FOLLOWUP_PRESETS = [
+    { id: "3d", label: "3 days", days: 3 },
+    { id: "7d", label: "7 days", days: 7 },
+    { id: "15d", label: "15 days", days: 15 },
+    { id: "1m", label: "Monthly", days: 30 },
+    { id: "custom", label: "Custom", days: 0 },
+    { id: "none", label: "No follow-up", days: 0 },
+  ] as const;
+  const [followupChoice, setFollowupChoice] = useState<string>("7d");
+  const [followupCustomDate, setFollowupCustomDate] = useState<string>("");
+
+  function computeFollowupDate(): string | null {
+    if (followupChoice === "none") return null;
+    if (followupChoice === "custom") return followupCustomDate || null;
+    const preset = FOLLOWUP_PRESETS.find((p) => p.id === followupChoice);
+    if (!preset || preset.days === 0) return null;
+    const d = new Date();
+    d.setDate(d.getDate() + preset.days);
+    return d.toISOString().slice(0, 10);
+  }
 
   const addBox = () =>
     setBoxes((b) => [...b, { box: String(b.length + 1), remedy: "", potency: "30C", timing: "BD", food: "After food", days: "7" }]);
@@ -86,16 +112,16 @@ function PrescriptionPage() {
   const setBox = (i: number, field: keyof BoxItem, v: string) =>
     setBoxes((b) => b.map((x, idx) => (idx === i ? { ...x, [field]: v } : x)));
 
-  const finalize = async (opts: { sendWhatsApp: boolean }) => {
+  const sendPrescription = async () => {
     const valid = boxes.filter((b) => b.remedy.trim() && b.box.trim());
     if (valid.length === 0) {
       toast.error("Add at least one BOX with a remedy");
       return;
     }
-    setSubmitting(true);
-    const toastId = toast.loading("Saving prescription…");
+    setSending(true);
+    const tid = toast.loading("Saving prescription…");
     try {
-      // 1) Persist remedy on the case (doctor-only fields)
+      // Persist remedy on the case (doctor-only fields). This MUST succeed.
       const primary = valid[0];
       const patientRx = valid
         .map(
@@ -112,40 +138,71 @@ function PrescriptionPage() {
         patient_rx: patientRx + (advice ? `\n\nAdvice: ${advice}` : ""),
       });
 
-      // 2) Generate PDF
-      toast.loading("Generating prescription PDF…", { id: toastId });
+      // FIX 1: after the primary save, PDF + WhatsApp are best-effort.
+      // Failures are logged but never shown as toast errors and never block navigation.
+      toast.loading("Generating prescription PDF…", { id: tid });
       try {
         await api.post(`/prescriptions/generate/${encodeURIComponent(visitId)}`);
       } catch (e) {
-        // non-fatal — backend may auto-generate on send
-        console.warn("generate failed", e);
+        console.warn("prescription PDF generation non-fatal:", e);
       }
 
-      // 3) Send WhatsApp (optional fallback)
-      if (opts.sendWhatsApp) {
-        toast.loading("Sending to patient on WhatsApp…", { id: toastId });
+      toast.loading("Sending to patient on WhatsApp…", { id: tid });
+      try {
+        await api.post(`/prescriptions/send/${encodeURIComponent(visitId)}`);
+      } catch (e) {
+        console.warn("prescription WhatsApp send non-fatal:", e);
+      }
+
+      toast.success("Prescription sent ✓ — sent to reception for billing", { id: tid });
+      // FIX: Lifecycle — once prescription is saved the patient leaves the doctor's
+      // active queue. Try to flip the queue row status server-side (best-effort —
+      // backend may already do this on /homeopathy save), then refresh local queue
+      // store + invalidate React Query caches so doctor & reception update instantly.
+      const queueId = search.queue_id;
+      if (queueId) {
+        // Optimistically remove from doctor queues INSTANTLY so the patient
+        // disappears from "Now seeing" / "Today's list" without a flicker.
+        qc.setQueriesData<unknown[]>({ queryKey: ["queue", "today"] }, (prev) =>
+          Array.isArray(prev) ? prev.filter((r: any) => r?.queue_id !== queueId && r?.id !== queueId) : prev,
+        );
         try {
-          await api.post(`/prescriptions/send/${encodeURIComponent(visitId)}`);
+          await api.post(`/queue/${encodeURIComponent(queueId)}/done`);
         } catch (e) {
-          toast.warning(`WhatsApp send failed — patient can be messaged manually. (${errMsg(e)})`);
+          // Backend may not expose this exact endpoint — non-fatal.
+          console.warn("[queue done] non-fatal:", e);
+        }
+        try { queueActions.setStatus(queueId, "BILLING_PENDING"); } catch { /* ignore */ }
+      }
+
+      // Schedule follow-up via Railway backend (POST /followups). No client-side fake.
+      const followupDate = computeFollowupDate();
+      if (followupDate && patientId) {
+        try {
+          await api.post(`/followups`, {
+            patient_id: patientId,
+            visit_id: visitId,
+            due_date: followupDate,
+            channel: "WHATSAPP",
+            preset: followupChoice,
+          });
+        } catch (e) {
+          console.warn("[followup create] non-fatal:", e);
         }
       }
 
-      // 4) Close visit → moves to PENDING_BILLING
-      toast.loading("Sending to billing…", { id: toastId });
-      await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
-        fee: Number(fee) || 0,
-        payment_mode: null,
-        disease_type: "default",
-        followup_channel: "WHATSAPP",
-      });
-
-      toast.success("Prescription finalized · sent to billing", { id: toastId });
+      qc.invalidateQueries({ queryKey: ["billing-pending"] });
+      qc.invalidateQueries({ queryKey: ["billing"] });
+      qc.invalidateQueries({ queryKey: ["queue", "today"] });
+      qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
+      qc.invalidateQueries({ queryKey: ["followups"] });
+      qc.invalidateQueries({ queryKey: ["analytics"] });
+      void loadQueue();
       navigate({ to: "/doctor/queue" });
     } catch (e) {
-      toast.error(errMsg(e), { id: toastId });
+      toast.error(errMsg(e), { id: tid });
     } finally {
-      setSubmitting(false);
+      setSending(false);
     }
   };
 
@@ -170,12 +227,12 @@ function PrescriptionPage() {
     );
   }
 
-  const patientName = visit.patient?.full_name || "Patient";
+  const patientName = visit.patient?.full_name || "";
 
   return (
-    <div className="max-w-[1200px] mx-auto pb-28">
+    <div className="max-w-[1200px] mx-auto pb-16">
       <div className="grid grid-cols-12 gap-5">
-        {/* Header / patient */}
+        {/* Header */}
         <div className="col-span-12 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="size-11 rounded-xl bg-gradient-to-br from-cyan-400 to-fuchsia-500 grid place-items-center text-white shadow">
@@ -189,15 +246,17 @@ function PrescriptionPage() {
               )}
             </div>
           </div>
-          <button
-            onClick={() => navigate({ to: "/consultation/$patientId", params: { patientId }, search: {} })}
-            className="h-9 px-3 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center gap-1"
-          >
-            <ArrowLeft className="size-4" /> Back to case paper
-          </button>
+          {patientId && (
+            <button
+              onClick={() => navigate({ to: "/consultation/$patientId", params: { patientId }, search: {} })}
+              className="h-9 px-3 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center gap-1"
+            >
+              <ArrowLeft className="size-4" /> Back to case paper
+            </button>
+          )}
         </div>
 
-        {/* Doctor view */}
+        {/* SECTION A — Prescription (doctor) */}
         <section className="col-span-12 lg:col-span-7 space-y-4">
           <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center justify-between mb-3">
@@ -262,22 +321,62 @@ function PrescriptionPage() {
               />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3 max-w-sm">
-              <div>
-                <Label>Fee (₹)</Label>
-                <input
-                  type="number"
-                  min={0}
-                  value={fee}
-                  onChange={(e) => setFee(e.target.value)}
-                  className="w-full h-10 rounded-lg border border-border bg-background px-3 text-lg font-display tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
-                />
+            {/* Follow-up plan */}
+            <div className="mt-5 rounded-xl border border-border bg-muted/20 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-medium text-sm">Follow-up plan</div>
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">WhatsApp reminder</span>
               </div>
+              <div className="flex flex-wrap gap-2">
+                {FOLLOWUP_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setFollowupChoice(p.id)}
+                    className={`h-8 px-3 rounded-full border text-xs ${
+                      followupChoice === p.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              {followupChoice === "custom" && (
+                <div className="mt-3">
+                  <Label>Custom follow-up date</Label>
+                  <input
+                    type="date"
+                    value={followupCustomDate}
+                    min={new Date().toISOString().slice(0, 10)}
+                    onChange={(e) => setFollowupCustomDate(e.target.value)}
+                    className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+              )}
+              {followupChoice !== "none" && (
+                <div className="text-[11px] text-muted-foreground mt-2">
+                  Patient will receive a WhatsApp reminder on{" "}
+                  <strong className="text-foreground tabular-nums">
+                    {computeFollowupDate() || "—"}
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                disabled={sending}
+                onClick={sendPrescription}
+                className="h-11 px-6 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow"
+              >
+                {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                Send Prescription
+              </button>
             </div>
           </div>
         </section>
 
-        {/* Patient view preview */}
+        {/* Patient PDF preview */}
         <aside className="col-span-12 lg:col-span-5">
           <div className="rounded-2xl border border-border bg-card overflow-hidden sticky top-4">
             <div className="px-5 py-3 bg-gradient-to-br from-primary to-[color-mix(in_oklab,var(--primary)_82%,black)] text-primary-foreground">
@@ -314,27 +413,6 @@ function PrescriptionPage() {
             </div>
           </div>
         </aside>
-      </div>
-
-      {/* Sticky CTA */}
-      <div className="fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur">
-        <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center gap-2 justify-end flex-wrap">
-          <button
-            disabled={submitting}
-            onClick={() => finalize({ sendWhatsApp: false })}
-            className="h-11 px-5 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center gap-2 disabled:opacity-60"
-          >
-            <Download className="size-4" /> Finalize without WhatsApp
-          </button>
-          <button
-            disabled={submitting}
-            onClick={() => finalize({ sendWhatsApp: true })}
-            className="h-11 px-6 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow-lg"
-          >
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-            Finalize & send WhatsApp
-          </button>
-        </div>
       </div>
     </div>
   );

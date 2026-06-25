@@ -147,6 +147,7 @@ function LoginForm() {
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const [clinicName, setClinicName] = useState("");
+  const [clinicType, setClinicType] = useState<"HOMEOPATHY" | "ALLOPATHY" | "AYURVEDIC">("HOMEOPATHY");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -160,7 +161,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
         email, password,
         options: {
           emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-          data: { full_name: fullName, clinic_name: clinicName },
+          data: { full_name: fullName, clinic_name: clinicName, clinic_type: clinicType },
         },
       });
       if (signErr) throw signErr;
@@ -172,10 +173,19 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       }
 
       // Create clinic + admin profile + admin role server-side via SECURITY DEFINER RPC.
-      const { error: rpcErr } = await supabase.rpc("register_clinic_owner", {
+      // Try with clinic_type first; fall back to legacy 2-arg signature if the
+      // RPC hasn't been updated yet on this environment.
+      let rpcErr = (await supabase.rpc("register_clinic_owner" as any, {
         _clinic_name: clinicName,
         _full_name: fullName,
-      });
+        _clinic_type: clinicType,
+      } as any)).error;
+      if (rpcErr && /function|argument|signature|does not exist/i.test(rpcErr.message)) {
+        rpcErr = (await supabase.rpc("register_clinic_owner", {
+          _clinic_name: clinicName,
+          _full_name: fullName,
+        })).error;
+      }
       if (rpcErr) throw rpcErr;
 
       toast.success("Clinic created. Welcome aboard.");
@@ -198,6 +208,17 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
           required maxLength={120} value={clinicName} onChange={(e) => setClinicName(e.target.value)}
           className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
         />
+      </Field>
+      <Field label="Clinic type">
+        <select
+          value={clinicType}
+          onChange={(e) => setClinicType(e.target.value as any)}
+          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+        >
+          <option value="HOMEOPATHY">Homeopathy</option>
+          <option value="ALLOPATHY">Allopathy</option>
+          <option value="AYURVEDIC">Ayurvedic</option>
+        </select>
       </Field>
       <Field label="Your name">
         <input

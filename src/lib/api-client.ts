@@ -1,14 +1,11 @@
 // Lightweight API client for the Vennova Clinic backend (FastAPI on Railway).
 //
-// - Reads base URL from VITE_API_URL
-// - Automatically attaches the current Supabase session's bearer token
-// - JSON in / JSON out
-// - Never touches service_role or any server secret
-//
-// Usage:
-//   import { api } from "@/lib/api-client";
-//   const patients = await api.get<Patient[]>("/patients");
-//   await api.post("/appointments", { patient_id, slot_at });
+// Centralized auth-aware fetch:
+// - Awaits the Supabase session before each request and attaches the bearer.
+// - Retries once on 401/403 after refreshing the session.
+// - Coalesces parallel refresh calls so polling never spawns a refresh storm.
+// - Adds a request timeout (default 20s) and surfaces clean, human messages.
+// - Never clears the user's session on transient network failures.
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,6 +20,10 @@ export interface ApiRequestOptions {
   skipAuth?: boolean;
   /** Pass-through AbortSignal. */
   signal?: AbortSignal;
+  /** Override the default request timeout in ms (default 20000). */
+  timeoutMs?: number;
+  /** Internal: disable auto-retry on 401/403. */
+  _noRetry?: boolean;
 }
 
 export class ApiError extends Error {
@@ -36,14 +37,31 @@ export class ApiError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT_MS = 20000;
+
 function getBaseUrl(): string {
   const url = import.meta.env.VITE_API_URL as string | undefined;
   if (!url) {
     throw new Error(
-      "VITE_API_URL is not set. Define it in your environment to call the backend.",
+      "Backend URL is not configured. Please contact support.",
     );
   }
   return url.replace(/\/+$/, "");
+}
+
+// One-shot startup log so we can confirm the active API base + origin in the browser.
+if (typeof window !== "undefined") {
+  const w = window as unknown as { __vennovaApiLogged?: boolean };
+  if (!w.__vennovaApiLogged) {
+    w.__vennovaApiLogged = true;
+    // eslint-disable-next-line no-console
+    console.info(
+      "[Vennova] API URL:",
+      (import.meta.env.VITE_API_URL as string) || "(unset)",
+      "| Origin:",
+      window.location.origin,
+    );
+  }
 }
 
 function buildUrl(path: string, query?: ApiRequestOptions["query"]): string {
@@ -59,15 +77,120 @@ function buildUrl(path: string, query?: ApiRequestOptions["query"]): string {
   return url.toString();
 }
 
-async function authHeader(): Promise<Record<string, string>> {
+// ---------- Session / refresh dedupe ----------
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function getAccessToken(): Promise<string | null> {
   try {
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    return data.session?.access_token ?? null;
   } catch {
-    return {};
+    return null;
   }
 }
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) return null;
+      return data.session?.access_token ?? null;
+    } catch {
+      return null;
+    } finally {
+      // Allow subsequent refreshes after this one settles.
+      setTimeout(() => {
+        refreshInFlight = null;
+      }, 0);
+    }
+  })();
+  return refreshInFlight;
+}
+
+async function authHeader(): Promise<Record<string, string>> {
+  const token = await getAccessToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ---------- Fetch with timeout ----------
+
+function withTimeout(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+): { signal: AbortSignal; cleanup: () => void } {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(new DOMException("Request timed out", "TimeoutError")), timeoutMs);
+  const onAbort = () => ctrl.abort(signal?.reason);
+  if (signal) {
+    if (signal.aborted) ctrl.abort(signal.reason);
+    else signal.addEventListener("abort", onAbort, { once: true });
+  }
+  return {
+    signal: ctrl.signal,
+    cleanup: () => {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", onAbort);
+    },
+  };
+}
+
+// ---------- Error parsing ----------
+
+// Walk a FastAPI validation error array into a readable, field-aware string.
+function formatValidationDetail(detail: unknown[]): string | null {
+  const parts: string[] = [];
+  for (const item of detail) {
+    if (!item || typeof item !== "object") continue;
+    const o = item as { msg?: unknown; loc?: unknown; type?: unknown };
+    const msg = typeof o.msg === "string" ? o.msg : "";
+    const loc = Array.isArray(o.loc)
+      ? o.loc.filter((s) => s !== "body" && typeof s !== "number").join(".")
+      : "";
+    if (loc && msg) parts.push(`${loc}: ${msg}`);
+    else if (msg) parts.push(msg);
+  }
+  return parts.length ? parts.join("; ") : null;
+}
+
+function parseErrorMessage(payload: unknown, status: number): string {
+  if (payload && typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    const detail = obj.detail;
+    if (typeof detail === "string" && detail.trim()) return detail;
+    if (Array.isArray(detail) && detail.length > 0) {
+      const v = formatValidationDetail(detail);
+      if (v) return v;
+    }
+    if (typeof obj.message === "string" && obj.message.trim()) return obj.message;
+    if (typeof obj.error === "string" && obj.error.trim()) return obj.error;
+  }
+  if (typeof payload === "string" && payload.trim()) return payload;
+  if (status === 401) return "Your session expired. Please sign in again.";
+  if (status === 403) return "You don't have permission to do that.";
+  if (status === 404) return "Not found.";
+  if (status === 408 || status === 504) return "The server took too long to respond. Please retry.";
+  if (status === 409) return "Conflicting request — that record may already exist.";
+  if (status === 422) return "The data sent is invalid.";
+  if (status === 429) return "Too many requests — slow down and retry.";
+  if (status >= 500) return `Backend error (${status}). Please retry in a moment.`;
+  return `Request failed (${status}).`;
+}
+
+function networkErrorMessage(e: unknown): string {
+  const err = e as { name?: string; message?: string } | null;
+  if (!err) return "Could not reach the server. Please check your connection.";
+  if (err.name === "AbortError") return "Request cancelled.";
+  if (err.name === "TimeoutError") return "The request timed out. Please retry.";
+  const msg = err.message || "";
+  if (/Failed to fetch|NetworkError|network/i.test(msg)) {
+    return "Couldn't reach the server. Please check your connection and retry.";
+  }
+  return msg || "Could not reach the server.";
+}
+
+// ---------- Core request ----------
 
 async function request<T>(
   method: HttpMethod,
@@ -75,19 +198,33 @@ async function request<T>(
   body?: unknown,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-    ...(options.skipAuth ? {} : await authHeader()),
-    ...(options.headers ?? {}),
-  };
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const { signal, cleanup } = withTimeout(options.signal, timeoutMs);
 
-  const res = await fetch(buildUrl(path, options.query), {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    signal: options.signal,
-  });
+  let res: Response;
+  try {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(options.skipAuth ? {} : await authHeader()),
+      ...(options.headers ?? {}),
+    };
+
+    res = await fetch(buildUrl(path, options.query), {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal,
+    });
+  } catch (e) {
+    cleanup();
+    // Re-throw caller aborts unchanged so React Query can swallow them silently.
+    if ((e as { name?: string })?.name === "AbortError" && options.signal?.aborted) {
+      throw e;
+    }
+    throw new ApiError(networkErrorMessage(e), 0, null);
+  }
+  cleanup();
 
   const contentType = res.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
@@ -96,11 +233,29 @@ async function request<T>(
     : await res.text().catch(() => "");
 
   if (!res.ok) {
-    const message =
-      (isJson && payload && typeof payload === "object" && "message" in payload
-        ? String((payload as { message: unknown }).message)
-        : null) ?? `Request failed with status ${res.status}`;
-    throw new ApiError(message, res.status, payload);
+    // Verbose, single-line diagnostic for the dev console. Includes the
+    // resolved URL, status, and the parsed body so backend validation
+    // failures (FastAPI 422) are immediately visible without DevTools
+    // network inspection.
+    try {
+      // eslint-disable-next-line no-console
+      console.error(
+        `[Vennova API ${res.status}]`,
+        method,
+        buildUrl(path, options.query),
+        payload,
+      );
+    } catch {
+      /* noop */
+    }
+    // Retry once on auth failure after refreshing the token.
+    if ((res.status === 401 || res.status === 403) && !options.skipAuth && !options._noRetry) {
+      const fresh = await refreshAccessToken();
+      if (fresh) {
+        return request<T>(method, path, body, { ...options, _noRetry: true });
+      }
+    }
+    throw new ApiError(parseErrorMessage(payload, res.status), res.status, payload);
   }
 
   return payload as T;
@@ -119,10 +274,7 @@ export const api = {
     request<T>("DELETE", path, undefined, options),
 };
 
-/** Reminders API. The backend exposes:
- *   GET  /reminders/today
- *   POST /reminders/{followup_id}/send
- */
+/** Reminders API. */
 export const remindersApi = {
   listToday: <T>(options?: ApiRequestOptions) =>
     api.get<T>("/reminders/today", options),

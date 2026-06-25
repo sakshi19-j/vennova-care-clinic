@@ -1,43 +1,36 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Card, PageHeader, Tag, Avatar } from "@/components/clinic/PageHeader";
-import { staff, tagStyles } from "@/lib/clinic-data";
-import { Plus } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Card, PageHeader } from "@/components/clinic/PageHeader";
+import { ArrowRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/staff")({
-  head: () => ({ meta: [{ title: "Staff — Vedic Clinic" }] }),
+  head: () => ({ meta: [{ title: "Staff — Vennova Clinic" }] }),
   component: Staff,
 });
 
 function Staff() {
   return (
-    <div className="max-w-[1300px] mx-auto">
-      <PageHeader eyebrow="Role-based access" title="Staff & Roles"
-        subtitle="Manage doctors, receptionists, and assistants. Each role gets its own optimised interface."
-        actions={<Button className="rounded-full bg-primary"><Plus className="size-4 mr-1" /> Invite staff</Button>} />
-      <Card className="p-0 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-[11px] uppercase tracking-widest text-muted-foreground border-b clinic-divider">
-              <th className="text-left font-medium py-2 px-5">Member</th>
-              <th className="text-left font-medium py-2 px-3">Role</th>
-              <th className="text-left font-medium py-2 px-3">Email</th>
-              <th className="text-left font-medium py-2 px-3">Status</th>
-              <th className="py-2 px-5"> </th>
-            </tr>
-          </thead>
-          <tbody>
-            {staff.map((s) => (
-              <tr key={s.id} className="border-b clinic-divider hover:bg-muted/50">
-                <td className="py-3 px-5"><div className="flex items-center gap-3"><Avatar name={s.name} /><div className="font-medium">{s.name}</div></div></td>
-                <td className="py-3 px-3 text-muted-foreground">{s.role}</td>
-                <td className="py-3 px-3 text-muted-foreground">{s.email}</td>
-                <td className="py-3 px-3"><Tag className={s.status === "Active" ? tagStyles.active : tagStyles.lapsed}>{s.status}</Tag></td>
-                <td className="py-3 px-5 text-right"><button className="text-sm text-primary hover:underline">Edit</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="max-w-[1100px] mx-auto">
+      <PageHeader
+        eyebrow="Role-based access"
+        title="Staff & Roles"
+        subtitle="Manage doctors, receptionists and admin staff for your clinic."
+      />
+      <Card className="py-14 text-center">
+        <div className="max-w-md mx-auto">
+          <div className="size-12 rounded-full bg-primary/10 text-primary grid place-items-center mx-auto mb-4">
+            <Users className="size-6" />
+          </div>
+          <div className="font-display text-2xl">Manage staff in the Admin console</div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Staff invitations, roles and permissions live in the Admin area.
+          </p>
+          <Link to="/admin/staff-management" className="inline-flex mt-5">
+            <Button className="rounded-full bg-primary">
+              Open staff management <ArrowRight className="size-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
       </Card>
     </div>
   );

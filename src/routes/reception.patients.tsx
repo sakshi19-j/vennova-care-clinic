@@ -101,9 +101,9 @@ function PatientsPage() {
                       </div>
                     </td>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{p.reg_no}</td>
-                    <td className="px-3 py-3">
-                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Phone className="size-3" /> {p.phone}
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+                        <Phone className="size-3 shrink-0" /> {p.phone}
                       </span>
                     </td>
                     <td className="px-3 py-3 hidden md:table-cell">

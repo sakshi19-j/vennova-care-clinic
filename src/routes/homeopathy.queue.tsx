@@ -5,6 +5,7 @@ import { Card, Tag } from "@/components/clinic/PageHeader";
 import { Loader2, ArrowRight, Clock, Search, UserPlus, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { patientsService, type Patient } from "@/services/patients";
+import { formatWaitMinutes } from "@/lib/wait-time";
 
 export const Route = createFileRoute("/homeopathy/queue")({
   component: CaseTakingQueue,
@@ -20,6 +21,7 @@ type QueueItem = {
   status: string;
   visit_type?: string | null;
   wait_minutes?: number;
+  created_at?: string | null;
 };
 
 type PatientLite = { total_visits?: number; patient_type?: string };
@@ -57,10 +59,14 @@ function statusBadge(s: string): string {
 
 function normalizedStatus(s: string): string {
   const u = (s || "WAITING").toUpperCase();
-  if (u === "IN_CONSULTATION") return "IN_TREATMENT";
-  if (u === "COMPLETED" || u === "BILLING") return "DONE";
-  return u;
+  if (u === "IN_CONSULTATION" || u === "IN_TREATMENT") return "IN_TREATMENT";
+  if (u === "BILLING" || u === "PENDING_BILLING" || u === "BILLING_PENDING") return "BILLING_PENDING";
+  if (u === "DONE" || u === "COMPLETED" || u === "NO_SHOW" || u === "CANCELLED") return "COMPLETED";
+  return "WAITING";
 }
+
+// Doctor-side queue only shows WAITING + IN_TREATMENT.
+const DOCTOR_HIDDEN = new Set(["BILLING_PENDING", "COMPLETED"]);
 
 function queueId(q: QueueItem): string {
   return String(q.id ?? q.queue_id ?? "");
@@ -97,7 +103,12 @@ function CaseTakingQueue() {
 
   const goToConsultation = (patientId: string, visitType: string, totalVisits: number, queueId?: string) => {
     const mode = totalVisits > 0 ? "followup" : "new";
-    const search: Record<string, string> = { visit_type: (visitType || "HOMEOPATHY").toUpperCase(), mode };
+    // Coerce to backend medical enum — queue.visit_type may be WALKIN/APPOINTMENT,
+    // which the backend rejects with `invalid input value for enum visit_type`.
+    const ALLOWED = ["HOMEOPATHY", "ALLOPATHY", "AYURVEDIC"] as const;
+    const upper = (visitType || "HOMEOPATHY").toUpperCase();
+    const safe = (ALLOWED as readonly string[]).includes(upper) ? upper : "HOMEOPATHY";
+    const search: Record<string, string> = { visit_type: safe, mode };
     if (queueId) search.queue_id = queueId;
     navigate({ to: "/consultation/$patientId", params: { patientId }, search });
   };
@@ -125,7 +136,7 @@ function CaseTakingQueue() {
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b clinic-divider flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="font-display text-xl">Case-taking · {queue.length}</div>
+            <div className="font-display text-xl">Case-taking · {queue.filter((q) => !DOCTOR_HIDDEN.has(normalizedStatus(q.status))).length}</div>
             <div className="text-xs text-muted-foreground">Live · refreshes every 10s</div>
           </div>
           <button
@@ -163,6 +174,7 @@ function CaseTakingQueue() {
         ) : (
           <ul className="divide-y clinic-divider">
             {queue
+              .filter((q) => !DOCTOR_HIDDEN.has(normalizedStatus(q.status)))
               .slice()
               .sort((a, b) => (a.token_number ?? 0) - (b.token_number ?? 0))
               .map((q) => {
@@ -171,14 +183,22 @@ function CaseTakingQueue() {
                 const isWaiting = u === "WAITING";
                 return (
                   <li key={id || `${q.patient_id}-${q.token_number}`} className="px-4 sm:px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap hover:bg-muted/40">
-                    <span className="font-mono text-sm w-12 text-muted-foreground shrink-0">#{q.token_number}</span>
+                    <span className="font-mono text-sm w-14 text-right text-muted-foreground tabular-nums shrink-0">#{q.token_number}</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{q.patient_name}</div>
                       <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
                         {q.visit_type && (
                           <Tag className="bg-muted text-foreground/70 border-border">{q.visit_type}</Tag>
                         )}
-                        <span className="inline-flex items-center gap-1"><Clock className="size-3" />{q.wait_minutes ?? 0}m waiting</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap tabular-nums">
+                          <Clock className="size-3" />
+                          {formatWaitMinutes(q.wait_minutes, q.created_at)}
+                        </span>
+                        {q.patient_phone && (
+                          <span className="font-mono text-[11px] whitespace-nowrap tabular-nums tracking-normal">
+                            {q.patient_phone}
+                          </span>
+                        )}
                         <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusBadge(u)}`}>
                           {u}
                         </span>
@@ -254,7 +274,7 @@ function WalkInSearch({ onClose, onSelect }: { onClose: () => void; onSelect: (p
               {results.map((p) => {
                 const rec = p as unknown as Record<string, unknown>;
                 const name = (typeof rec.full_name === "string" && rec.full_name) ||
-                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "Patient";
+                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
                 const phone = (typeof rec.phone === "string" && rec.phone) || p.phone_mobile || "";
                 const reg = typeof p.reg_no === "number" && p.reg_no > 0 ? `VNC-${String(p.reg_no).padStart(4, "0")}` : "";
                 return (
@@ -265,7 +285,7 @@ function WalkInSearch({ onClose, onSelect }: { onClose: () => void; onSelect: (p
                     >
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
                           {phone || "—"}{reg ? ` · ${reg}` : ""}
                         </div>
                       </div>

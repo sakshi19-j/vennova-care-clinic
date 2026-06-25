@@ -93,7 +93,7 @@ function CasePanel({ queueId }: { queueId: string }) {
     let cancelled = false;
     (async () => {
       try {
-        const data = await api.get<any>("/visits", { query: { patient_id: q.patient_id, limit: 5 } });
+        const data = await api.get<any>(`/visits/patient/${encodeURIComponent(q.patient_id)}`, { query: { limit: 5 } });
         const rows = Array.isArray(data) ? data : data?.visits ?? [];
         if (!cancelled && Array.isArray(rows)) {
           setPrevious(rows.map((v: any) => ({
@@ -148,10 +148,11 @@ function CasePanel({ queueId }: { queueId: string }) {
     const primary = lines[0];
     try {
       // Step 3a — create the visit
-      const visitRes = await api.post<{ id?: string; visit_id?: string }>("/visits", {
+      const visitRes = await api.post<{ id?: string; visit_id?: string }>("/visits/", {
         patient_id: q.patient_id,
         type: "HOMEOPATHY",
         chief_complaint: diagnosis,
+        disease_type: "default",
         notes: [mentals, advice].filter(Boolean).join("\n\n") || null,
       });
       const visitId = visitRes?.visit_id ?? visitRes?.id ?? q.visit_id ?? q.queue_id;

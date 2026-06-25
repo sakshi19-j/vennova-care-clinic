@@ -5,6 +5,7 @@ import { Card, Tag } from "@/components/clinic/PageHeader";
 import { Loader2, ArrowRight, Clock, Search, UserPlus, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { patientsService, type Patient } from "@/services/patients";
+import { formatWaitMinutes } from "@/lib/wait-time";
 
 export const Route = createFileRoute("/doctor/queue")({
   component: CaseTakingQueue,
@@ -20,6 +21,9 @@ type QueueItem = {
   status: string;
   visit_type?: string | null;
   wait_minutes?: number;
+  created_at?: string | null;
+  check_in_time?: string | null;
+
 };
 
 type PatientLite = { total_visits?: number; patient_type?: string };
@@ -51,6 +55,7 @@ function statusBadge(s: string): string {
   const u = (s || "").toUpperCase();
   if (u === "WAITING") return "bg-amber-100 text-amber-800 border-amber-300";
   if (u === "IN_TREATMENT" || u === "IN_CONSULTATION") return "bg-teal-100 text-teal-800 border-teal-300";
+  if (u === "BILLING_PENDING" || u === "BILLING") return "bg-violet-100 text-violet-800 border-violet-300";
   if (u === "DONE" || u === "COMPLETED") return "bg-emerald-100 text-emerald-800 border-emerald-300";
   return "bg-muted text-foreground/70 border-border";
 }
@@ -58,9 +63,12 @@ function statusBadge(s: string): string {
 function normalizedStatus(s: string): string {
   const u = (s || "WAITING").toUpperCase();
   if (u === "IN_CONSULTATION") return "IN_TREATMENT";
-  if (u === "COMPLETED" || u === "BILLING") return "DONE";
+  if (u === "BILLING") return "BILLING_PENDING";
   return u;
 }
+
+// Statuses that should NOT appear in the doctor's active list.
+const DOCTOR_HIDDEN = new Set(["BILLING_PENDING", "DONE", "COMPLETED", "NO_SHOW", "CANCELLED"]);
 
 function queueId(q: QueueItem): string {
   return String(q.id ?? q.queue_id ?? "");
@@ -73,12 +81,28 @@ function CaseTakingQueue() {
   const [error, setError] = useState<string | null>(null);
   const [callingId, setCallingId] = useState<string | null>(null);
   const [showWalkIn, setShowWalkIn] = useState(false);
+  // FIX 3: header count must come from /queue/stats/today (single source of truth).
+  const [waitingCount, setWaitingCount] = useState<number | null>(null);
+  // 60s tick so wait-time labels recalc without refetching the queue.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const fetchQueue = async () => {
     try {
-      const res = await api.get<unknown>("/queue/today");
-      const rows = asArray<QueueItem>(res);
+      const [listRes, statsRes] = await Promise.all([
+        api.get<unknown>("/queue/today"),
+        api.get<Record<string, unknown>>("/queue/stats/today").catch(() => null),
+      ]);
+      const rows = asArray<QueueItem>(listRes);
       setQueue(rows);
+      if (statsRes && typeof statsRes === "object") {
+        const w = (statsRes as Record<string, unknown>).waiting;
+        if (typeof w === "number") setWaitingCount(w);
+        else if (typeof w === "string" && !Number.isNaN(Number(w))) setWaitingCount(Number(w));
+      }
       setError(null);
       return rows;
     } catch (e) {
@@ -91,42 +115,80 @@ function CaseTakingQueue() {
 
   useEffect(() => {
     fetchQueue();
-    const id = setInterval(fetchQueue, 10000);
+    // FIX 5: keep queue polling every 15s
+    const id = setInterval(fetchQueue, 15000);
     return () => clearInterval(id);
   }, []);
 
-  const goToConsultation = (patientId: string, visitType: string, totalVisits: number, queueId?: string) => {
-    const mode = totalVisits > 0 ? "followup" : "new";
-    const search: Record<string, string> = { visit_type: (visitType || "HOMEOPATHY").toUpperCase(), mode };
+  const goToConsultation = (patientId: string, mode: "new" | "followup", queueId?: string) => {
+    const search: Record<string, string> = { mode };
     if (queueId) search.queue_id = queueId;
     navigate({ to: "/consultation/$patientId", params: { patientId }, search });
   };
 
+
   const handleCallIn = async (q: QueueItem) => {
     const id = queueId(q);
+    if (callingId) return; // prevent double-click
     setCallingId(id);
+
+    // FIX 5: optimistic local status update — no full refetch after Call In
+    setQueue((prev) =>
+      prev.map((row) => (queueId(row) === id ? { ...row, status: "IN_TREATMENT" } : row)),
+    );
+
     try {
-      await api.post("/queue/next");
-      const latest = await fetchQueue();
-      const called = latest.find((x) => queueId(x) === id && normalizedStatus(x.status) === "IN_TREATMENT") ??
-        latest.find((x) => normalizedStatus(x.status) === "IN_TREATMENT") ?? q;
-      const calledId = queueId(called) || id;
-      const p = await api.get<PatientLite>(`/patients/${encodeURIComponent(called.patient_id)}`);
-      goToConsultation(called.patient_id, called.visit_type || p.patient_type || "HOMEOPATHY", Number(p?.total_visits ?? 0), calledId);
+      // STEP 1: POST /queue/next
+      const nextRes = await api.post<unknown>("/queue/next").catch((e) => {
+        // If backend already advanced (or returned non-fatal), fall back to clicked row
+        console.warn("[queue/next] non-fatal:", e);
+        return {} as unknown;
+      });
+      const r = (nextRes && typeof nextRes === "object" ? (nextRes as Record<string, unknown>) : {});
+      // STEP 2: extract patient_id (with fallback to clicked row)
+      const patientId = (typeof r.patient_id === "string" && r.patient_id) || q.patient_id;
+      const queueItemId =
+        (typeof r.queue_item_id === "string" && r.queue_item_id) ||
+        (typeof r.queue_id === "string" && r.queue_id) ||
+        (typeof r.id === "string" && r.id) ||
+        id;
+
+      // STEP 3: detect followup vs new (non-fatal)
+      let mode: "new" | "followup" = "new";
+      try {
+        const visits = await api.get<unknown>(
+          `/visits/patient/${encodeURIComponent(patientId)}`,
+          { query: { limit: 1 } },
+        );
+        const arr = Array.isArray(visits)
+          ? visits
+          : ((visits as any)?.items ?? (visits as any)?.visits ?? []);
+        if (Array.isArray(arr) && arr.length > 0) mode = "followup";
+      } catch {
+        // default to new patient
+      }
+
+      // FIX 2: navigate immediately to consultation — do NOT stay on queue page
+      goToConsultation(patientId, mode, queueItemId);
     } catch (e) {
+      // Revert optimistic update on real failure
+      setQueue((prev) =>
+        prev.map((row) => (queueId(row) === id ? { ...row, status: q.status } : row)),
+      );
       toast.error(errMsg(e));
     } finally {
       setCallingId(null);
     }
   };
 
+
   return (
     <div className="space-y-5">
       <Card className="p-0 overflow-hidden">
         <div className="px-5 py-3 border-b clinic-divider flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="font-display text-xl">Case-taking · {queue.length}</div>
-            <div className="text-xs text-muted-foreground">Live · refreshes every 10s</div>
+            <div className="font-display text-xl">Case-taking · {waitingCount ?? queue.filter((q) => !DOCTOR_HIDDEN.has(normalizedStatus(q.status))).length}</div>
+            <div className="text-xs text-muted-foreground">Live · refreshes every 15s</div>
           </div>
           <button
             onClick={() => setShowWalkIn((v) => !v)}
@@ -142,13 +204,13 @@ function CaseTakingQueue() {
               onClose={() => setShowWalkIn(false)}
               onSelect={(p) => {
                 setShowWalkIn(false);
-                goToConsultation(
-                  p.id,
-                  ((p as unknown as { patient_type?: string }).patient_type || "HOMEOPATHY"),
-                  Number((p as unknown as { total_visits?: number }).total_visits ?? p.visit_count ?? 0),
+                const tv = Number(
+                  (p as unknown as { total_visits?: number }).total_visits ?? p.visit_count ?? 0,
                 );
+                goToConsultation(p.id, tv > 0 ? "followup" : "new");
               }}
             />
+
           </div>
         )}
 
@@ -163,6 +225,7 @@ function CaseTakingQueue() {
         ) : (
           <ul className="divide-y clinic-divider">
             {queue
+              .filter((q) => !DOCTOR_HIDDEN.has(normalizedStatus(q.status)))
               .slice()
               .sort((a, b) => (a.token_number ?? 0) - (b.token_number ?? 0))
               .map((q) => {
@@ -171,14 +234,22 @@ function CaseTakingQueue() {
                 const isWaiting = u === "WAITING";
                 return (
                   <li key={id || `${q.patient_id}-${q.token_number}`} className="px-4 sm:px-5 py-3 flex items-center gap-3 flex-wrap sm:flex-nowrap hover:bg-muted/40">
-                    <span className="font-mono text-sm w-12 text-muted-foreground shrink-0">#{q.token_number}</span>
+                    <span className="font-mono text-sm w-14 text-right text-muted-foreground tabular-nums shrink-0">#{q.token_number}</span>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium truncate">{q.patient_name}</div>
                       <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
                         {q.visit_type && (
                           <Tag className="bg-muted text-foreground/70 border-border">{q.visit_type}</Tag>
                         )}
-                        <span className="inline-flex items-center gap-1"><Clock className="size-3" />{q.wait_minutes ?? 0}m waiting</span>
+                         <span className="inline-flex items-center gap-1 whitespace-nowrap tabular-nums">
+                           <Clock className="size-3" />
+                           {formatWaitMinutes(q.wait_minutes, q.check_in_time ?? q.created_at)}
+                         </span>
+                         {q.patient_phone && (
+                           <span className="font-mono text-[11px] whitespace-nowrap tabular-nums tracking-normal">
+                             {q.patient_phone}
+                           </span>
+                         )}
                         <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusBadge(u)}`}>
                           {u}
                         </span>
@@ -254,7 +325,7 @@ function WalkInSearch({ onClose, onSelect }: { onClose: () => void; onSelect: (p
               {results.map((p) => {
                 const rec = p as unknown as Record<string, unknown>;
                 const name = (typeof rec.full_name === "string" && rec.full_name) ||
-                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "Patient";
+                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
                 const phone = (typeof rec.phone === "string" && rec.phone) || p.phone_mobile || "";
                 const reg = typeof p.reg_no === "number" && p.reg_no > 0 ? `VNC-${String(p.reg_no).padStart(4, "0")}` : "";
                 return (
@@ -265,7 +336,7 @@ function WalkInSearch({ onClose, onSelect }: { onClose: () => void; onSelect: (p
                     >
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
                           {phone || "—"}{reg ? ` · ${reg}` : ""}
                         </div>
                       </div>

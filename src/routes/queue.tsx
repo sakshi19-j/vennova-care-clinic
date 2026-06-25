@@ -18,7 +18,7 @@ export const Route = createFileRoute("/queue")({
   component: QueuePage,
 });
 
-type QueueStatus = "WAITING" | "IN_TREATMENT" | "DONE" | "NO_SHOW";
+type QueueStatus = "WAITING" | "IN_TREATMENT" | "BILLING_PENDING" | "COMPLETED";
 
 type QueueItem = {
   id?: string;
@@ -59,12 +59,12 @@ function errMsg(e: unknown): string {
   return "Something went wrong";
 }
 
+// Canonical 4-state lifecycle.
 function normalizedStatus(status: unknown): QueueStatus {
   const s = String(status ?? "WAITING").toUpperCase();
-  if (s === "IN_CONSULTATION") return "IN_TREATMENT";
-  if (s === "COMPLETED" || s === "BILLING") return "DONE";
-  if (s === "NO_SHOW") return "NO_SHOW";
-  if (s === "IN_TREATMENT") return "IN_TREATMENT";
+  if (s === "IN_CONSULTATION" || s === "IN_TREATMENT") return "IN_TREATMENT";
+  if (s === "BILLING" || s === "PENDING_BILLING" || s === "BILLING_PENDING") return "BILLING_PENDING";
+  if (s === "DONE" || s === "COMPLETED" || s === "NO_SHOW" || s === "CANCELLED") return "COMPLETED";
   return "WAITING";
 }
 
@@ -75,14 +75,14 @@ function queueId(q?: QueueItem): string {
 const STATUS_BADGE: Record<QueueStatus, string> = {
   WAITING: "bg-amber-100 text-amber-800 border-amber-300",
   IN_TREATMENT: "bg-blue-100 text-blue-800 border-blue-300",
-  DONE: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  NO_SHOW: "bg-rose-100 text-rose-800 border-rose-300",
+  BILLING_PENDING: "bg-violet-100 text-violet-800 border-violet-300",
+  COMPLETED: "bg-emerald-100 text-emerald-800 border-emerald-300",
 };
 const STATUS_LABEL: Record<QueueStatus, string> = {
   WAITING: "Waiting",
   IN_TREATMENT: "With Doctor",
-  DONE: "Completed",
-  NO_SHOW: "No-show",
+  BILLING_PENDING: "Billing",
+  COMPLETED: "Completed",
 };
 
 function QueuePage() {
@@ -103,8 +103,9 @@ function QueuePage() {
   const queue = queueQ.data ?? [];
   const waiting = queue.filter((q) => q.status === "WAITING");
   const inTreatment = queue.filter((q) => q.status === "IN_TREATMENT");
-  const completed = queue.filter((q) => q.status === "DONE");
-  const noShow = queue.filter((q) => q.status === "NO_SHOW");
+  const billing = queue.filter((q) => q.status === "BILLING_PENDING");
+  const completed = queue.filter((q) => q.status === "COMPLETED");
+  const noShow: QueueItem[] = [];
 
   const callMut = useMutation({
     mutationFn: async (item: QueueItem) => {
@@ -116,12 +117,13 @@ function QueuePage() {
     },
     onSuccess: (item) => {
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
-      const visitType = item.visit_type || "HOMEOPATHY";
+      // Do NOT pass the queue row's visit_type ("WALKIN" / "APPOINTMENT") into
+      // the consultation — backend Visit.type only accepts medical disciplines.
       const id = queueId(item);
       navigate({
         to: "/consultation/$patientId",
         params: { patientId: item.patient_id },
-        search: { queue_id: id, visit_type: visitType } as Record<string, string>,
+        search: { queue_id: id } as Record<string, string>,
       });
     },
     onError: (e) => toast.error(errMsg(e)),
@@ -187,16 +189,18 @@ function QueuePage() {
                     <span className="font-display text-saffron text-3xl">#{q.token_number}</span>
                     <div className="flex-1">
                       <div className="font-display text-2xl leading-tight">{q.patient_name}</div>
-                      <div className="text-xs text-primary-foreground/70">{q.visit_type || "—"} · {q.patient_phone || ""}</div>
+                      <div className="text-xs text-primary-foreground/70 whitespace-nowrap tabular-nums">
+                        {q.visit_type || "—"} · <span className="font-mono">{q.patient_phone || ""}</span>
+                      </div>
                     </div>
-                    <button
-                      onClick={() =>
-                        navigate({
-                          to: "/consultation/$patientId",
-                          params: { patientId: q.patient_id },
-                          search: { queue_id: q.id, visit_type: q.visit_type || "HOMEOPATHY" } as Record<string, string>,
-                        })
-                      }
+                       <button
+                       onClick={() =>
+                         navigate({
+                           to: "/consultation/$patientId",
+                           params: { patientId: q.patient_id },
+                           search: { queue_id: q.id } as Record<string, string>,
+                         })
+                       }
                       className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-sm"
                     >
                       <Stethoscope className="size-4" /> Open case
@@ -231,7 +235,7 @@ function QueuePage() {
                     (removeMut.isPending && removeMut.variables === id);
                   return (
                     <li key={id || `${q.patient_id}-${q.token_number}`} className="flex items-center gap-3 py-3 group">
-                      <span className="font-mono text-xs text-muted-foreground w-10">#{q.token_number}</span>
+                      <span className="font-mono text-xs text-muted-foreground w-14 text-right tabular-nums shrink-0">#{q.token_number}</span>
                       <Avatar name={q.patient_name} />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium flex items-center gap-2 flex-wrap">
@@ -243,7 +247,9 @@ function QueuePage() {
                           )}
                           {q.visit_type && <Tag className="bg-muted text-muted-foreground border-border">{q.visit_type}</Tag>}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">{q.patient_phone || "—"}</div>
+                        <div className="text-xs text-muted-foreground mt-0.5 font-mono whitespace-nowrap tabular-nums tracking-normal">
+                          {q.patient_phone || "—"}
+                        </div>
                       </div>
                       <span className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border font-medium ${STATUS_BADGE[q.status]}`}>
                         {STATUS_LABEL[q.status]}
@@ -281,10 +287,10 @@ function QueuePage() {
                         {busy ? <Loader2 className="size-3.5 animate-spin" /> : <PhoneCall className="size-3.5" />}
                         Call
                       </button>
-                      <Link
-                        to="/consultation/$patientId"
-                        params={{ patientId: q.patient_id }}
-                        search={{ queue_id: id, visit_type: q.visit_type || "HOMEOPATHY" } as Record<string, string>}
+                       <Link
+                         to="/consultation/$patientId"
+                         params={{ patientId: q.patient_id }}
+                         search={{ queue_id: id } as Record<string, string>}
                         className="px-3 h-8 text-xs rounded-lg bg-teal-600 text-white hover:bg-teal-700 inline-flex items-center gap-1"
                       >
                         <Stethoscope className="size-3.5" />
@@ -303,7 +309,7 @@ function QueuePage() {
               <ul className="divide-y clinic-divider">
                 {[...completed, ...noShow].map((q) => (
                   <li key={queueId(q) || `${q.patient_id}-${q.token_number}`} className="flex items-center gap-3 py-3">
-                    <span className="font-mono text-xs text-muted-foreground w-10">#{q.token_number}</span>
+                    <span className="font-mono text-xs text-muted-foreground w-14 text-right tabular-nums shrink-0">#{q.token_number}</span>
                     <Avatar name={q.patient_name} size={32} />
                     <div className="flex-1 min-w-0 font-medium truncate">{q.patient_name}</div>
                     <span className={`text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border font-medium ${STATUS_BADGE[q.status]}`}>

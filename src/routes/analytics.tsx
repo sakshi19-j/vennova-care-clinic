@@ -1,96 +1,168 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Card, PageHeader } from "@/components/clinic/PageHeader";
-import { revenue6m, patients } from "@/lib/clinic-data";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
+import { analyticsService } from "@/services/analytics";
+import { dashboardService, asArray, type RevenuePoint } from "@/services/dashboard";
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from "recharts";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
       { title: "Analytics — Vedic Clinic" },
-      { name: "description", content: "Retention, follow-up adherence, treatment outcomes and revenue trends — analytics built for clinic operations." },
-      { property: "og:title", content: "Clinical Analytics — Vedic Clinic" },
-      { property: "og:description", content: "Retention, adherence and revenue trends over the last 6 months." },
+      { name: "description", content: "Retention, follow-up adherence, treatment outcomes and revenue trends." },
     ],
     links: [{ rel: "canonical", href: "/analytics" }],
   }),
   component: Analytics,
 });
 
+type Retention = { d30?: number; d60?: number; d90?: number; "30_day"?: number; "60_day"?: number; "90_day"?: number };
+type Missed = { count?: number; total?: number };
+type TopPatient = { name?: string; patient_name?: string; visits?: number; count?: number };
+
+function num(v: unknown) { return typeof v === "number" && Number.isFinite(v) ? v : 0; }
+
 function Analytics() {
-  const top = [...patients].sort((a, b) => b.visits - a.visits).slice(0, 5);
+  const dailyQ = useQuery({
+    queryKey: ["analytics", "revenue", "daily"],
+    queryFn: () => dashboardService.dailyRevenue(),
+    staleTime: 60_000, retry: 1,
+  });
+  const retentionQ = useQuery({
+    queryKey: ["analytics", "retention"],
+    queryFn: () => analyticsService.retention(),
+    staleTime: 60_000, retry: 1,
+  });
+  const missedQ = useQuery({
+    queryKey: ["analytics", "missed"],
+    queryFn: () => analyticsService.missedPatients(),
+    staleTime: 60_000, retry: 1,
+  });
+  const topQ = useQuery({
+    queryKey: ["analytics", "top"],
+    queryFn: () => analyticsService.topPatients(),
+    staleTime: 60_000, retry: 1,
+  });
+
+  const series = asArray<RevenuePoint>(dailyQ.data).map((p, i) => ({
+    d: String(p.date ?? p.day ?? p.d ?? p.label ?? i + 1).slice(5, 10),
+    total: Number(p.total ?? p.amount ?? p.revenue ?? p.value ?? 0) || 0,
+  }));
+
+  const r = (retentionQ.data ?? {}) as Retention;
+  const retention = [
+    ["30-day", num(r.d30 ?? r["30_day"])],
+    ["60-day", num(r.d60 ?? r["60_day"])],
+    ["90-day", num(r.d90 ?? r["90_day"])],
+  ] as const;
+
+  const missedCount = (() => {
+    const m = missedQ.data as Missed | unknown[];
+    if (Array.isArray(m)) return m.length;
+    if (m && typeof m === "object") return num((m as Missed).count ?? (m as Missed).total);
+    return 0;
+  })();
+
+  const top = asArray<TopPatient>(topQ.data);
+
+  const anyError = dailyQ.error || retentionQ.error || missedQ.error || topQ.error;
+  const loading = dailyQ.isLoading || retentionQ.isLoading || missedQ.isLoading || topQ.isLoading;
+
   return (
     <div className="max-w-[1500px] mx-auto">
-      <PageHeader eyebrow="Last 6 months" title="Clinical Analytics"
-        subtitle="Retention, follow-up adherence, treatment outcomes — built for clinic operations, not boardrooms." />
+      <PageHeader eyebrow="Live" title="Clinical Analytics"
+        subtitle="Retention, follow-up performance and revenue — live from your backend." />
+
+      {anyError && (
+        <div className="mb-3 text-xs text-amber-700 inline-flex items-center gap-1.5">
+          <AlertTriangle className="size-3.5" /> Some analytics endpoints failed to load.
+        </div>
+      )}
 
       <div className="grid grid-cols-12 gap-5">
         <Card className="col-span-12 lg:col-span-8">
-          <h2 className="font-display text-xl mb-1">Revenue & visits</h2>
-          <div className="text-xs text-muted-foreground mb-4">Monthly trend</div>
+          <h2 className="font-display text-xl mb-1">Daily revenue</h2>
+          <div className="text-xs text-muted-foreground mb-4">/analytics/revenue/daily</div>
           <div className="h-72">
-            <ResponsiveContainer>
-              <AreaChart data={revenue6m}>
-                <defs>
-                  <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.38 0.16 285)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.38 0.16 285)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.88 0.018 85)" vertical={false} />
-                <XAxis dataKey="m" stroke="oklch(0.52 0.06 285)" />
-                <YAxis stroke="oklch(0.52 0.06 285)" />
-                <Tooltip />
-                <Legend />
-                <Area type="monotone" dataKey="consult" stroke="oklch(0.38 0.16 285)" fill="url(#g1)" name="Consult" />
-                <Area type="monotone" dataKey="medicine" stroke="oklch(0.78 0.14 75)" fill="oklch(0.78 0.14 75 / 0.2)" name="Medicine" />
-                <Area type="monotone" dataKey="procedures" stroke="oklch(0.55 0.14 295)" fill="oklch(0.55 0.14 295 / 0.2)" name="Procedures" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {dailyQ.isLoading ? <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              : series.length === 0 ? <Empty>No revenue data.</Empty>
+              : (
+                <ResponsiveContainer>
+                  <AreaChart data={series}>
+                    <defs>
+                      <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stopColor="oklch(0.38 0.16 285)" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="oklch(0.38 0.16 285)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.88 0.018 85)" vertical={false} />
+                    <XAxis dataKey="d" stroke="oklch(0.52 0.06 285)" />
+                    <YAxis stroke="oklch(0.52 0.06 285)" />
+                    <Tooltip formatter={(v: number) => `₹${v.toLocaleString("en-IN")}`} />
+                    <Legend />
+                    <Area type="monotone" dataKey="total" stroke="oklch(0.38 0.16 285)" fill="url(#g1)" name="Revenue" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
           </div>
         </Card>
 
         <Card className="col-span-12 lg:col-span-4">
           <h2 className="font-display text-xl mb-3">Retention</h2>
-          <div className="space-y-3">
-            {[["30-day", 84],["60-day", 71],["90-day", 58]].map(([l, v]) => (
-              <div key={l as string}>
-                <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">{l}</span><span className="font-medium">{v}%</span></div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-saffron" style={{ width: `${v}%` }} />
+          {retentionQ.isLoading ? <Loader2 className="size-5 animate-spin text-muted-foreground" /> : (
+            <div className="space-y-3">
+              {retention.map(([l, v]) => (
+                <div key={l as string}>
+                  <div className="flex justify-between text-sm mb-1"><span className="text-muted-foreground">{l}</span><span className="font-medium">{v}%</span></div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-primary to-saffron" style={{ width: `${Math.min(100, v)}%` }} />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 h-40">
-            <ResponsiveContainer>
-              <RadialBarChart innerRadius="60%" outerRadius="100%" data={[{ name: "Adherence", value: 74, fill: "oklch(0.55 0.14 295)" }]} startAngle={90} endAngle={-270}>
-                <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                <RadialBar background dataKey="value" cornerRadius={10} />
-              </RadialBarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="text-center text-sm text-muted-foreground -mt-2">Follow-up adherence · 74%</div>
+              ))}
+              {retention.every(([, v]) => v === 0) && (
+                <div className="text-xs text-muted-foreground pt-2">No retention data yet.</div>
+              )}
+            </div>
+          )}
         </Card>
 
         <Card className="col-span-12 lg:col-span-4 bg-[color-mix(in_oklab,var(--destructive)_5%,var(--card))] border-destructive/20">
           <h2 className="font-display text-xl mb-2">Missed follow-ups</h2>
-          <div className="font-display text-6xl text-destructive">23</div>
-          <p className="text-sm text-muted-foreground mt-2">Patients overdue by 7+ days. Send a batch reminder to recover them.</p>
+          <div className="font-display text-6xl text-destructive tabular-nums">
+            {missedQ.isLoading ? "…" : missedCount}
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">Patients overdue. Send a batch reminder to recover them.</p>
         </Card>
 
         <Card className="col-span-12 lg:col-span-8">
           <h2 className="font-display text-xl mb-3">Top patients (lifetime)</h2>
-          <ul className="divide-y clinic-divider">
-            {top.map((p) => (
-              <li key={p.id} className="flex items-center gap-4 py-2.5 text-sm">
-                <span className="font-medium flex-1">{p.name}</span>
-                <span className="text-muted-foreground">{p.visits} visits</span>
-                <span className="font-medium tabular-nums">₹{(p.visits * 600).toLocaleString("en-IN")}</span>
-              </li>
-            ))}
-          </ul>
+          {topQ.isLoading ? <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            : top.length === 0 ? <Empty>No patient data yet.</Empty>
+            : (
+              <ul className="divide-y clinic-divider">
+                {top.slice(0, 10).map((p, i) => (
+                  <li key={i} className="flex items-center gap-4 py-2.5 text-sm">
+                    <span className="font-medium flex-1">{p.name ?? p.patient_name ?? "—"}</span>
+                    <span className="text-muted-foreground">{num(p.visits ?? p.count)} visits</span>
+                  </li>
+                ))}
+              </ul>
+            )}
         </Card>
       </div>
+
+      {loading && <div className="text-xs text-muted-foreground mt-4 inline-flex items-center gap-1"><Loader2 className="size-3 animate-spin" /> Loading…</div>}
+    </div>
+  );
+}
+
+function Empty({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="h-full grid place-items-center text-sm text-muted-foreground border border-dashed border-border rounded-lg p-6">
+      {children}
     </div>
   );
 }

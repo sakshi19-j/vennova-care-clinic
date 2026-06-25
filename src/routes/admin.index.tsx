@@ -6,10 +6,11 @@ import {
 } from "recharts";
 import {
   IndianRupee, Users, CalendarDays, Stethoscope, BellRing, UserPlus,
-  PlayCircle, Building2, UserCog, Loader2, AlertTriangle, ArrowRight, Sparkles,
+  PlayCircle, UserCog, Loader2, AlertTriangle, ArrowRight, Sparkles,
   TrendingDown, UserX,
 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
+import { OnboardingChecklist } from "@/components/clinic/OnboardingChecklist";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -52,7 +53,7 @@ type QueueStats = {
 };
 
 function DashboardPage() {
-  const { profile, clinicName, role } = useAuth();
+  const { profile, clinicName } = useAuth();
 
   const dashQ = useQuery({
     queryKey: ["analytics", "dashboard"],
@@ -98,15 +99,6 @@ function DashboardPage() {
     }));
   }, [d]);
 
-
-  // Empty-account: no patients AND no visits AND no revenue ever
-  const emptyAccount =
-    !loading &&
-    totalPatients === 0 &&
-    visitsToday === 0 &&
-    revenueToday === 0 &&
-    revenueMonthly === 0;
-
   const firstName = (profile?.full_name || "").split(" ")[0] || "Doctor";
 
   return (
@@ -122,17 +114,16 @@ function DashboardPage() {
             {clinicName ? `${clinicName} · ` : ""}Real-time data from your clinic.
           </div>
         </div>
-        {anyError && !emptyAccount && (
+        {anyError && (
           <div className="inline-flex items-center gap-1.5 text-xs text-amber-600">
             <AlertTriangle className="size-3.5" /> Some widgets failed to load.
           </div>
         )}
       </div>
 
-      {emptyAccount ? (
-        <OnboardingCard firstName={firstName} role={role} />
-      ) : (
-        <>
+      <OnboardingChecklist />
+
+      <>
           {/* KPI tiles */}
           <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
             label="Today's revenue" value={inr(revenueToday)} icon={<IndianRupee className="size-4" />} loading={dashQ.isLoading} />
@@ -217,8 +208,7 @@ function DashboardPage() {
               <QuickAction to="/staff" icon={<UserCog className="size-4" />} label="Manage staff" />
             </div>
           </Card>
-        </>
-      )}
+      </>
     </div>
   );
 }
@@ -279,50 +269,5 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
       <span className="font-medium">{label}</span>
       <ArrowRight className="size-4 ml-auto text-muted-foreground group-hover:text-foreground transition-colors" />
     </Link>
-  );
-}
-
-function OnboardingCard({ firstName, role }: { firstName: string; role: string | null }) {
-  const steps = [
-    { to: "/admin/settings", icon: <Building2 className="size-4" />, title: "Setup your clinic", desc: "Add clinic name, address, working hours and prescription header." },
-    { to: "/reception/patients", icon: <UserPlus className="size-4" />, title: "Create your first patient", desc: "Register a patient to start building your records." },
-    { to: "/homeopathy/queue", icon: <PlayCircle className="size-4" />, title: "Start your first visit", desc: "Move a patient into consultation and take the case." },
-    { to: "/admin/staff-management", icon: <UserCog className="size-4" />, title: "Add your team", desc: "Invite a receptionist or assistant doctor." },
-  ];
-  return (
-    <Card className="col-span-12">
-      <div className="flex items-start gap-3 mb-5">
-        <div className="size-10 rounded-full bg-primary/10 text-primary grid place-items-center">
-          <Sparkles className="size-5" />
-        </div>
-        <div className="flex-1">
-          <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Welcome to Vennova</div>
-          <div className="font-display text-2xl leading-tight">Let's set up your clinic, {firstName}</div>
-          <div className="text-sm text-muted-foreground mt-1">
-            Complete these four steps to get your {role === "homeopathy" ? "homeopathy " : ""}practice running.
-            Your dashboard will fill in with real data as you start seeing patients.
-          </div>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {steps.map((s, i) => (
-          <Link
-            key={s.to}
-            to={s.to}
-            className="flex items-start gap-3 p-4 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/30 transition-colors group"
-          >
-            <div className="size-9 rounded-lg bg-primary/10 text-primary grid place-items-center shrink-0">{s.icon}</div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground tabular-nums">STEP {i + 1}</span>
-                <span>{s.title}</span>
-              </div>
-              <div className="text-xs text-muted-foreground mt-0.5">{s.desc}</div>
-            </div>
-            <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors mt-1" />
-          </Link>
-        ))}
-      </div>
-    </Card>
   );
 }

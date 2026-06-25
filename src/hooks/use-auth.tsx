@@ -85,12 +85,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Listener first (sync), then initial session check.
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
+    // Only re-hydrate the profile bundle on identity changes — NOT on every
+    // TOKEN_REFRESHED tick (which fires ~hourly + on tab focus) or every
+    // INITIAL_SESSION (every mount). Re-hydrating on those events spawns
+    // refresh storms during polling and never changes profile data anyway.
+    const { data: sub } = supabase.auth.onAuthStateChange((evt, s) => {
       setSession(s);
-      // Defer hydration so React updates flush first.
-      setTimeout(() => {
-        void hydrate(s?.user?.id ?? null);
-      }, 0);
+      if (
+        evt === "SIGNED_IN" ||
+        evt === "SIGNED_OUT" ||
+        evt === "USER_UPDATED"
+      ) {
+        // Defer hydration so React updates flush first.
+        setTimeout(() => {
+          void hydrate(s?.user?.id ?? null);
+        }, 0);
+      }
     });
 
     supabase.auth.getSession().then(async ({ data }) => {
