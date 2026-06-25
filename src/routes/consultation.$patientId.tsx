@@ -4,11 +4,23 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2, AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, X,
-  Sparkles, RotateCw, Zap,
+  Sparkles, RotateCw, Zap, Plus, Save, GripVertical, Trash2, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+
+// ---------- Custom parameters (local-only, no backend) ----------
+type CustomFieldKind = "text" | "textarea" | "number" | "dropdown";
+type CustomField = {
+  id: string;
+  label: string;
+  kind: CustomFieldKind;
+  options?: string[]; // for dropdown
+};
+const CUSTOM_PARAMS_KEY = "vennova:consultation:custom-params:v1";
+const TIMING_PRESETS = ["OD", "BD", "TDS", "QID", "SOS", "HS", "Weekly", "Monthly"];
+const draftKey = (patientId: string) => `vennova:consultation:draft:${patientId}:v1`;
 
 type ConsultationSearch = {
   queue_id?: string;
