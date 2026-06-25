@@ -745,17 +745,20 @@ function ConsultationPage() {
                     <input
                       value={m.frequency}
                       onChange={(e) => setMedicine(i, "frequency", e.target.value)}
-                      placeholder="BD / TDS"
+                      placeholder="BD / TDS or custom"
+                      list="vennova-timing-presets"
                       className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
                     />
                   </div>
                   <div className="col-span-3 md:col-span-2">
                     <Label>Days</Label>
                     <input
+                      type="number"
+                      min={0}
                       value={m.duration}
                       onChange={(e) => setMedicine(i, "duration", e.target.value)}
                       placeholder="7"
-                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2 flex justify-end">
