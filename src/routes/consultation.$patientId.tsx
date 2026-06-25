@@ -251,6 +251,94 @@ function ConsultationPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // ---- Custom parameters (local-only) ----
+  const [customFields, setCustomFields] = useState<CustomField[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(CUSTOM_PARAMS_KEY);
+      return raw ? (JSON.parse(raw) as CustomField[]) : [];
+    } catch { return []; }
+  });
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    try { window.localStorage.setItem(CUSTOM_PARAMS_KEY, JSON.stringify(customFields)); } catch { /* noop */ }
+  }, [customFields]);
+
+  const [paramDialogOpen, setParamDialogOpen] = useState(false);
+  const [newParam, setNewParam] = useState<{ label: string; kind: CustomFieldKind; options: string }>({
+    label: "", kind: "text", options: "",
+  });
+  const addCustomField = () => {
+    const label = newParam.label.trim();
+    if (!label) { toast.error("Parameter name is required"); return; }
+    const field: CustomField = {
+      id: `cf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      label,
+      kind: newParam.kind,
+      options: newParam.kind === "dropdown"
+        ? newParam.options.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined,
+    };
+    if (field.kind === "dropdown" && (!field.options || field.options.length === 0)) {
+      toast.error("Add at least one dropdown option (comma-separated)");
+      return;
+    }
+    setCustomFields((arr) => [...arr, field]);
+    setNewParam({ label: "", kind: "text", options: "" });
+    setParamDialogOpen(false);
+    toast.success(`Added "${label}"`);
+  };
+  const removeCustomField = (id: string) => {
+    setCustomFields((arr) => arr.filter((f) => f.id !== id));
+    setCustomValues((v) => { const c = { ...v }; delete c[id]; return c; });
+  };
+  const [dragId, setDragId] = useState<string | null>(null);
+  const onDragStart = (id: string) => setDragId(id);
+  const onDragOver = (e: React.DragEvent) => e.preventDefault();
+  const onDrop = (overId: string) => {
+    if (!dragId || dragId === overId) return;
+    setCustomFields((arr) => {
+      const from = arr.findIndex((f) => f.id === dragId);
+      const to = arr.findIndex((f) => f.id === overId);
+      if (from < 0 || to < 0) return arr;
+      const next = arr.slice();
+      const [m] = next.splice(from, 1);
+      next.splice(to, 0, m);
+      return next;
+    });
+    setDragId(null);
+  };
+
+  // ---- Draft (local-only) ----
+  const [draftRestored, setDraftRestored] = useState(false);
+  useEffect(() => {
+    if (draftRestored || explicitMode === "new") return;
+    try {
+      const raw = window.localStorage.getItem(draftKey(patientId));
+      if (!raw) return;
+      const d = JSON.parse(raw) as { form?: Partial<FormState>; customValues?: Record<string, string> };
+      if (d.form) setForm((f) => ({ ...f, ...d.form }));
+      if (d.customValues) setCustomValues(d.customValues);
+      setDraftRestored(true);
+      toast.message("Draft restored", { description: "Continuing your saved consultation" });
+    } catch { /* noop */ }
+  }, [patientId, explicitMode, draftRestored]);
+
+  const saveDraft = () => {
+    try {
+      window.localStorage.setItem(
+        draftKey(patientId),
+        JSON.stringify({ form, customValues, savedAt: new Date().toISOString() }),
+      );
+      toast.success("Draft saved locally");
+    } catch (e) {
+      toast.error("Could not save draft", { description: errMsg(e) });
+    }
+  };
+  const clearDraft = () => {
+    try { window.localStorage.removeItem(draftKey(patientId)); } catch { /* noop */ }
+  };
+
   const anyVitals = useMemo(
     () => [form.bp_sys, form.bp_dia, form.weight, form.temperature, form.pulse].some((x) => x.trim() !== ""),
     [form.bp_sys, form.bp_dia, form.weight, form.temperature, form.pulse]
