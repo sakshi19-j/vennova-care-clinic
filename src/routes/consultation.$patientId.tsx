@@ -784,6 +784,146 @@ function ConsultationPage() {
             </div>
           </Block>
 
+          {/* Datalist of timing presets — shared by all medicine rows */}
+          <datalist id="vennova-timing-presets">
+            {TIMING_PRESETS.map((t) => <option key={t} value={t} />)}
+          </datalist>
+
+          {/* Custom parameters (local-only) */}
+          <Block
+            title={
+              <div className="flex items-center justify-between gap-2">
+                <span>Additional Parameters</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full gap-1.5"
+                  onClick={() => setParamDialogOpen(true)}
+                >
+                  <Plus className="size-3.5" /> Add Parameter
+                </Button>
+              </div>
+            }
+          >
+            {customFields.length === 0 ? (
+              <div className="text-xs text-muted-foreground">
+                No custom parameters yet. Add fields like Sleep, Appetite, Tongue, Modalities, etc.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {customFields.map((cf) => (
+                  <div
+                    key={cf.id}
+                    draggable
+                    onDragStart={() => onDragStart(cf.id)}
+                    onDragOver={onDragOver}
+                    onDrop={() => onDrop(cf.id)}
+                    className="grid grid-cols-12 gap-2 items-start rounded-lg border border-border bg-background/40 p-2"
+                  >
+                    <div className="col-span-1 flex items-center justify-center pt-2 text-muted-foreground cursor-grab">
+                      <GripVertical className="size-4" />
+                    </div>
+                    <div className="col-span-10">
+                      <Label>{cf.label}</Label>
+                      {cf.kind === "textarea" ? (
+                        <textarea
+                          rows={3}
+                          value={customValues[cf.id] || ""}
+                          onChange={(e) => setCustomValues((v) => ({ ...v, [cf.id]: e.target.value }))}
+                          className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                      ) : cf.kind === "dropdown" ? (
+                        <select
+                          value={customValues[cf.id] || ""}
+                          onChange={(e) => setCustomValues((v) => ({ ...v, [cf.id]: e.target.value }))}
+                          className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                        >
+                          <option value="">— Select —</option>
+                          {(cf.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          type={cf.kind === "number" ? "number" : "text"}
+                          value={customValues[cf.id] || ""}
+                          onChange={(e) => setCustomValues((v) => ({ ...v, [cf.id]: e.target.value }))}
+                          className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                      )}
+                    </div>
+                    <div className="col-span-1 flex items-start justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => removeCustomField(cf.id)}
+                        className="size-8 grid place-items-center rounded-lg border border-border hover:bg-muted text-destructive"
+                        aria-label={`Remove ${cf.label}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-xs text-muted-foreground">
+                  Drag the handle to reorder. Custom parameters and values are saved on this device only.
+                </div>
+              </div>
+            )}
+          </Block>
+
+          {/* Add-parameter dialog */}
+          {paramDialogOpen && (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setParamDialogOpen(false)}>
+              <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-display text-lg">Add Parameter</div>
+                  <button onClick={() => setParamDialogOpen(false)} className="size-8 grid place-items-center rounded-lg hover:bg-muted" aria-label="Close">
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Parameter name</Label>
+                    <input
+                      autoFocus
+                      value={newParam.label}
+                      onChange={(e) => setNewParam((p) => ({ ...p, label: e.target.value }))}
+                      placeholder="e.g. Sleep, Appetite, Tongue, Modalities"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                  </div>
+                  <div>
+                    <Label>Field type</Label>
+                    <select
+                      value={newParam.kind}
+                      onChange={(e) => setNewParam((p) => ({ ...p, kind: e.target.value as CustomFieldKind }))}
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    >
+                      <option value="text">Text (single line)</option>
+                      <option value="textarea">Textarea (multi-line)</option>
+                      <option value="number">Number</option>
+                      <option value="dropdown">Dropdown</option>
+                    </select>
+                  </div>
+                  {newParam.kind === "dropdown" && (
+                    <div>
+                      <Label>Options (comma-separated)</Label>
+                      <input
+                        value={newParam.options}
+                        onChange={(e) => setNewParam((p) => ({ ...p, options: e.target.value }))}
+                        placeholder="Hot, Cold, Mixed"
+                        className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setParamDialogOpen(false)}>Cancel</Button>
+                  <Button type="button" onClick={addCustomField}>Add</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Consultation fee — receptionist will choose payment mode later */}
           <Block title="Consultation Fee">
             <div className="max-w-xs">
