@@ -571,6 +571,22 @@ function ConsultationPage() {
                 <Sparkles className="size-3.5" /> New Patient
               </span>
             )}
+            <div className="ml-auto flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" className="rounded-full gap-1.5" onClick={saveDraft}>
+                <Save className="size-3.5" /> Save Draft
+              </Button>
+              {lastVisit?.id && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full gap-1.5"
+                  onClick={() => navigate({ to: "/consultation/edit/$visitId", params: { visitId: lastVisit.id as string } })}
+                >
+                  <Pencil className="size-3.5" /> Edit Consultation
+                </Button>
+              )}
+            </div>
           </div>
           <div className="font-display text-2xl">{isAllo ? "Allopathy Case Paper" : "Homeopathy Case Paper"}</div>
 
