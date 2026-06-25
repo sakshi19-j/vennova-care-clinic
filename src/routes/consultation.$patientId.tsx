@@ -4,11 +4,23 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2, AlertTriangle, ArrowLeft, ChevronDown, ChevronRight, X,
-  Sparkles, RotateCw, Zap,
+  Sparkles, RotateCw, Zap, Plus, Save, GripVertical, Trash2, Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+
+// ---------- Custom parameters (local-only, no backend) ----------
+type CustomFieldKind = "text" | "textarea" | "number" | "dropdown";
+type CustomField = {
+  id: string;
+  label: string;
+  kind: CustomFieldKind;
+  options?: string[]; // for dropdown
+};
+const CUSTOM_PARAMS_KEY = "vennova:consultation:custom-params:v1";
+const TIMING_PRESETS = ["OD", "BD", "TDS", "QID", "SOS", "HS", "Weekly", "Monthly"];
+const draftKey = (patientId: string) => `vennova:consultation:draft:${patientId}:v1`;
 
 type ConsultationSearch = {
   queue_id?: string;
@@ -239,6 +251,94 @@ function ConsultationPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  // ---- Custom parameters (local-only) ----
+  const [customFields, setCustomFields] = useState<CustomField[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(CUSTOM_PARAMS_KEY);
+      return raw ? (JSON.parse(raw) as CustomField[]) : [];
+    } catch { return []; }
+  });
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    try { window.localStorage.setItem(CUSTOM_PARAMS_KEY, JSON.stringify(customFields)); } catch { /* noop */ }
+  }, [customFields]);
+
+  const [paramDialogOpen, setParamDialogOpen] = useState(false);
+  const [newParam, setNewParam] = useState<{ label: string; kind: CustomFieldKind; options: string }>({
+    label: "", kind: "text", options: "",
+  });
+  const addCustomField = () => {
+    const label = newParam.label.trim();
+    if (!label) { toast.error("Parameter name is required"); return; }
+    const field: CustomField = {
+      id: `cf_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      label,
+      kind: newParam.kind,
+      options: newParam.kind === "dropdown"
+        ? newParam.options.split(",").map((s) => s.trim()).filter(Boolean)
+        : undefined,
+    };
+    if (field.kind === "dropdown" && (!field.options || field.options.length === 0)) {
+      toast.error("Add at least one dropdown option (comma-separated)");
+      return;
+    }
+    setCustomFields((arr) => [...arr, field]);
+    setNewParam({ label: "", kind: "text", options: "" });
+    setParamDialogOpen(false);
+    toast.success(`Added "${label}"`);
+  };
+  const removeCustomField = (id: string) => {
+    setCustomFields((arr) => arr.filter((f) => f.id !== id));
+    setCustomValues((v) => { const c = { ...v }; delete c[id]; return c; });
+  };
+  const [dragId, setDragId] = useState<string | null>(null);
+  const onDragStart = (id: string) => setDragId(id);
+  const onDragOver = (e: React.DragEvent) => e.preventDefault();
+  const onDrop = (overId: string) => {
+    if (!dragId || dragId === overId) return;
+    setCustomFields((arr) => {
+      const from = arr.findIndex((f) => f.id === dragId);
+      const to = arr.findIndex((f) => f.id === overId);
+      if (from < 0 || to < 0) return arr;
+      const next = arr.slice();
+      const [m] = next.splice(from, 1);
+      next.splice(to, 0, m);
+      return next;
+    });
+    setDragId(null);
+  };
+
+  // ---- Draft (local-only) ----
+  const [draftRestored, setDraftRestored] = useState(false);
+  useEffect(() => {
+    if (draftRestored || explicitMode === "new") return;
+    try {
+      const raw = window.localStorage.getItem(draftKey(patientId));
+      if (!raw) return;
+      const d = JSON.parse(raw) as { form?: Partial<FormState>; customValues?: Record<string, string> };
+      if (d.form) setForm((f) => ({ ...f, ...d.form }));
+      if (d.customValues) setCustomValues(d.customValues);
+      setDraftRestored(true);
+      toast.message("Draft restored", { description: "Continuing your saved consultation" });
+    } catch { /* noop */ }
+  }, [patientId, explicitMode, draftRestored]);
+
+  const saveDraft = () => {
+    try {
+      window.localStorage.setItem(
+        draftKey(patientId),
+        JSON.stringify({ form, customValues, savedAt: new Date().toISOString() }),
+      );
+      toast.success("Draft saved locally");
+    } catch (e) {
+      toast.error("Could not save draft", { description: errMsg(e) });
+    }
+  };
+  const clearDraft = () => {
+    try { window.localStorage.removeItem(draftKey(patientId)); } catch { /* noop */ }
+  };
+
   const anyVitals = useMemo(
     () => [form.bp_sys, form.bp_dia, form.weight, form.temperature, form.pulse].some((x) => x.trim() !== ""),
     [form.bp_sys, form.bp_dia, form.weight, form.temperature, form.pulse]
@@ -373,6 +473,7 @@ function ConsultationPage() {
         { timeoutMs: 30000 },
       );
 
+      clearDraft();
       toast.success("Consultation saved", { id: toastId });
       navigate({
         to: "/prescription/$visitId",
@@ -470,6 +571,22 @@ function ConsultationPage() {
                 <Sparkles className="size-3.5" /> New Patient
               </span>
             )}
+            <div className="ml-auto flex items-center gap-2">
+              <Button type="button" variant="outline" size="sm" className="rounded-full gap-1.5" onClick={saveDraft}>
+                <Save className="size-3.5" /> Save Draft
+              </Button>
+              {lastVisit?.id && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full gap-1.5"
+                  onClick={() => navigate({ to: "/consultation/edit/$visitId", params: { visitId: lastVisit.id as string } })}
+                >
+                  <Pencil className="size-3.5" /> Edit Consultation
+                </Button>
+              )}
+            </div>
           </div>
           <div className="font-display text-2xl">{isAllo ? "Allopathy Case Paper" : "Homeopathy Case Paper"}</div>
 
@@ -628,17 +745,20 @@ function ConsultationPage() {
                     <input
                       value={m.frequency}
                       onChange={(e) => setMedicine(i, "frequency", e.target.value)}
-                      placeholder="BD / TDS"
+                      placeholder="BD / TDS or custom"
+                      list="vennova-timing-presets"
                       className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
                     />
                   </div>
                   <div className="col-span-3 md:col-span-2">
                     <Label>Days</Label>
                     <input
+                      type="number"
+                      min={0}
                       value={m.duration}
                       onChange={(e) => setMedicine(i, "duration", e.target.value)}
                       placeholder="7"
-                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
                     />
                   </div>
                   <div className="col-span-1 md:col-span-2 flex justify-end">
@@ -663,6 +783,146 @@ function ConsultationPage() {
               </div>
             </div>
           </Block>
+
+          {/* Datalist of timing presets — shared by all medicine rows */}
+          <datalist id="vennova-timing-presets">
+            {TIMING_PRESETS.map((t) => <option key={t} value={t} />)}
+          </datalist>
+
+          {/* Custom parameters (local-only) */}
+          <Block
+            title={
+              <div className="flex items-center justify-between gap-2">
+                <span>Additional Parameters</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full gap-1.5"
+                  onClick={() => setParamDialogOpen(true)}
+                >
+                  <Plus className="size-3.5" /> Add Parameter
+                </Button>
+              </div>
+            }
+          >
+            {customFields.length === 0 ? (
+              <div className="text-xs text-muted-foreground">
+                No custom parameters yet. Add fields like Sleep, Appetite, Tongue, Modalities, etc.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {customFields.map((cf) => (
+                  <div
+                    key={cf.id}
+                    draggable
+                    onDragStart={() => onDragStart(cf.id)}
+                    onDragOver={onDragOver}
+                    onDrop={() => onDrop(cf.id)}
+                    className="grid grid-cols-12 gap-2 items-start rounded-lg border border-border bg-background/40 p-2"
+                  >
+                    <div className="col-span-1 flex items-center justify-center pt-2 text-muted-foreground cursor-grab">
+                      <GripVertical className="size-4" />
+                    </div>
+                    <div className="col-span-10">
+                      <Label>{cf.label}</Label>
+                      {cf.kind === "textarea" ? (
+                        <textarea
+                          rows={3}
+                          value={customValues[cf.id] || ""}
+                          onChange={(e) => setCustomValues((v) => ({ ...v, [cf.id]: e.target.value }))}
+                          className="w-full rounded-lg border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                      ) : cf.kind === "dropdown" ? (
+                        <select
+                          value={customValues[cf.id] || ""}
+                          onChange={(e) => setCustomValues((v) => ({ ...v, [cf.id]: e.target.value }))}
+                          className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                        >
+                          <option value="">— Select —</option>
+                          {(cf.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          type={cf.kind === "number" ? "number" : "text"}
+                          value={customValues[cf.id] || ""}
+                          onChange={(e) => setCustomValues((v) => ({ ...v, [cf.id]: e.target.value }))}
+                          className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                        />
+                      )}
+                    </div>
+                    <div className="col-span-1 flex items-start justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => removeCustomField(cf.id)}
+                        className="size-8 grid place-items-center rounded-lg border border-border hover:bg-muted text-destructive"
+                        aria-label={`Remove ${cf.label}`}
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="text-xs text-muted-foreground">
+                  Drag the handle to reorder. Custom parameters and values are saved on this device only.
+                </div>
+              </div>
+            )}
+          </Block>
+
+          {/* Add-parameter dialog */}
+          {paramDialogOpen && (
+            <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setParamDialogOpen(false)}>
+              <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-display text-lg">Add Parameter</div>
+                  <button onClick={() => setParamDialogOpen(false)} className="size-8 grid place-items-center rounded-lg hover:bg-muted" aria-label="Close">
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Parameter name</Label>
+                    <input
+                      autoFocus
+                      value={newParam.label}
+                      onChange={(e) => setNewParam((p) => ({ ...p, label: e.target.value }))}
+                      placeholder="e.g. Sleep, Appetite, Tongue, Modalities"
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    />
+                  </div>
+                  <div>
+                    <Label>Field type</Label>
+                    <select
+                      value={newParam.kind}
+                      onChange={(e) => setNewParam((p) => ({ ...p, kind: e.target.value as CustomFieldKind }))}
+                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    >
+                      <option value="text">Text (single line)</option>
+                      <option value="textarea">Textarea (multi-line)</option>
+                      <option value="number">Number</option>
+                      <option value="dropdown">Dropdown</option>
+                    </select>
+                  </div>
+                  {newParam.kind === "dropdown" && (
+                    <div>
+                      <Label>Options (comma-separated)</Label>
+                      <input
+                        value={newParam.options}
+                        onChange={(e) => setNewParam((p) => ({ ...p, options: e.target.value }))}
+                        placeholder="Hot, Cold, Mixed"
+                        className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setParamDialogOpen(false)}>Cancel</Button>
+                  <Button type="button" onClick={addCustomField}>Add</Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Consultation fee — receptionist will choose payment mode later */}
           <Block title="Consultation Fee">
