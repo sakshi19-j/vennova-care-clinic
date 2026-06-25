@@ -1,85 +1,58 @@
-# Final Production Launch Pass — Execution Plan
+# Vennova Clinic OS — Production Launch Plan
 
-This is a very large pass (10 interlinked systems). To deliver it reliably without breaking the working Railway + Supabase + WhatsApp stack, I'll execute it as **one coordinated pass** broken into **3 sequential commits** in a single session. Each commit is independently safe to deploy, but together they constitute the full launch.
+This is a large, cross-cutting cleanup. Before I touch ~30 files I want to confirm scope, priority, and a few unknowns about what the Railway backend actually exposes — otherwise I'll spend credits wiring screens to endpoints that don't exist and you'll be back where you started.
 
-I will **not** stop between commits for approval — you've asked for a single coordinated pass. I'll only stop if I hit a blocker that requires your input (missing Razorpay plan IDs, storage bucket policy, etc.).
+## What I already verified
 
----
+- `src/lib/api-client.ts` is the single auth-aware fetch (Supabase JWT + 401 refresh). I will route every call through it.
+- Service wrappers already exist for: `patients`, `billing`, `prescriptions`, `reminders`, `analytics`, `dashboard`, `clinic-profile`, `imports-exports`. Most pages already import them.
+- Mock-data offenders still present (will be deleted or rewritten):
+  - `src/lib/admin-data.ts`, `src/lib/doctor-data.ts`, `src/lib/homeopathy-data.ts`, `src/lib/reception-data.ts` (these are the "clinic-data" style fixtures)
+  - Inline placeholder cards / arrays in: `reception.index.tsx`, `reception.appointments.tsx`, `reception.patients.tsx`, `patients.tsx`, `doctor.queue.tsx`, `homeopathy.queue.tsx`, `homeopathy.index.tsx`, `consultation.$patientId.tsx`, `prescription.$visitId.tsx`, `admin.billing.tsx`, `exports.tsx`, `settings.tsx`
+- Followups + billing handoff was already partially fixed last turn (8s polling, cache invalidation, real field mapping).
 
-## Commit 1 — Queue lifecycle, mock data removal, patient workspace (read-only)
+## Open questions before I implement
 
-**Queue (highest risk, done first):**
-- Hard-enforce 4 canonical statuses everywhere via `normalizeQueueStatus`
-- After prescription save → optimistic `setQueryData` removes patient from doctor queue + transitions to `BILLING_PENDING` via existing `/queue/{id}/status` endpoint
-- After payment → optimistic remove from billing queue + transition to `COMPLETED`
-- Filters: doctor queues = `WAITING|IN_TREATMENT` only; reception active = `WAITING`; billing = `BILLING_PENDING`; completed never appears in any active list
-- Replace polling intervals with `refetchOnWindowFocus` + 15s background refetch (no race storms)
-- Centralized mutation helpers in `queue-store.ts` so every caller transitions identically
+I need answers to these or I'll guess wrong:
 
-**Mock data sweep:**
-- Audit & wire: `admin.index`, `admin.staff`, `doctor.index`, `homeopathy.index`, `reception.index`, `reception.followups`, `billing.tsx`, `prescriptions.tsx`, `appointments.tsx`
-- All charts → real `/analytics/*` endpoints with proper loading/empty/error states
-- Wait times from `created_at` only (already done in `wait-time.ts`)
+1. **Backend endpoint contract.** Can you share (or point me at) the Railway OpenAPI / Swagger doc, or paste sample JSON for these endpoints? Without this I can't guarantee field names match.
+   - `GET /dashboard/today` (waiting / with-doctor / billing-pending / completed / revenue / followups counts) — does this exist, or do I derive counts client-side from `/queue`, `/billing/pending`, `/reminders/today`?
+   - `GET /queue` shape (statuses, token, patient join)
+   - `GET /visits/today`, `GET /visits/{id}`, `PUT /visits/{id}` (for Edit Consultation)
+   - `GET /prescriptions/{visit_id}`, `PUT /prescriptions/{visit_id}`, `POST /prescriptions/{visit_id}/whatsapp`, PDF URL pattern
+   - `GET /analytics/*` (revenue today/week/month, retention, top patients, top diseases, whatsapp, followups, collections)
+   - `GET /staff`, `POST/PUT/DELETE /staff` — or is staff managed via the existing Supabase `createStaffMember` server fn only?
+   - `GET /whatsapp/history` for the WhatsApp screen
+   - `PUT /settings/clinic` for branding (logo_url, signature_url, colors, footer)
 
-**Patient Workspace:**
-- New route `/patients/$patientId/workspace` with tabs: Summary, Visits, Prescriptions, Case Papers, Billing, Follow-ups, Notes, Attachments, AI Insights
-- Doctor patient search + completed-consultation links → workspace (not consultation editor)
-- Consultation route guards: only opens for visits with status `IN_TREATMENT` or `WAITING`; completed redirects to workspace
-- Read-only renderer for past prescriptions/visits
+2. **Scope confirmation.** This is roughly 25-30 files of changes. Do you want it all in one pass (high credit cost, higher risk of regressions you'll have to live with until the next turn), or sequenced in 3 phases so you can sanity-check each:
+   - **Phase A — Core workflow (most critical):** Reception dashboard, Queue, Billing handoff, Followups, Consultation (incl. Edit), Prescription preview/edit/PDF/WhatsApp, Receipts.
+   - **Phase B — Patients & Visits:** Patients list/search/profile/history, Visit timeline, Today's visits.
+   - **Phase C — Admin:** Analytics charts on real data, Clinic Settings + Branding upload (logo/signature to Supabase `clinic-branding` bucket, then injected into prescription/receipt PDFs), Staff CRUD, WhatsApp history, Reminders dashboard.
 
----
+3. **Branding PDFs.** Prescription/Receipt PDFs — are they generated by the backend (Railway returns a PDF URL we just render) or do you want the frontend to render them with the uploaded logo/signature? My read of `services/prescriptions.ts` and `services/billing.ts` is backend-generated; please confirm so I don't build a duplicate client-side generator.
 
-## Commit 2 — Consultation editor, Settings persistence + branding, Prescription PDF v2, Follow-ups
+4. **Edit Consultation — backend support.** Is there a `PUT /visits/{id}` (or `PUT /consultations/{id}`) that accepts the full consultation payload (chief complaint, diagnosis, exam, meds, advice, fee, followup)? If not, I'll stop and ask the backend team rather than fake it.
 
-**Consultation editor:**
-- Section model: `{id, title, type, content, order}` stored per-visit; templates stored per-doctor in new `consultation_templates` Supabase table
-- Add/remove/reorder (drag handles) + "Save as template" / "Load template"
-- Preserves existing homeopathy fields (miasm, modalities, etc.) as a built-in template
+5. **Demo data files I plan to delete.** Confirm you want me to **delete** `src/lib/{admin,doctor,homeopathy,reception}-data.ts` entirely. Anything still importing them gets rewritten to call services. (Grep shows the route files above are the only importers.)
 
-**Settings + branding:**
-- Wire every Save button to backend `/settings/*` endpoints
-- New Supabase Storage buckets: `clinic-branding` (private, signed URLs) for logos + signatures
-- Branding context propagates to: PDF generator, receipts, prescription preview, app header
-- Live preview panel in branding settings
+## Proposed approach once answered
 
-**Prescription PDF v2:**
-- Rewrite `jspdf` template: logo header, clinic name/address, doctor block, patient block, Rx body, signature image, footer
-- Two variants: `allopathy` (standard table) + `homeopathy` (potency/repetition columns)
-- Fix "Preview PDF" + "Save Template" buttons
+For each page:
+1. Replace any local array / `*-data.ts` import with a `useQuery` (or `useSuspenseQuery` via loader) pointing at the matching service in `src/services/*`.
+2. Standard states: skeleton loader, empty state with CTA, error state with retry, success toast on mutations.
+3. Mutations (`useMutation`) invalidate the affected query keys so dashboards/queue/billing/followups refresh without a page reload — same pattern already working in `reception.billing.tsx`.
+4. Strip every `|| "Patient"`, `|| "Unknown"`, `|| "Demo …"`, hardcoded numbers, and unused imports as I touch each file.
+5. After Phase A I'll run typecheck + a Playwright smoke pass on the full receptionist workflow (register → queue → call in → consultation → prescription → billing → receipt → followup) against the live Railway backend using your injected Supabase session.
 
-**Follow-up lifecycle:**
-- Auto-create follow-up row on visit COMPLETED (backend already supports; ensure frontend triggers it)
-- Reminder list pulls from `/reminders/today` (already exists)
-- WhatsApp send button → `/reminders/{id}/send` with optimistic state update
+## What I will NOT touch
+
+`api-client.ts`, Supabase config, routing, auth, Tailwind tokens, `__root.tsx` shell, layouts. UI changes are presentational only.
 
 ---
 
-## Commit 3 — Subscriptions + Razorpay, bulk import, final UX polish
+**Please reply with:**
+- (a) Answers to questions 1, 3, 4 (or a link to the backend OpenAPI), and
+- (b) Whether you want Phase A only, or A+B+C in one pass.
 
-**Subscriptions:**
-- 3 plans (Starter/Growth/Clinic Pro) with monthly/yearly toggle
-- Plan state from `/subscription/current`; checkout via existing Razorpay flow (`VITE_RAZORPAY_KEY_ID`)
-- Feature gates via `useSubscription()` hook (`canUseFeature("ai_insights")` etc.)
-- Current plan badge in admin sidebar; renewal banner when <7 days
-
-**Bulk import:**
-- New `/reception/patients/import` route
-- CSV/XLSX parser via `papaparse` + `xlsx` (added as deps)
-- Column mapping UI, phone-based dedup preview, batch POST to `/patients/bulk`
-- Falls back to row-by-row `/patients` POST if `/patients/bulk` 404s
-
-**Final polish:**
-- Skeleton loaders on all data tables
-- Empty states with CTAs
-- Toast on every mutation success/error
-- Fix any broken nav links surfaced during the pass
-
----
-
-## Questions before I start
-
-1. **Razorpay plan IDs** — are `plan_starter`, `plan_growth`, `plan_clinicpro` already provisioned on the backend (monthly + yearly variants), or should I stub the IDs and you'll fill them via env later?
-2. **Storage bucket** — OK to create one private bucket `clinic-branding` for logos + signatures (signed URLs)? Or do you want separate `clinic-logos` and `clinic-signatures`?
-3. **Bulk import endpoint** — does the Railway backend expose `POST /patients/bulk`, or should I assume per-row `POST /patients`?
-
-Answer these 3 and I'll execute all 3 commits in one continuous pass. If you say "just proceed", I'll use sensible defaults (stub plan IDs, single `clinic-branding` bucket, per-row import fallback) and ship.
+Once I have that I'll implement without further questions.
