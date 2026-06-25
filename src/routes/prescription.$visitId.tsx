@@ -246,14 +246,22 @@ function PrescriptionPage() {
               )}
             </div>
           </div>
-          {patientId && (
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => navigate({ to: "/consultation/$patientId", params: { patientId }, search: {} })}
+              onClick={() => navigate({ to: "/consultation/edit/$visitId", params: { visitId } })}
               className="h-9 px-3 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center gap-1"
             >
-              <ArrowLeft className="size-4" /> Back to case paper
+              <FileText className="size-4" /> Edit consultation
             </button>
-          )}
+            {patientId && (
+              <button
+                onClick={() => navigate({ to: "/consultation/$patientId", params: { patientId }, search: {} })}
+                className="h-9 px-3 rounded-full border border-border text-sm hover:bg-muted inline-flex items-center gap-1"
+              >
+                <ArrowLeft className="size-4" /> Back to case paper
+              </button>
+            )}
+          </div>
         </div>
 
         {/* SECTION A — Prescription (doctor) */}
