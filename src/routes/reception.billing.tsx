@@ -339,6 +339,14 @@ function BillingPage() {
                       Paid {p.mode} ₹{p.fee} · reminders scheduled
                     </div>
                   </div>
+                  <a
+                    href={p.receiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 px-3 rounded-full border border-border text-xs inline-flex items-center gap-1.5 hover:bg-muted"
+                  >
+                    Receipt
+                  </a>
                   <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
                     <CheckCircle2 className="size-3" /> Done
                   </Tag>
