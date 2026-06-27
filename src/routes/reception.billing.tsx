@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { loadQueue } from "@/lib/queue-store";
+import { billingService } from "@/services/billing";
+import { dashboardService } from "@/services/dashboard";
 
 export const Route = createFileRoute("/reception/billing")({
   component: BillingPage,
