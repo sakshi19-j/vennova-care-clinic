@@ -106,10 +106,13 @@ function BillingPage() {
   const pendingQ = useQuery({
     queryKey: ["billing-pending"],
     queryFn: async () => asArray<PendingBill>(await api.get("/billing/pending")),
-    refetchInterval: 8000,
+    refetchInterval: 5000,
     refetchOnWindowFocus: true,
     refetchOnMount: "always",
+    refetchOnReconnect: true,
+    staleTime: 0,
   });
+
 
   // Poll a bit faster than the query interval so doctor finalizations show
   // up in the billing queue within seconds, not the next minute.
