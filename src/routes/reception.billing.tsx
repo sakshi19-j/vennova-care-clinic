@@ -274,9 +274,7 @@ function BillingPage() {
                     )}
                     <Avatar name={billName(r) || "?"} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {billName(r) || <span className="text-muted-foreground italic">Unnamed patient</span>}
-                      </div>
+                      <div className="font-medium truncate">{billName(r)}</div>
                       <div className="text-xs text-muted-foreground truncate">
                         {r.visit_type || "Consultation"}
                       </div>
