@@ -120,10 +120,19 @@ function BillingPage() {
 
   const [paying, setPaying] = useState<string | null>(null);
   const [todayPaid, setTodayPaid] = useState<
-    Array<{ id: string; name: string; fee: number; mode: PaymentMode; at: number }>
+    Array<{ id: string; name: string; fee: number; mode: PaymentMode; at: number; receiptUrl: string }>
   >([]);
 
-  const pending = pendingQ.data ?? [];
+  const summaryQ = useQuery({
+    queryKey: ["analytics", "summary", "today"],
+    queryFn: () => dashboardService.summaryToday(),
+    refetchInterval: 15_000,
+    retry: 1,
+  });
+
+  const pending = (pendingQ.data ?? []).filter(
+    (b) => billId(b) && billName(b).trim().length > 0,
+  );
 
   const markPaid = async (bill: PendingBill, mode: PaymentMode) => {
     const id = billId(bill);
