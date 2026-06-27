@@ -359,13 +359,13 @@ function BillingPage() {
 
       <div className="col-span-12 lg:col-span-4 space-y-5">
         <Card>
-          <div className="font-display text-xl mb-1">Session revenue</div>
+          <div className="font-display text-xl mb-1">Today's revenue</div>
           <div className="font-display text-5xl text-primary inline-flex items-center mt-1">
             <IndianRupee className="size-7" />
             {totalToday.toLocaleString("en-IN")}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {todayPaid.length} paid visit{todayPaid.length === 1 ? "" : "s"}
+            {summaryQ.isLoading ? "Syncing with backend…" : `Live from /analytics/summary/today · ${todayPaid.length} this session`}
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {(["CASH", "UPI", "CARD", "ONLINE"] as const).map((m) => (
