@@ -434,7 +434,7 @@ function FollowupRowView({
         <Avatar name={name || "?"} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">{name || <span className="text-muted-foreground italic">Unnamed patient</span>}</span>
+            <span className="font-medium truncate">{name}</span>
             <Tag className={toneClass}>
               <Clock className="size-3" /> {cd.text}
             </Tag>
