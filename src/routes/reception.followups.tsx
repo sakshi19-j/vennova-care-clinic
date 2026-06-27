@@ -256,11 +256,22 @@ function FollowupsPage() {
     qc.invalidateQueries({ queryKey: ["followups", "today"] });
     qc.invalidateQueries({ queryKey: ["followups", "upcoming"] });
     qc.invalidateQueries({ queryKey: ["reminders", "due"] });
+    qc.invalidateQueries({ queryKey: ["reminders", "stats"] });
   };
 
   const loading = todayQ.isLoading && upcomingQ.isLoading;
   const error = todayQ.error && upcomingQ.error ? todayQ.error : null;
   const list = buckets[tab];
+
+  // Prefer backend counts (/reminders/stats); fall back to computed buckets.
+  const s = (statsQ.data ?? {}) as Record<string, unknown>;
+  const num = (k: string) => (typeof s[k] === "number" ? (s[k] as number) : undefined);
+  const counts = {
+    today: num("today") ?? num("due_today") ?? num("pending_today") ?? buckets.today.length,
+    upcoming: num("upcoming") ?? num("scheduled") ?? buckets.upcoming.length,
+    missed: num("missed") ?? num("overdue") ?? num("failed") ?? buckets.missed.length,
+    completed: num("completed") ?? num("done") ?? num("sent") ?? buckets.completed.length,
+  };
 
   return (
     <div className="grid grid-cols-12 gap-5">
