@@ -199,13 +199,21 @@ function FollowupsPage() {
     retry: false,
   });
 
-  // Merge + dedupe across endpoints.
+  const statsQ = useQuery({
+    queryKey: ["reminders", "stats"],
+    queryFn: () => remindersService.stats(),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
+  // Merge + dedupe across endpoints, and drop rows without a real patient name.
   const all = useMemo(() => {
     const map = new Map<string, Followup>();
     for (const list of [todayQ.data ?? [], upcomingQ.data ?? [], dueQ.data ?? []]) {
       for (const r of list) {
         const id = rowId(r);
         if (!id) continue;
+        if (!rowName(r).trim()) continue; // skip "Unknown"/undefined rows
         if (!map.has(id)) map.set(id, r);
       }
     }
