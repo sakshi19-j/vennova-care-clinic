@@ -185,9 +185,13 @@ function BillingPage() {
         console.warn("reminders/schedule failed", e);
       }
 
-      toast.success(`${mode} ₹${billFee(bill)} collected · receipt sent`, { id: toastId });
+      const receiptUrl = billingService.receiptUrl(id);
+      toast.success(`${mode} ₹${billFee(bill)} collected · receipt ready`, {
+        id: toastId,
+        action: { label: "View receipt", onClick: () => window.open(receiptUrl, "_blank", "noreferrer") },
+      });
       setTodayPaid((arr) => [
-        { id, name: billName(bill), fee: billFee(bill), mode, at: Date.now() },
+        { id, name: billName(bill), fee: billFee(bill), mode, at: Date.now(), receiptUrl },
         ...arr,
       ]);
       qc.invalidateQueries({ queryKey: ["billing-pending"] });
@@ -211,7 +215,11 @@ function BillingPage() {
     }
   };
 
-  const totalToday = todayPaid.reduce((s, p) => s + p.fee, 0);
+  const backendRevenueToday = Number(
+    summaryQ.data?.revenue_today ?? summaryQ.data?.revenue ?? 0,
+  ) || 0;
+  const sessionTotal = todayPaid.reduce((s, p) => s + p.fee, 0);
+  const totalToday = Math.max(backendRevenueToday, sessionTotal);
   const byMode: Record<PaymentMode, number> = { CASH: 0, UPI: 0, CARD: 0, ONLINE: 0 };
   for (const p of todayPaid) byMode[p.mode] += p.fee;
 
