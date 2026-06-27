@@ -170,20 +170,23 @@ function FollowupsPage() {
   const todayQ = useQuery({
     queryKey: ["followups", "today"],
     queryFn: async () => {
-      // Try /followups/today; fall back to /reminders/today (older backend).
       try {
         return asArray<Followup>(await api.get("/followups/today"));
       } catch {
         return asArray<Followup>(await api.get("/reminders/today"));
       }
     },
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const upcomingQ = useQuery({
     queryKey: ["followups", "upcoming"],
     queryFn: async () => asArray<Followup>(await api.get("/followups/upcoming")),
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
 
   const dueQ = useQuery({
@@ -195,16 +198,21 @@ function FollowupsPage() {
         return [] as Followup[];
       }
     },
-    refetchInterval: 60_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
     retry: false,
   });
 
   const statsQ = useQuery({
     queryKey: ["reminders", "stats"],
     queryFn: () => remindersService.stats(),
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
     retry: false,
   });
+
 
   // Merge + dedupe across endpoints, and drop rows without a real patient name.
   const all = useMemo(() => {
