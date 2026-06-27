@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, Tag, Avatar } from "@/components/clinic/PageHeader";
 import { api, ApiError } from "@/lib/api-client";
+import { remindersService } from "@/services/reminders";
 import {
   MessageCircle, Send, CheckCircle2, AlertCircle, Clock, CalendarClock,
   Loader2, RefreshCw, Inbox,
