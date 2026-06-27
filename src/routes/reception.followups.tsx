@@ -282,11 +282,11 @@ function FollowupsPage() {
             <div>
               <div className="text-[10px] uppercase tracking-widest text-primary/80 font-medium">Follow-ups</div>
               <div className="font-display text-4xl mt-1 tabular-nums">
-                {buckets.today.length}
+                {counts.today}
                 <span className="text-muted-foreground text-2xl"> due today</span>
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                {buckets.upcoming.length} upcoming · {buckets.missed.length} missed · {buckets.completed.length} completed
+                {counts.upcoming} upcoming · {counts.missed} missed · {counts.completed} completed
               </div>
             </div>
             <button
@@ -300,10 +300,10 @@ function FollowupsPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-1 p-1 rounded-full bg-muted/60 w-fit flex-wrap">
-          <TabButton active={tab === "today"} onClick={() => setTab("today")} icon={<Send className="size-3.5" />} label="Today" count={buckets.today.length} />
-          <TabButton active={tab === "upcoming"} onClick={() => setTab("upcoming")} icon={<CalendarClock className="size-3.5" />} label="Upcoming" count={buckets.upcoming.length} />
-          <TabButton active={tab === "missed"} onClick={() => setTab("missed")} icon={<AlertCircle className="size-3.5" />} label="Missed" count={buckets.missed.length} />
-          <TabButton active={tab === "completed"} onClick={() => setTab("completed")} icon={<CheckCircle2 className="size-3.5" />} label="Completed" count={buckets.completed.length} />
+          <TabButton active={tab === "today"} onClick={() => setTab("today")} icon={<Send className="size-3.5" />} label="Today" count={counts.today} />
+          <TabButton active={tab === "upcoming"} onClick={() => setTab("upcoming")} icon={<CalendarClock className="size-3.5" />} label="Upcoming" count={counts.upcoming} />
+          <TabButton active={tab === "missed"} onClick={() => setTab("missed")} icon={<AlertCircle className="size-3.5" />} label="Missed" count={counts.missed} />
+          <TabButton active={tab === "completed"} onClick={() => setTab("completed")} icon={<CheckCircle2 className="size-3.5" />} label="Completed" count={counts.completed} />
         </div>
 
         {/* List */}
@@ -338,11 +338,11 @@ function FollowupsPage() {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pipeline</div>
           <div className="font-display text-lg mt-0.5">Follow-up status</div>
           <div className="mt-3 space-y-2">
-            <PipelineRow label="Due today" count={buckets.today.length} />
-            <PipelineRow label="Upcoming" count={buckets.upcoming.length} />
+            <PipelineRow label="Due today" count={counts.today} />
+            <PipelineRow label="Upcoming" count={counts.upcoming} />
             <div className="border-t clinic-divider pt-2 mt-2 space-y-2">
-              <PipelineRow label="Completed" count={buckets.completed.length} accent="success" />
-              <PipelineRow label="Missed" count={buckets.missed.length} accent="danger" />
+              <PipelineRow label="Completed" count={counts.completed} accent="success" />
+              <PipelineRow label="Missed" count={counts.missed} accent="danger" />
             </div>
           </div>
         </Card>
