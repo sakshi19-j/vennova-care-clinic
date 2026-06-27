@@ -197,18 +197,17 @@ function BillingPage() {
         { id, name: billName(bill), fee: billFee(bill), mode, at: Date.now(), receiptUrl },
         ...arr,
       ]);
+      // Broad invalidation — refresh every screen that mirrors visit/payment state.
       qc.invalidateQueries({ queryKey: ["billing-pending"] });
       qc.invalidateQueries({ queryKey: ["billing"] });
-      qc.invalidateQueries({ queryKey: ["queue", "today"] });
-      qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
       qc.invalidateQueries({ queryKey: ["analytics"] });
-      // Refresh followups — scheduling a reminder above creates rows the
-      // followups page must display immediately.
-      qc.invalidateQueries({ queryKey: ["followups", "today"] });
-      qc.invalidateQueries({ queryKey: ["followups", "upcoming"] });
-      qc.invalidateQueries({ queryKey: ["reminders", "due"] });
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+      qc.invalidateQueries({ queryKey: ["followups"] });
+      qc.invalidateQueries({ queryKey: ["reminders"] });
       // Hard refetch shared queue store so doctor + reception stay in sync.
       void loadQueue();
+
     } catch (e) {
       // Roll back the optimistic removal on failure.
       qc.invalidateQueries({ queryKey: ["billing-pending"] });
