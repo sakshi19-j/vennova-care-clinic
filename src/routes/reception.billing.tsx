@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { loadQueue } from "@/lib/queue-store";
+import { billingService } from "@/services/billing";
+import { dashboardService } from "@/services/dashboard";
 
 export const Route = createFileRoute("/reception/billing")({
   component: BillingPage,
@@ -118,10 +120,19 @@ function BillingPage() {
 
   const [paying, setPaying] = useState<string | null>(null);
   const [todayPaid, setTodayPaid] = useState<
-    Array<{ id: string; name: string; fee: number; mode: PaymentMode; at: number }>
+    Array<{ id: string; name: string; fee: number; mode: PaymentMode; at: number; receiptUrl: string }>
   >([]);
 
-  const pending = pendingQ.data ?? [];
+  const summaryQ = useQuery({
+    queryKey: ["analytics", "summary", "today"],
+    queryFn: () => dashboardService.summaryToday(),
+    refetchInterval: 15_000,
+    retry: 1,
+  });
+
+  const pending = (pendingQ.data ?? []).filter(
+    (b) => billId(b) && billName(b).trim().length > 0,
+  );
 
   const markPaid = async (bill: PendingBill, mode: PaymentMode) => {
     const id = billId(bill);
@@ -174,9 +185,13 @@ function BillingPage() {
         console.warn("reminders/schedule failed", e);
       }
 
-      toast.success(`${mode} ₹${billFee(bill)} collected · receipt sent`, { id: toastId });
+      const receiptUrl = billingService.receiptUrl(id);
+      toast.success(`${mode} ₹${billFee(bill)} collected · receipt ready`, {
+        id: toastId,
+        action: { label: "View receipt", onClick: () => window.open(receiptUrl, "_blank", "noreferrer") },
+      });
       setTodayPaid((arr) => [
-        { id, name: billName(bill), fee: billFee(bill), mode, at: Date.now() },
+        { id, name: billName(bill), fee: billFee(bill), mode, at: Date.now(), receiptUrl },
         ...arr,
       ]);
       qc.invalidateQueries({ queryKey: ["billing-pending"] });
@@ -200,7 +215,11 @@ function BillingPage() {
     }
   };
 
-  const totalToday = todayPaid.reduce((s, p) => s + p.fee, 0);
+  const backendRevenueToday = Number(
+    summaryQ.data?.revenue_today ?? summaryQ.data?.revenue ?? 0,
+  ) || 0;
+  const sessionTotal = todayPaid.reduce((s, p) => s + p.fee, 0);
+  const totalToday = Math.max(backendRevenueToday, sessionTotal);
   const byMode: Record<PaymentMode, number> = { CASH: 0, UPI: 0, CARD: 0, ONLINE: 0 };
   for (const p of todayPaid) byMode[p.mode] += p.fee;
 
@@ -255,9 +274,7 @@ function BillingPage() {
                     )}
                     <Avatar name={billName(r) || "?"} />
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {billName(r) || <span className="text-muted-foreground italic">Unnamed patient</span>}
-                      </div>
+                      <div className="font-medium truncate">{billName(r)}</div>
                       <div className="text-xs text-muted-foreground truncate">
                         {r.visit_type || "Consultation"}
                       </div>
@@ -322,6 +339,14 @@ function BillingPage() {
                       Paid {p.mode} ₹{p.fee} · reminders scheduled
                     </div>
                   </div>
+                  <a
+                    href={p.receiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="h-8 px-3 rounded-full border border-border text-xs inline-flex items-center gap-1.5 hover:bg-muted"
+                  >
+                    Receipt
+                  </a>
                   <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
                     <CheckCircle2 className="size-3" /> Done
                   </Tag>
@@ -334,13 +359,13 @@ function BillingPage() {
 
       <div className="col-span-12 lg:col-span-4 space-y-5">
         <Card>
-          <div className="font-display text-xl mb-1">Session revenue</div>
+          <div className="font-display text-xl mb-1">Today's revenue</div>
           <div className="font-display text-5xl text-primary inline-flex items-center mt-1">
             <IndianRupee className="size-7" />
             {totalToday.toLocaleString("en-IN")}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {todayPaid.length} paid visit{todayPaid.length === 1 ? "" : "s"}
+            {summaryQ.isLoading ? "Syncing with backend…" : `Live from /analytics/summary/today · ${todayPaid.length} this session`}
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {(["CASH", "UPI", "CARD", "ONLINE"] as const).map((m) => (

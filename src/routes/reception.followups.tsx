@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, Tag, Avatar } from "@/components/clinic/PageHeader";
 import { api, ApiError } from "@/lib/api-client";
+import { remindersService } from "@/services/reminders";
 import {
   MessageCircle, Send, CheckCircle2, AlertCircle, Clock, CalendarClock,
   Loader2, RefreshCw, Inbox,
@@ -198,13 +199,21 @@ function FollowupsPage() {
     retry: false,
   });
 
-  // Merge + dedupe across endpoints.
+  const statsQ = useQuery({
+    queryKey: ["reminders", "stats"],
+    queryFn: () => remindersService.stats(),
+    refetchInterval: 30_000,
+    retry: false,
+  });
+
+  // Merge + dedupe across endpoints, and drop rows without a real patient name.
   const all = useMemo(() => {
     const map = new Map<string, Followup>();
     for (const list of [todayQ.data ?? [], upcomingQ.data ?? [], dueQ.data ?? []]) {
       for (const r of list) {
         const id = rowId(r);
         if (!id) continue;
+        if (!rowName(r).trim()) continue; // skip "Unknown"/undefined rows
         if (!map.has(id)) map.set(id, r);
       }
     }
@@ -247,11 +256,22 @@ function FollowupsPage() {
     qc.invalidateQueries({ queryKey: ["followups", "today"] });
     qc.invalidateQueries({ queryKey: ["followups", "upcoming"] });
     qc.invalidateQueries({ queryKey: ["reminders", "due"] });
+    qc.invalidateQueries({ queryKey: ["reminders", "stats"] });
   };
 
   const loading = todayQ.isLoading && upcomingQ.isLoading;
   const error = todayQ.error && upcomingQ.error ? todayQ.error : null;
   const list = buckets[tab];
+
+  // Prefer backend counts (/reminders/stats); fall back to computed buckets.
+  const s = (statsQ.data ?? {}) as Record<string, unknown>;
+  const num = (k: string) => (typeof s[k] === "number" ? (s[k] as number) : undefined);
+  const counts = {
+    today: num("today") ?? num("due_today") ?? num("pending_today") ?? buckets.today.length,
+    upcoming: num("upcoming") ?? num("scheduled") ?? buckets.upcoming.length,
+    missed: num("missed") ?? num("overdue") ?? num("failed") ?? buckets.missed.length,
+    completed: num("completed") ?? num("done") ?? num("sent") ?? buckets.completed.length,
+  };
 
   return (
     <div className="grid grid-cols-12 gap-5">
@@ -262,11 +282,11 @@ function FollowupsPage() {
             <div>
               <div className="text-[10px] uppercase tracking-widest text-primary/80 font-medium">Follow-ups</div>
               <div className="font-display text-4xl mt-1 tabular-nums">
-                {buckets.today.length}
+                {counts.today}
                 <span className="text-muted-foreground text-2xl"> due today</span>
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                {buckets.upcoming.length} upcoming · {buckets.missed.length} missed · {buckets.completed.length} completed
+                {counts.upcoming} upcoming · {counts.missed} missed · {counts.completed} completed
               </div>
             </div>
             <button
@@ -280,10 +300,10 @@ function FollowupsPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-1 p-1 rounded-full bg-muted/60 w-fit flex-wrap">
-          <TabButton active={tab === "today"} onClick={() => setTab("today")} icon={<Send className="size-3.5" />} label="Today" count={buckets.today.length} />
-          <TabButton active={tab === "upcoming"} onClick={() => setTab("upcoming")} icon={<CalendarClock className="size-3.5" />} label="Upcoming" count={buckets.upcoming.length} />
-          <TabButton active={tab === "missed"} onClick={() => setTab("missed")} icon={<AlertCircle className="size-3.5" />} label="Missed" count={buckets.missed.length} />
-          <TabButton active={tab === "completed"} onClick={() => setTab("completed")} icon={<CheckCircle2 className="size-3.5" />} label="Completed" count={buckets.completed.length} />
+          <TabButton active={tab === "today"} onClick={() => setTab("today")} icon={<Send className="size-3.5" />} label="Today" count={counts.today} />
+          <TabButton active={tab === "upcoming"} onClick={() => setTab("upcoming")} icon={<CalendarClock className="size-3.5" />} label="Upcoming" count={counts.upcoming} />
+          <TabButton active={tab === "missed"} onClick={() => setTab("missed")} icon={<AlertCircle className="size-3.5" />} label="Missed" count={counts.missed} />
+          <TabButton active={tab === "completed"} onClick={() => setTab("completed")} icon={<CheckCircle2 className="size-3.5" />} label="Completed" count={counts.completed} />
         </div>
 
         {/* List */}
@@ -318,11 +338,11 @@ function FollowupsPage() {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Pipeline</div>
           <div className="font-display text-lg mt-0.5">Follow-up status</div>
           <div className="mt-3 space-y-2">
-            <PipelineRow label="Due today" count={buckets.today.length} />
-            <PipelineRow label="Upcoming" count={buckets.upcoming.length} />
+            <PipelineRow label="Due today" count={counts.today} />
+            <PipelineRow label="Upcoming" count={counts.upcoming} />
             <div className="border-t clinic-divider pt-2 mt-2 space-y-2">
-              <PipelineRow label="Completed" count={buckets.completed.length} accent="success" />
-              <PipelineRow label="Missed" count={buckets.missed.length} accent="danger" />
+              <PipelineRow label="Completed" count={counts.completed} accent="success" />
+              <PipelineRow label="Missed" count={counts.missed} accent="danger" />
             </div>
           </div>
         </Card>
@@ -414,7 +434,7 @@ function FollowupRowView({
         <Avatar name={name || "?"} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate">{name || <span className="text-muted-foreground italic">Unnamed patient</span>}</span>
+            <span className="font-medium truncate">{name}</span>
             <Tag className={toneClass}>
               <Clock className="size-3" /> {cd.text}
             </Tag>
