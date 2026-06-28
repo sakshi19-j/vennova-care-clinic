@@ -212,21 +212,22 @@ async function saveConsultationEdits(visitId: string, patientId: string, form: F
     }
   }
 
-  // 4) Follow-up scheduling — backend already supports POST /followups.
+  // 4) Follow-up scheduling is handled by the backend via POST /visits/{id}/close.
+  //    We forward the chosen schedule as part of the close call so the backend
+  //    creates the follow-up reminder atomically with billing/queue updates.
   if (form.followup_type !== "NONE" && form.followup_date) {
     try {
-      await api.post(`/followups`, {
-        patient_id: patientId,
-        visit_id: visitId,
-        due_date: form.followup_date,
-        channel: "WHATSAPP",
-        preset: form.followup_type,
+      await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
+        followup_date: form.followup_date,
+        followup_preset: form.followup_type,
+        followup_channel: "WHATSAPP",
       });
       saved.push("followup");
     } catch (e) {
       warnings.push(`Follow-up: ${errMsg(e)}`);
     }
   }
+
 
   return { saved, warnings };
 }
