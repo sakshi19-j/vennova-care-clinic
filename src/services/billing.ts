@@ -28,12 +28,16 @@ function asArray<T>(x: unknown): T[] {
   if (Array.isArray(x)) return x as T[];
   if (x && typeof x === "object") {
     const o = x as Record<string, unknown>;
-    for (const k of ["items", "data", "results", "rows", "bills", "invoices"]) {
+    for (const k of [
+      "pending_visits", "pending", "visits",
+      "items", "data", "results", "rows", "bills", "invoices",
+    ]) {
       if (Array.isArray(o[k])) return o[k] as T[];
     }
   }
   return [];
 }
+
 
 export const billingService = {
   pending: () =>

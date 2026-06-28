@@ -155,50 +155,41 @@ function PrescriptionPage() {
       }
 
       toast.success("Prescription sent ✓ — sent to reception for billing", { id: tid });
-      // FIX: Lifecycle — once prescription is saved the patient leaves the doctor's
-      // active queue. Try to flip the queue row status server-side (best-effort —
-      // backend may already do this on /homeopathy save), then refresh local queue
-      // store + invalidate React Query caches so doctor & reception update instantly.
+      // Lifecycle: backend is the single source of truth. POST /visits/{id}/close
+      // transitions queue → BILLING_PENDING, creates the billing/payment record,
+      // and schedules the follow-up. Frontend no longer calls /queue/done or
+      // /followups directly.
       const queueId = search.queue_id;
       if (queueId) {
-        // Optimistically remove from doctor queues INSTANTLY so the patient
-        // disappears from "Now seeing" / "Today's list" without a flicker.
+        // Optimistically remove from doctor queues so the row disappears immediately.
         qc.setQueriesData<unknown[]>({ queryKey: ["queue", "today"] }, (prev) =>
           Array.isArray(prev) ? prev.filter((r: any) => r?.queue_id !== queueId && r?.id !== queueId) : prev,
         );
-        try {
-          await api.post(`/queue/${encodeURIComponent(queueId)}/done`);
-        } catch (e) {
-          // Backend may not expose this exact endpoint — non-fatal.
-          console.warn("[queue done] non-fatal:", e);
-        }
         try { queueActions.setStatus(queueId, "BILLING_PENDING"); } catch { /* ignore */ }
       }
 
-      // Schedule follow-up via Railway backend (POST /followups). No client-side fake.
       const followupDate = computeFollowupDate();
-      if (followupDate && patientId) {
-        try {
-          await api.post(`/followups`, {
-            patient_id: patientId,
-            visit_id: visitId,
-            due_date: followupDate,
-            channel: "WHATSAPP",
-            preset: followupChoice,
-          });
-        } catch (e) {
-          console.warn("[followup create] non-fatal:", e);
-        }
+      try {
+        await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
+          followup_date: followupDate ?? undefined,
+          followup_preset: followupChoice,
+          followup_channel: "WHATSAPP",
+        });
+      } catch (e) {
+        console.warn("[visit close] non-fatal:", e);
       }
 
       qc.invalidateQueries({ queryKey: ["billing-pending"] });
       qc.invalidateQueries({ queryKey: ["billing"] });
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
       qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
+      qc.invalidateQueries({ queryKey: ["queue", "stats", "today"] });
       qc.invalidateQueries({ queryKey: ["followups"] });
+      qc.invalidateQueries({ queryKey: ["reminders"] });
       qc.invalidateQueries({ queryKey: ["analytics"] });
       void loadQueue();
       navigate({ to: "/doctor/queue" });
+
     } catch (e) {
       toast.error(errMsg(e), { id: tid });
     } finally {
