@@ -394,6 +394,7 @@ function ConsultationPage() {
         doctor_id: doctorId,
         type: visitType || "HOMEOPATHY",
         chief_complaint: form.chief_complaint.trim(),
+        fee: Number(form.fee) || 0,
       };
       console.log("VISIT PAYLOAD", visitPayload);
 
