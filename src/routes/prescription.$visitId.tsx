@@ -86,12 +86,12 @@ function PrescriptionPage() {
 
   // FOLLOW-UP PLAN — saved alongside prescription; triggers backend POST /followups
   const FOLLOWUP_PRESETS = [
-    { id: "3d", label: "3 days", days: 3 },
-    { id: "7d", label: "7 days", days: 7 },
-    { id: "15d", label: "15 days", days: 15 },
-    { id: "1m", label: "Monthly", days: 30 },
-    { id: "custom", label: "Custom", days: 0 },
-    { id: "none", label: "No follow-up", days: 0 },
+    { id: "3d", label: "3 days", days: 3, backendType: "THREE_DAY" },
+    { id: "7d", label: "7 days", days: 7, backendType: "SEVEN_DAY" },
+    { id: "15d", label: "15 days", days: 15, backendType: "FIFTEEN_DAY" },
+    { id: "1m", label: "Monthly", days: 30, backendType: "THIRTY_DAY" },
+    { id: "custom", label: "Custom", days: 0, backendType: "CUSTOM" },
+    { id: "none", label: "No follow-up", days: 0, backendType: "NONE" },
   ] as const;
   const [followupChoice, setFollowupChoice] = useState<string>("7d");
   const [followupCustomDate, setFollowupCustomDate] = useState<string>("");
@@ -118,6 +118,7 @@ function PrescriptionPage() {
       toast.error("Add at least one BOX with a remedy");
       return;
     }
+    if (sending) return;
     setSending(true);
     const tid = toast.loading("Saving prescription…");
     try {
@@ -169,17 +170,24 @@ function PrescriptionPage() {
       }
 
       const followupDate = computeFollowupDate();
+      const selectedPreset = FOLLOWUP_PRESETS.find((p) => p.id === followupChoice);
       try {
         await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
+          fee: Number((visit as { fee?: unknown } | undefined)?.fee ?? 0),
           followup_date: followupDate ?? undefined,
-          followup_preset: followupChoice,
+          followup_type:
+            selectedPreset?.backendType === "NONE"
+              ? undefined
+              : selectedPreset?.backendType,
           followup_channel: "WHATSAPP",
         });
       } catch (e) {
-        console.warn("[visit close] non-fatal:", e);
+        console.error("[visit close] failed:", e);
+        toast.error("Could not move visit to billing. Please retry.");
       }
 
-      qc.invalidateQueries({ queryKey: ["billing-pending"] });
+      await qc.invalidateQueries({ queryKey: ["billing-pending"] });
+      await qc.refetchQueries({ queryKey: ["billing-pending"] });
       qc.invalidateQueries({ queryKey: ["billing"] });
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
       qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
