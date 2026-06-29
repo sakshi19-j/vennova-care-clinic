@@ -118,6 +118,7 @@ function PrescriptionPage() {
       toast.error("Add at least one BOX with a remedy");
       return;
     }
+    if (sending) return;
     setSending(true);
     const tid = toast.loading("Saving prescription…");
     try {
