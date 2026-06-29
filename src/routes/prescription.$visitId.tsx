@@ -169,17 +169,24 @@ function PrescriptionPage() {
       }
 
       const followupDate = computeFollowupDate();
+      const selectedPreset = FOLLOWUP_PRESETS.find((p) => p.id === followupChoice);
       try {
         await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
+          fee: Number((visit as { fee?: unknown } | undefined)?.fee ?? 0),
           followup_date: followupDate ?? undefined,
-          followup_preset: followupChoice,
+          followup_type:
+            selectedPreset?.backendType === "NONE"
+              ? undefined
+              : selectedPreset?.backendType,
           followup_channel: "WHATSAPP",
         });
       } catch (e) {
-        console.warn("[visit close] non-fatal:", e);
+        console.error("[visit close] failed:", e);
+        toast.error("Could not move visit to billing. Please retry.");
       }
 
-      qc.invalidateQueries({ queryKey: ["billing-pending"] });
+      await qc.invalidateQueries({ queryKey: ["billing-pending"] });
+      await qc.refetchQueries({ queryKey: ["billing-pending"] });
       qc.invalidateQueries({ queryKey: ["billing"] });
       qc.invalidateQueries({ queryKey: ["queue", "today"] });
       qc.invalidateQueries({ queryKey: ["queue", "stats-today"] });
