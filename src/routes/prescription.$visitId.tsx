@@ -86,12 +86,12 @@ function PrescriptionPage() {
 
   // FOLLOW-UP PLAN — saved alongside prescription; triggers backend POST /followups
   const FOLLOWUP_PRESETS = [
-    { id: "3d", label: "3 days", days: 3 },
-    { id: "7d", label: "7 days", days: 7 },
-    { id: "15d", label: "15 days", days: 15 },
-    { id: "1m", label: "Monthly", days: 30 },
-    { id: "custom", label: "Custom", days: 0 },
-    { id: "none", label: "No follow-up", days: 0 },
+    { id: "3d", label: "3 days", days: 3, backendType: "THREE_DAY" },
+    { id: "7d", label: "7 days", days: 7, backendType: "SEVEN_DAY" },
+    { id: "15d", label: "15 days", days: 15, backendType: "FIFTEEN_DAY" },
+    { id: "1m", label: "Monthly", days: 30, backendType: "THIRTY_DAY" },
+    { id: "custom", label: "Custom", days: 0, backendType: "CUSTOM" },
+    { id: "none", label: "No follow-up", days: 0, backendType: "NONE" },
   ] as const;
   const [followupChoice, setFollowupChoice] = useState<string>("7d");
   const [followupCustomDate, setFollowupCustomDate] = useState<string>("");
