@@ -66,6 +66,17 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : "Something went wrong";
 }
 
+async function openReceipt(visitId: string) {
+  try {
+    const blob = await api.getBlob(`/billing/receipt/${encodeURIComponent(visitId)}/download`);
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noreferrer");
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+  } catch (e) {
+    toast.error("Could not open receipt: " + errMsg(e));
+  }
+}
+
 function asArray<T>(x: unknown): T[] {
   if (Array.isArray(x)) return x as T[];
   if (x && typeof x === "object") {
@@ -341,14 +352,13 @@ function BillingPage() {
                       Paid {p.mode} ₹{p.fee} · reminders scheduled
                     </div>
                   </div>
-                  <a
-                    href={p.receiptUrl}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => openReceipt(p.id)}
                     className="h-8 px-3 rounded-full border border-border text-xs inline-flex items-center gap-1.5 hover:bg-muted"
                   >
                     Receipt
-                  </a>
+                  </button>
                   <Tag className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30">
                     <CheckCircle2 className="size-3" /> Done
                   </Tag>
