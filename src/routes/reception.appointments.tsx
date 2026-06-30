@@ -315,7 +315,7 @@ function AppointmentsPage() {
                 className="w-full h-10 pl-9 pr-3 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40" />
               {bMatches.length > 0 && (
                 <ul className="absolute z-10 left-0 right-0 mt-1 clinic-card p-1 max-h-60 overflow-auto">
-                  {bMatches.map((p) => (
+                  {bMatches.map((p: any) => (
                     <li key={p.id}>
                       <button
                         onClick={() => { setBPicked(p); setBQuery(""); }}
@@ -324,7 +324,7 @@ function AppointmentsPage() {
                         <Avatar name={p.full_name} size={28} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium truncate">{p.full_name}</div>
-                          <div className="text-[11px] text-muted-foreground">{p.phone} · {p.total_visits} visits</div>
+                          <div className="text-[11px] text-muted-foreground">{p.reg_no}{p.phone ? ` · ${p.phone}` : ""}</div>
                         </div>
                       </button>
                     </li>
