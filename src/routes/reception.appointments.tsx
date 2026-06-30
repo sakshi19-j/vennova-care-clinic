@@ -3,7 +3,8 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Card, Tag, Avatar } from "@/components/clinic/PageHeader";
 import { apptStatusStyles, formatTime } from "@/lib/reception-data";
-import { queueActions, useAppointments, findPatient } from "@/lib/queue-store";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
 import type { RxAppointment, ClinicType } from "@/lib/reception-data";
 import {
   Check, X, CalendarClock, LogIn, Search, Plus, UserPlus,
@@ -18,7 +19,26 @@ export const Route = createFileRoute("/reception/appointments")({
 type ViewMode = "day" | "all";
 
 function AppointmentsPage() {
-  const appointments = useAppointments();
+  const qc = useQueryClient();
+  const appointmentsQ = useQuery({
+    queryKey: ["appointments", "all"],
+    queryFn: () => api.get<any>("/appointments/"),
+    refetchInterval: 15_000,
+  });
+  const appointments = useMemo(() => {
+    const raw = appointmentsQ.data;
+    const arr = Array.isArray(raw) ? raw : raw?.appointments ?? [];
+    return arr.map((a: any) => ({
+      id: a.id,
+      patient_name: a.patient_name,
+      patient_phone: a.patient_phone,
+      scheduled_at: a.scheduled_at,
+      visit_type: a.visit_type,
+      status: a.status,
+      chief_complaint: a.chief_complaint,
+      duration_mins: a.duration_mins,
+    }));
+  }, [appointmentsQ.data]);
   const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -36,10 +56,21 @@ function AppointmentsPage() {
   const [bComplaint, setBComplaint] = useState("");
   const [bNotes, setBNotes] = useState("");
 
+  const patientSearchQ = useQuery({
+    queryKey: ["patients", "search", bQuery],
+    queryFn: () => api.get<any>("/patients", { query: { search: bQuery } }),
+    enabled: bQuery.trim().length > 1,
+  });
   const bMatches = useMemo(() => {
-    if (!bQuery) return [];
-    return findPatient(bQuery).slice(0, 5);
-  }, [bQuery]);
+    const raw = patientSearchQ.data;
+    const arr = Array.isArray(raw) ? raw : raw?.patients ?? raw?.items ?? [];
+    return arr.slice(0, 5).map((p: any) => ({
+      id: p.id,
+      full_name: p.full_name || `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim(),
+      reg_no: p.reg_no ? `VNC-${String(p.reg_no).padStart(4, "0")}` : "",
+      phone: p.phone_mobile || p.phone || "",
+    }));
+  }, [patientSearchQ.data]);
 
   const today = new Date().toISOString().slice(0, 10);
 
