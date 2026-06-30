@@ -56,6 +56,7 @@ import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.se
 import { Route as AdminSettingsPrescriptionRouteImport } from './routes/admin.settings.prescription'
 import { Route as AdminSettingsBillingRouteImport } from './routes/admin.settings.billing'
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
+import { Route as AdminSettingsAccessRouteImport } from './routes/admin.settings.access'
 
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
@@ -295,6 +296,11 @@ const AdminSettingsBackupsRoute = AdminSettingsBackupsRouteImport.update({
   path: '/backups',
   getParentRoute: () => AdminSettingsRoute,
 } as any)
+const AdminSettingsAccessRoute = AdminSettingsAccessRouteImport.update({
+  id: '/access',
+  path: '/access',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -335,6 +341,7 @@ export interface FileRoutesByFullPath {
   '/doctor/': typeof DoctorIndexRoute
   '/homeopathy/': typeof HomeopathyIndexRoute
   '/reception/': typeof ReceptionIndexRoute
+  '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
@@ -379,6 +386,7 @@ export interface FileRoutesByTo {
   '/doctor': typeof DoctorIndexRoute
   '/homeopathy': typeof HomeopathyIndexRoute
   '/reception': typeof ReceptionIndexRoute
+  '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
@@ -429,6 +437,7 @@ export interface FileRoutesById {
   '/doctor/': typeof DoctorIndexRoute
   '/homeopathy/': typeof HomeopathyIndexRoute
   '/reception/': typeof ReceptionIndexRoute
+  '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/billing': typeof AdminSettingsBillingRoute
   '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
@@ -480,6 +489,7 @@ export interface FileRouteTypes {
     | '/doctor/'
     | '/homeopathy/'
     | '/reception/'
+    | '/admin/settings/access'
     | '/admin/settings/backups'
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
@@ -524,6 +534,7 @@ export interface FileRouteTypes {
     | '/doctor'
     | '/homeopathy'
     | '/reception'
+    | '/admin/settings/access'
     | '/admin/settings/backups'
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
@@ -573,6 +584,7 @@ export interface FileRouteTypes {
     | '/doctor/'
     | '/homeopathy/'
     | '/reception/'
+    | '/admin/settings/access'
     | '/admin/settings/backups'
     | '/admin/settings/billing'
     | '/admin/settings/prescription'
@@ -940,10 +952,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsBackupsRouteImport
       parentRoute: typeof AdminSettingsRoute
     }
+    '/admin/settings/access': {
+      id: '/admin/settings/access'
+      path: '/access'
+      fullPath: '/admin/settings/access'
+      preLoaderRoute: typeof AdminSettingsAccessRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
   }
 }
 
 interface AdminSettingsRouteChildren {
+  AdminSettingsAccessRoute: typeof AdminSettingsAccessRoute
   AdminSettingsBackupsRoute: typeof AdminSettingsBackupsRoute
   AdminSettingsBillingRoute: typeof AdminSettingsBillingRoute
   AdminSettingsPrescriptionRoute: typeof AdminSettingsPrescriptionRoute
@@ -952,6 +972,7 @@ interface AdminSettingsRouteChildren {
 }
 
 const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
+  AdminSettingsAccessRoute: AdminSettingsAccessRoute,
   AdminSettingsBackupsRoute: AdminSettingsBackupsRoute,
   AdminSettingsBillingRoute: AdminSettingsBillingRoute,
   AdminSettingsPrescriptionRoute: AdminSettingsPrescriptionRoute,
