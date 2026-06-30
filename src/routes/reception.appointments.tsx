@@ -119,36 +119,49 @@ function AppointmentsPage() {
     toast.success(`WhatsApp reminder sent to ${appt.patient_name}`);
   };
 
-  const checkInAppt = (appt: RxAppointment) => {
-    queueActions.checkInAppointment(appt.id);
-    toast.success(`${appt.patient_name} added to queue`);
+  const checkInAppt = async (appt: RxAppointment) => {
+    try {
+      await api.post(`/appointments/${encodeURIComponent(appt.id)}/checkin`);
+      toast.success(`${appt.patient_name} added to queue`);
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["queue"] });
+    } catch (e) {
+      toast.error((e as Error).message || "Check-in failed");
+    }
   };
 
-  const updateStatus = (id: string, status: any) => {
-    queueActions.updateAppointmentStatus(id, status);
+  const updateStatus = async (id: string, status: any) => {
+    try {
+      await api.put(`/appointments/${encodeURIComponent(id)}`, { status });
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+    } catch (e) {
+      toast.error((e as Error).message || "Update failed");
+    }
   };
 
-  const bookAppointment = () => {
+  const bookAppointment = async () => {
     if (!bPicked) return toast.error("Select a patient");
     const scheduled_at = new Date(`${bDate}T${bTime}`).toISOString();
     const isToday = bDate === today;
-    queueActions.addAppointment({
-      patient_id: bPicked.id,
-      patient_name: bPicked.full_name,
-      patient_phone: bPicked.phone,
-      scheduled_at,
-      visit_type: bVisitType,
-      status: "SCHEDULED",
-      chief_complaint: bComplaint,
-      duration_mins: bDuration,
-      notes: bNotes,
-    });
-    toast.success(
-      isToday
-        ? `Appointment booked for ${bPicked.full_name} today — they will appear in today's schedule`
-        : `Appointment booked for ${bPicked.full_name} on ${new Date(scheduled_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`,
-    );
-    setBPicked(null); setBQuery(""); setBComplaint(""); setBNotes("");
+    try {
+      await api.post("/appointments/", {
+        patient_id: bPicked.id,
+        scheduled_at,
+        visit_type: bVisitType,
+        chief_complaint: bComplaint || undefined,
+        notes: bNotes || undefined,
+        duration_mins: bDuration,
+      });
+      toast.success(
+        isToday
+          ? `Appointment booked for ${bPicked.full_name} today — they will appear in today's schedule`
+          : `Appointment booked for ${bPicked.full_name} on ${new Date(scheduled_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`,
+      );
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      setBPicked(null); setBQuery(""); setBComplaint(""); setBNotes("");
+    } catch (e) {
+      toast.error((e as Error).message || "Booking failed");
+    }
   };
 
   const dateLabel = (d: string) => {
