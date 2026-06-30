@@ -7,35 +7,31 @@ import { api } from "@/lib/api-client";
 import { supabase } from "@/integrations/supabase/client";
 
 export type ClinicProfile = {
+  name?: string;
   clinic_name?: string;
   doctor_name?: string;
-  owner_name?: string;
   qualification?: string;
   registration_number?: string;
-  primary_phone?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
-  address_line1?: string;
-  address_line2?: string;
   address?: string;
   city?: string;
-  state?: string;
-  pincode?: string;
-  operating_hours?: string;
+  phone?: string;
+  email?: string;
+  timings?: string;
+  clinic_type?: string;
   logo_url?: string;
   signature_url?: string;
   primary_color?: string;
   secondary_color?: string;
   footer_text?: string;
+  website?: string;
   [k: string]: unknown;
 };
 
 const BRANDING_BUCKET = "clinic-branding";
 
 export const clinicProfileService = {
-  get: () => api.get<ClinicProfile>("/settings/clinic"),
-  update: (body: ClinicProfile) => api.put<ClinicProfile>("/settings/clinic", body),
+  get: () => api.get<ClinicProfile>("/auth/clinic"),
+  update: (body: ClinicProfile) => api.put<ClinicProfile>("/auth/clinic", body),
 
   async uploadBrandingAsset(
     kind: "logo" | "signature",

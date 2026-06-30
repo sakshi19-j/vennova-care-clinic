@@ -10,7 +10,7 @@ import {
   TrendingDown, UserX,
 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
-import { OnboardingChecklist } from "@/components/clinic/OnboardingChecklist";
+
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -121,7 +121,7 @@ function DashboardPage() {
         )}
       </div>
 
-      <OnboardingChecklist />
+      
 
       <>
           {/* KPI tiles */}
