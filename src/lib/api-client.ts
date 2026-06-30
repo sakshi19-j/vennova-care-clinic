@@ -261,6 +261,45 @@ async function request<T>(
   return payload as T;
 }
 
+export async function getBlob(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<Blob> {
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const { signal, cleanup } = withTimeout(options.signal, timeoutMs);
+
+  let res: Response;
+  try {
+    const headers: Record<string, string> = {
+      ...(options.skipAuth ? {} : await authHeader()),
+      ...(options.headers ?? {}),
+    };
+
+    res = await fetch(buildUrl(path, options.query), {
+      method: "GET",
+      headers,
+      signal,
+    });
+  } catch (e) {
+    cleanup();
+    throw new ApiError(networkErrorMessage(e), 0, null);
+  }
+  cleanup();
+
+  if (!res.ok) {
+    if ((res.status === 401 || res.status === 403) && !options.skipAuth && !options._noRetry) {
+      const fresh = await refreshAccessToken();
+      if (fresh) {
+        return getBlob(path, { ...options, _noRetry: true });
+      }
+    }
+    const text = await res.text().catch(() => "");
+    throw new ApiError(parseErrorMessage(text, res.status), res.status, text);
+  }
+
+  return res.blob();
+}
+
 export const api = {
   get: <T>(path: string, options?: ApiRequestOptions) =>
     request<T>("GET", path, undefined, options),
@@ -272,6 +311,7 @@ export const api = {
     request<T>("PATCH", path, body, options),
   delete: <T>(path: string, options?: ApiRequestOptions) =>
     request<T>("DELETE", path, undefined, options),
+  getBlob,
 };
 
 /** Reminders API. */
