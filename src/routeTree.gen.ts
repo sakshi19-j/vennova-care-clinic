@@ -53,8 +53,6 @@ import { Route as HomeopathyPatientsIdRouteImport } from './routes/homeopathy.pa
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor.patients.$id'
 import { Route as ConsultationEditVisitIdRouteImport } from './routes/consultation.edit.$visitId'
 import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
-import { Route as AdminSettingsPrescriptionRouteImport } from './routes/admin.settings.prescription'
-import { Route as AdminSettingsBillingRouteImport } from './routes/admin.settings.billing'
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
 import { Route as AdminSettingsAccessRouteImport } from './routes/admin.settings.access'
 
@@ -280,17 +278,6 @@ const AdminSettingsSubscriptionRoute =
     path: '/subscription',
     getParentRoute: () => AdminSettingsRoute,
   } as any)
-const AdminSettingsPrescriptionRoute =
-  AdminSettingsPrescriptionRouteImport.update({
-    id: '/prescription',
-    path: '/prescription',
-    getParentRoute: () => AdminSettingsRoute,
-  } as any)
-const AdminSettingsBillingRoute = AdminSettingsBillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => AdminSettingsRoute,
-} as any)
 const AdminSettingsBackupsRoute = AdminSettingsBackupsRouteImport.update({
   id: '/backups',
   path: '/backups',
@@ -343,8 +330,6 @@ export interface FileRoutesByFullPath {
   '/reception/': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
-  '/admin/settings/billing': typeof AdminSettingsBillingRoute
-  '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -388,8 +373,6 @@ export interface FileRoutesByTo {
   '/reception': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
-  '/admin/settings/billing': typeof AdminSettingsBillingRoute
-  '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -439,8 +422,6 @@ export interface FileRoutesById {
   '/reception/': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
-  '/admin/settings/billing': typeof AdminSettingsBillingRoute
-  '/admin/settings/prescription': typeof AdminSettingsPrescriptionRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -491,8 +472,6 @@ export interface FileRouteTypes {
     | '/reception/'
     | '/admin/settings/access'
     | '/admin/settings/backups'
-    | '/admin/settings/billing'
-    | '/admin/settings/prescription'
     | '/admin/settings/subscription'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
@@ -536,8 +515,6 @@ export interface FileRouteTypes {
     | '/reception'
     | '/admin/settings/access'
     | '/admin/settings/backups'
-    | '/admin/settings/billing'
-    | '/admin/settings/prescription'
     | '/admin/settings/subscription'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
@@ -586,8 +563,6 @@ export interface FileRouteTypes {
     | '/reception/'
     | '/admin/settings/access'
     | '/admin/settings/backups'
-    | '/admin/settings/billing'
-    | '/admin/settings/prescription'
     | '/admin/settings/subscription'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
@@ -931,20 +906,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsSubscriptionRouteImport
       parentRoute: typeof AdminSettingsRoute
     }
-    '/admin/settings/prescription': {
-      id: '/admin/settings/prescription'
-      path: '/prescription'
-      fullPath: '/admin/settings/prescription'
-      preLoaderRoute: typeof AdminSettingsPrescriptionRouteImport
-      parentRoute: typeof AdminSettingsRoute
-    }
-    '/admin/settings/billing': {
-      id: '/admin/settings/billing'
-      path: '/billing'
-      fullPath: '/admin/settings/billing'
-      preLoaderRoute: typeof AdminSettingsBillingRouteImport
-      parentRoute: typeof AdminSettingsRoute
-    }
     '/admin/settings/backups': {
       id: '/admin/settings/backups'
       path: '/backups'
@@ -965,8 +926,6 @@ declare module '@tanstack/react-router' {
 interface AdminSettingsRouteChildren {
   AdminSettingsAccessRoute: typeof AdminSettingsAccessRoute
   AdminSettingsBackupsRoute: typeof AdminSettingsBackupsRoute
-  AdminSettingsBillingRoute: typeof AdminSettingsBillingRoute
-  AdminSettingsPrescriptionRoute: typeof AdminSettingsPrescriptionRoute
   AdminSettingsSubscriptionRoute: typeof AdminSettingsSubscriptionRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
 }
@@ -974,8 +933,6 @@ interface AdminSettingsRouteChildren {
 const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsAccessRoute: AdminSettingsAccessRoute,
   AdminSettingsBackupsRoute: AdminSettingsBackupsRoute,
-  AdminSettingsBillingRoute: AdminSettingsBillingRoute,
-  AdminSettingsPrescriptionRoute: AdminSettingsPrescriptionRoute,
   AdminSettingsSubscriptionRoute: AdminSettingsSubscriptionRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 }
