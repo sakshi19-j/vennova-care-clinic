@@ -146,14 +146,24 @@ function DoctorDashboard() {
               {current ? `${current.patient_name} · #${current.token_number}` : "No patient with you right now"}
             </div>
           </div>
-          {current ? (
-            <button
-              onClick={() => openConsult(current.patient_id, current.queue_id)}
-              className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
-            >
-              Open consultation <ArrowRight className="size-4" />
-            </button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {activeVisitId && (
+              <button
+                onClick={() => navigate({ to: "/consultation/edit/$visitId", params: { visitId: activeVisitId } })}
+                className="h-10 px-4 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary/10 inline-flex items-center gap-2"
+              >
+                Continue consultation <ArrowRight className="size-4" />
+              </button>
+            )}
+            {current ? (
+              <button
+                onClick={() => openConsult(current.patient_id, current.queue_id)}
+                className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
+              >
+                Open consultation <ArrowRight className="size-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
         {!current && (
           <div className="rounded-xl border border-dashed border-border p-8 text-center">
