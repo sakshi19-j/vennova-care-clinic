@@ -41,6 +41,21 @@ function DoctorDashboard() {
   const navigate = useNavigate();
   const list = useQueue();
 
+  // Persistent "active visit" tracker (session-scoped) so the doctor can
+  // resume an in-flight consultation across reloads.
+  const [activeVisitId, setActiveVisitId] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      const v = sessionStorage.getItem("active_visit_id");
+      if (v) setActiveVisitId(v);
+    } catch { /* noop */ }
+    const onStorage = () => {
+      try { setActiveVisitId(sessionStorage.getItem("active_visit_id")); } catch { /* noop */ }
+    };
+    window.addEventListener("focus", onStorage);
+    return () => window.removeEventListener("focus", onStorage);
+  }, []);
+
   // Live KPIs straight from Railway backend — scoped to clinic by JWT.
   const statsQ = useQuery({
     queryKey: ["queue", "stats-today"],
