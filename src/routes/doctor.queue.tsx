@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, Tag } from "@/components/clinic/PageHeader";
-import { Loader2, ArrowRight, Clock, Search, UserPlus, X } from "lucide-react";
+import { Loader2, ArrowRight, Clock, Search, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { patientsService, type Patient } from "@/services/patients";
 import { formatWaitMinutes } from "@/lib/wait-time";
