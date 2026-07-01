@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, Avatar } from "@/components/clinic/PageHeader";
@@ -8,7 +8,7 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import {
   PlayCircle, Coffee, Stethoscope, Users, BellRing, IndianRupee,
-  ArrowRight, Loader2, AlertTriangle, ClipboardList, Search, History,
+  ArrowRight, Loader2, AlertTriangle, ClipboardList,
 } from "lucide-react";
 
 export const Route = createFileRoute("/doctor/")({
@@ -40,21 +40,6 @@ function DoctorDashboard() {
   const { profile, clinicName } = useAuth();
   const navigate = useNavigate();
   const list = useQueue();
-
-  // Persistent "active visit" tracker (session-scoped) so the doctor can
-  // resume an in-flight consultation across reloads.
-  const [activeVisitId, setActiveVisitId] = useState<string | null>(null);
-  useEffect(() => {
-    try {
-      const v = sessionStorage.getItem("active_visit_id");
-      if (v) setActiveVisitId(v);
-    } catch { /* noop */ }
-    const onStorage = () => {
-      try { setActiveVisitId(sessionStorage.getItem("active_visit_id")); } catch { /* noop */ }
-    };
-    window.addEventListener("focus", onStorage);
-    return () => window.removeEventListener("focus", onStorage);
-  }, []);
 
   // Live KPIs straight from Railway backend — scoped to clinic by JWT.
   const statsQ = useQuery({
@@ -146,24 +131,14 @@ function DoctorDashboard() {
               {current ? `${current.patient_name} · #${current.token_number}` : "No patient with you right now"}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {activeVisitId && (
-              <button
-                onClick={() => navigate({ to: "/consultation/edit/$visitId", params: { visitId: activeVisitId } })}
-                className="h-10 px-4 rounded-full border border-primary text-primary text-sm font-medium hover:bg-primary/10 inline-flex items-center gap-2"
-              >
-                Continue consultation <ArrowRight className="size-4" />
-              </button>
-            )}
-            {current ? (
-              <button
-                onClick={() => openConsult(current.patient_id, current.queue_id)}
-                className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
-              >
-                Open consultation <ArrowRight className="size-4" />
-              </button>
-            ) : null}
-          </div>
+          {current ? (
+            <button
+              onClick={() => openConsult(current.patient_id, current.queue_id)}
+              className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
+            >
+              Open consultation <ArrowRight className="size-4" />
+            </button>
+          ) : null}
         </div>
         {!current && (
           <div className="rounded-xl border border-dashed border-border p-8 text-center">
@@ -231,120 +206,7 @@ function DoctorDashboard() {
         <div className="font-display text-3xl mt-1 tabular-nums">{inr(revenueToday)}</div>
         <div className="text-xs text-muted-foreground mt-1">Collected through billing today.</div>
       </Card>
-
-      {/* Patient history */}
-      <div className="col-span-12">
-        <PatientHistory />
-      </div>
     </div>
-  );
-}
-
-type PatientRow = {
-  id: string;
-  full_name?: string;
-  first_name?: string;
-  last_name?: string;
-  reg_no?: number | string;
-  phone?: string;
-  phone_mobile?: string;
-  last_visit_date?: string | null;
-  last_visit_at?: string | null;
-};
-
-function fmtReg(r: unknown): string {
-  if (typeof r === "number" && r > 0) return `VNC-${String(r).padStart(4, "0")}`;
-  if (typeof r === "string" && r) return r;
-  return "—";
-}
-
-function fmtDate(d: unknown): string {
-  if (!d) return "—";
-  const dt = new Date(String(d));
-  if (Number.isNaN(dt.getTime())) return "—";
-  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-function PatientHistory() {
-  const navigate = useNavigate();
-  const [q, setQ] = useState("");
-  const patientsQ = useQuery({
-    queryKey: ["patients", "all"],
-    queryFn: () => api.get<unknown>("/patients"),
-    staleTime: 60_000,
-    retry: 1,
-  });
-
-  const items = useMemo<PatientRow[]>(() => {
-    const raw = patientsQ.data;
-    const arr = Array.isArray(raw)
-      ? raw
-      : ((raw as { items?: unknown[]; patients?: unknown[] } | null)?.items
-        ?? (raw as { patients?: unknown[] } | null)?.patients
-        ?? []);
-    return (arr as PatientRow[]).filter(Boolean);
-  }, [patientsQ.data]);
-
-  const filtered = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    if (!t) return items;
-    return items.filter((p) => {
-      const name = (p.full_name || `${p.first_name ?? ""} ${p.last_name ?? ""}`).toLowerCase();
-      const reg = String(p.reg_no ?? "").toLowerCase();
-      const phone = String(p.phone ?? p.phone_mobile ?? "").toLowerCase();
-      return name.includes(t) || reg.includes(t) || phone.includes(t);
-    });
-  }, [items, q]);
-
-  return (
-    <Card className="p-0 overflow-hidden">
-      <div className="px-5 py-3 border-b clinic-divider flex items-center gap-3 flex-wrap">
-        <div className="inline-flex items-center gap-2">
-          <History className="size-4 text-muted-foreground" />
-          <div className="font-display text-base">Patient history</div>
-          <span className="text-xs text-muted-foreground">({filtered.length})</span>
-          {patientsQ.isLoading && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
-        </div>
-        <div className="relative ml-auto w-full sm:w-72">
-          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name, reg no, phone…"
-            className="w-full h-9 pl-9 pr-3 rounded-full border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-ring/40"
-          />
-        </div>
-      </div>
-      {patientsQ.error ? (
-        <div className="px-5 py-8 text-center text-sm text-destructive">Couldn't load patients.</div>
-      ) : filtered.length === 0 ? (
-        <div className="px-5 py-8 text-center text-sm text-muted-foreground">No patients match.</div>
-      ) : (
-        <ul className="divide-y clinic-divider max-h-[420px] overflow-y-auto">
-          {filtered.slice(0, 200).map((p) => {
-            const name = p.full_name || [p.first_name, p.last_name].filter(Boolean).join(" ") || "Patient";
-            const last = p.last_visit_date ?? p.last_visit_at ?? null;
-            return (
-              <li key={p.id}>
-                <button
-                  onClick={() => navigate({ to: "/patients/$patientId", params: { patientId: p.id } })}
-                  className="w-full text-left px-5 py-3 hover:bg-muted/50 flex items-center gap-3"
-                >
-                  <Avatar name={name} />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{name}</div>
-                    <div className="text-xs text-muted-foreground truncate tabular-nums">
-                      {fmtReg(p.reg_no)} · Last visit {fmtDate(last)}
-                    </div>
-                  </div>
-                  <ArrowRight className="size-4 text-muted-foreground" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
   );
 }
 

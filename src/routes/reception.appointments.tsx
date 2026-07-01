@@ -359,7 +359,7 @@ function AppointmentsPage() {
 
           <label className="text-[11px] uppercase tracking-widest text-muted-foreground mt-4 block">Visit type</label>
           <div className="grid grid-cols-2 gap-1.5 mt-1.5">
-            {(["HOMEOPATHY"] as const).map((v) => (
+            {(["HOMEOPATHY", "ALLOPATHY"] as const).map((v) => (
               <button key={v} onClick={() => setBVisitType(v)}
                 className={`h-10 rounded-lg border text-xs font-medium ${bVisitType === v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border hover:bg-muted"}`}>
                 {v}

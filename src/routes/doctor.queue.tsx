@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, Tag } from "@/components/clinic/PageHeader";
-import { Loader2, ArrowRight, Clock, Search, X } from "lucide-react";
+import { Loader2, ArrowRight, Clock, Search, UserPlus, X } from "lucide-react";
 import { api, ApiError } from "@/lib/api-client";
 import { patientsService, type Patient } from "@/services/patients";
 import { formatWaitMinutes } from "@/lib/wait-time";
@@ -80,7 +80,7 @@ function CaseTakingQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [callingId, setCallingId] = useState<string | null>(null);
-  // Walk-in flow removed — only reception adds walk-ins.
+  const [showWalkIn, setShowWalkIn] = useState(false);
   // FIX 3: header count must come from /queue/stats/today (single source of truth).
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
   // 60s tick so wait-time labels recalc without refetching the queue.
@@ -190,9 +190,29 @@ function CaseTakingQueue() {
             <div className="font-display text-xl">Case-taking · {waitingCount ?? queue.filter((q) => !DOCTOR_HIDDEN.has(normalizedStatus(q.status))).length}</div>
             <div className="text-xs text-muted-foreground">Live · refreshes every 15s</div>
           </div>
+          <button
+            onClick={() => setShowWalkIn((v) => !v)}
+            className="h-9 px-3 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white inline-flex items-center gap-1.5"
+          >
+            <UserPlus className="size-4" /> Start Walk-in
+          </button>
         </div>
 
+        {showWalkIn && (
+          <div className="px-5 py-3 border-b clinic-divider bg-muted/30">
+            <WalkInSearch
+              onClose={() => setShowWalkIn(false)}
+              onSelect={(p) => {
+                setShowWalkIn(false);
+                const tv = Number(
+                  (p as unknown as { total_visits?: number }).total_visits ?? p.visit_count ?? 0,
+                );
+                goToConsultation(p.id, tv > 0 ? "followup" : "new");
+              }}
+            />
 
+          </div>
+        )}
 
         {loading ? (
           <div className="px-5 py-10 text-center text-sm text-muted-foreground inline-flex items-center gap-2 justify-center w-full">
