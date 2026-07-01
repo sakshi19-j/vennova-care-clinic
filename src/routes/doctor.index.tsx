@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, Avatar } from "@/components/clinic/PageHeader";
@@ -8,7 +8,7 @@ import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import {
   PlayCircle, Coffee, Stethoscope, Users, BellRing, IndianRupee,
-  ArrowRight, Loader2, AlertTriangle, ClipboardList,
+  ArrowRight, Loader2, AlertTriangle, ClipboardList, Search, History,
 } from "lucide-react";
 
 export const Route = createFileRoute("/doctor/")({
