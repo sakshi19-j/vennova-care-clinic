@@ -18,11 +18,9 @@ const FIELDS: Array<{ key: keyof ClinicProfile; label: string; wide?: boolean }>
   { key: "registration_number", label: "Registration number" },
   { key: "phone", label: "Primary phone" },
   { key: "email", label: "Email" },
-  { key: "website", label: "Website" },
   { key: "address", label: "Address", wide: true },
   { key: "city", label: "City" },
   { key: "timings", label: "Operating hours" },
-  { key: "footer_text", label: "Prescription footer", wide: true },
 ];
 
 function ClinicProfilePage() {
