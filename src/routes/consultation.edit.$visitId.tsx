@@ -247,6 +247,14 @@ function EditConsultationPage() {
   const { visitId } = Route.useParams();
   const navigate = useNavigate();
 
+  // Persist active visit so the doctor's "Now seeing" tile can offer a
+  // "Continue consultation" shortcut across page reloads.
+  useEffect(() => {
+    try { sessionStorage.setItem("active_visit_id", visitId); } catch { /* noop */ }
+  }, [visitId]);
+
+
+
   const visitQ = useQuery({
     queryKey: ["visit", visitId],
     queryFn: () => api.get<Visit>(`/visits/${encodeURIComponent(visitId)}`),
