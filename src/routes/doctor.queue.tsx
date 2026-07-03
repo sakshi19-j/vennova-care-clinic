@@ -152,6 +152,8 @@ function CaseTakingQueue() {
         (typeof r.queue_id === "string" && r.queue_id) ||
         (typeof r.id === "string" && r.id) ||
         id;
+      const visitId =
+        (typeof r.visit_id === "string" && r.visit_id) || "";
 
       // STEP 3: detect followup vs new (non-fatal)
       let mode: "new" | "followup" = "new";
@@ -168,6 +170,15 @@ function CaseTakingQueue() {
         // default to new patient
       }
 
+      // Persist active consultation context so the doctor can resume from Home.
+      try {
+        sessionStorage.setItem("active_visit_id", visitId || queueItemId);
+        sessionStorage.setItem("active_patient_id", patientId);
+        sessionStorage.setItem("active_patient_name", q.patient_name || "");
+      } catch {
+        /* ignore storage failures */
+      }
+
       // FIX 2: navigate immediately to consultation — do NOT stay on queue page
       goToConsultation(patientId, mode, queueItemId);
     } catch (e) {
@@ -180,6 +191,7 @@ function CaseTakingQueue() {
       setCallingId(null);
     }
   };
+
 
 
   return (
