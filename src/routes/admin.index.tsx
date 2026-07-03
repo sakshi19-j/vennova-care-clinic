@@ -125,18 +125,19 @@ function DashboardPage() {
 
       <>
           {/* KPI tiles */}
-          <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
+          <Kpi className="col-span-6 md:col-span-4 lg:col-span-2"
             label="Today's revenue" value={inr(revenueToday)} icon={<IndianRupee className="size-4" />} loading={dashQ.isLoading} />
-          <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
+          <Kpi className="col-span-6 md:col-span-4 lg:col-span-2"
             label="Monthly revenue" value={inr(revenueMonthly)} icon={<IndianRupee className="size-4" />} loading={dashQ.isLoading} />
-          <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
+          <Kpi className="col-span-6 md:col-span-4 lg:col-span-2"
             label="Total patients" value={totalPatients.toLocaleString("en-IN")} icon={<Users className="size-4" />} loading={dashQ.isLoading} />
-          <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
+          <Kpi className="col-span-6 md:col-span-4 lg:col-span-2"
             label="Visits today" value={visitsToday.toLocaleString("en-IN")} icon={<Stethoscope className="size-4" />} loading={queueStatsQ.isLoading} />
-          <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
+          <Kpi className="col-span-6 md:col-span-4 lg:col-span-2"
             label="Queue today" value={appointmentsToday.toLocaleString("en-IN")} icon={<CalendarDays className="size-4" />} loading={queueStatsQ.isLoading} />
-          <Kpi className="col-span-12 md:col-span-4 lg:col-span-2"
+          <Kpi className="col-span-6 md:col-span-4 lg:col-span-2"
             label="Followups due" value={followupsToday.toLocaleString("en-IN")} icon={<BellRing className="size-4" />} loading={dashQ.isLoading} />
+
 
           {/* Queue at-a-glance */}
           <Card className="col-span-12">
