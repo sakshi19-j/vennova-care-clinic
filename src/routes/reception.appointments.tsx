@@ -445,7 +445,7 @@ function AppointmentRow({
             disabled={reminderSent}
             title="Send WhatsApp reminder"
             className={[
-              "h-8 px-2.5 text-xs rounded-lg border inline-flex items-center gap-1 transition-colors",
+              "hidden sm:inline-flex h-8 px-2.5 text-xs rounded-lg border items-center gap-1 transition-colors",
               reminderSent
                 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 cursor-default"
                 : "border-border hover:bg-green-500/10 hover:border-green-500/40 hover:text-green-700",
@@ -457,7 +457,7 @@ function AppointmentRow({
         )}
         {appt.status === "SCHEDULED" && (
           <button onClick={onConfirm}
-            className="h-8 px-3 text-xs rounded-lg border border-border hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-700 inline-flex items-center gap-1">
+            className="hidden sm:inline-flex h-8 px-3 text-xs rounded-lg border border-border hover:bg-blue-500/10 hover:border-blue-500/40 hover:text-blue-700 items-center gap-1">
             <Check className="size-3.5" /> Confirm
           </button>
         )}
@@ -469,14 +469,15 @@ function AppointmentRow({
         )}
         {isActive && (
           <>
-            <button onClick={onReschedule} className="size-8 grid place-items-center rounded-lg border border-border hover:bg-muted" title="Reschedule">
+            <button onClick={onReschedule} className="hidden sm:grid size-8 place-items-center rounded-lg border border-border hover:bg-muted" title="Reschedule">
               <CalendarClock className="size-3.5" />
             </button>
-            <button onClick={onCancel} className="size-8 grid place-items-center rounded-lg border border-border hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive" title="Cancel">
+            <button onClick={onCancel} className="hidden sm:grid size-8 place-items-center rounded-lg border border-border hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive" title="Cancel">
               <X className="size-3.5" />
             </button>
           </>
         )}
+
       </div>
     </li>
   );
