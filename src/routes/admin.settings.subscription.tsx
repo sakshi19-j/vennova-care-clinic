@@ -91,6 +91,12 @@ function SubscriptionPage() {
   const subStatus = status?.subscription_status || "TRIAL";
 
   const upgrade = async (plan: Plan) => {
+    toast.info(
+      `To activate ${plan.name}, add RAZORPAY_${plan.id.toUpperCase()}_MONTHLY to your Railway environment variables, then contact support.`,
+    );
+    return;
+
+    // eslint-disable-next-line no-unreachable
     setUpgrading(plan.id);
     try {
       const ready = await loadRazorpayScript();
@@ -136,6 +142,7 @@ function SubscriptionPage() {
       setUpgrading(null);
     }
   };
+
 
   return (
     <div className="grid grid-cols-12 gap-5">
