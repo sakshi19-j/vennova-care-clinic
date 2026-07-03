@@ -1,224 +1,183 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Card, Avatar } from "@/components/clinic/PageHeader";
-import { useQueue, queueActions } from "@/lib/queue-store";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  PlayCircle, Coffee, Stethoscope, Users, BellRing, IndianRupee,
-  ArrowRight, Loader2, AlertTriangle, ClipboardList,
-} from "lucide-react";
+import { Search, ArrowRight, Clock, User } from "lucide-react";
+import { Card } from "@/components/clinic/PageHeader";
 
 export const Route = createFileRoute("/doctor/")({
-  head: () => ({ meta: [{ title: "Doctor — Vennova Clinic" }] }),
-  component: DoctorDashboard,
+  component: DoctorHomePage,
 });
 
-function num(o: unknown, keys: string[]): number {
-  if (!o || typeof o !== "object") return 0;
-  const r = o as Record<string, unknown>;
-  for (const k of keys) {
-    const v = r[k];
-    if (typeof v === "number" && Number.isFinite(v)) return v;
-    if (typeof v === "string" && v && !Number.isNaN(Number(v))) return Number(v);
-  }
-  return 0;
-}
-function get(o: unknown, path: string[]): unknown {
-  let cur: unknown = o;
-  for (const k of path) {
-    if (!cur || typeof cur !== "object") return undefined;
-    cur = (cur as Record<string, unknown>)[k];
-  }
-  return cur;
-}
-function inr(n: number) { return `₹${(n || 0).toLocaleString("en-IN")}`; }
+type PatientRow = {
+  id: string;
+  full_name: string;
+  reg_no: string;
+  last_visit: string | null;
+  phone: string;
+};
 
-function DoctorDashboard() {
+function DoctorHomePage() {
   const { profile, clinicName } = useAuth();
-  const navigate = useNavigate();
-  const list = useQueue();
+  const firstName = (profile?.full_name || "Doctor").split(" ")[0];
+  const [activeVisitId, setActiveVisitId] = useState<string | null>(null);
+  const [activePatientName, setActivePatientName] = useState<string | null>(null);
+  const [activePatientId, setActivePatientId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  // Live KPIs straight from Railway backend — scoped to clinic by JWT.
-  const statsQ = useQuery({
-    queryKey: ["queue", "stats-today"],
-    queryFn: () => api.get<Record<string, unknown>>("/queue/stats/today"),
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-    retry: 1,
-  });
-  const dashQ = useQuery({
-    queryKey: ["analytics", "dashboard"],
-    queryFn: () => api.get<Record<string, unknown>>("/analytics/dashboard"),
+  useEffect(() => {
+    const vid = sessionStorage.getItem("active_visit_id");
+    const vname = sessionStorage.getItem("active_patient_name");
+    const pid = sessionStorage.getItem("active_patient_id");
+    if (vid) setActiveVisitId(vid);
+    if (vname) setActivePatientName(vname);
+    if (pid) setActivePatientId(pid);
+  }, []);
+
+  const patientsQ = useQuery({
+    queryKey: ["patients", "all"],
+    queryFn: () => api.get<any>("/patients"),
     staleTime: 60_000,
-    retry: 1,
   });
 
-  const current = useMemo(
-    () => list.find((q) => q.status === "IN_TREATMENT"),
-    [list],
-  );
-  const waiting = useMemo(
-    () => list
-      .filter((q) => q.status === "WAITING" || q.status === "CHECKED_IN")
-      .sort((a, b) => (b.priority - a.priority) || (a.token_number - b.token_number)),
-    [list],
-  );
+  const patients: PatientRow[] = useMemo(() => {
+    const raw = patientsQ.data;
+    const arr = Array.isArray(raw) ? raw : raw?.patients ?? raw?.items ?? [];
+    return arr.map((p: any) => ({
+      id: p.id,
+      full_name:
+        p.full_name ||
+        `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() ||
+        "",
+      reg_no: p.reg_no ? `VNC-${String(p.reg_no).padStart(4, "0")}` : "",
+      last_visit: p.last_visit || null,
+      phone: p.phone_mobile || p.phone || "",
+    }));
+  }, [patientsQ.data]);
 
-  const qs = statsQ.data ?? {};
-  // FIX 3: counts come EXCLUSIVELY from /queue/stats/today. No local fallback.
-  const waitingN = num(qs, ["waiting"]);
-  const inTreatN = num(qs, ["in_treatment"]);
-  const doneN = num(qs, ["completed"]);
-  const followupsToday = num(get(dashQ.data, ["clinical", "followups_due_today"]), ["count", "total"]);
-  const totalPatients = num(get(dashQ.data, ["patients", "total"]), ["count", "total"])
-    || num(get(dashQ.data, ["patients"]), ["total", "count"]);
-  const revenueToday = num(get(dashQ.data, ["revenue", "today"]), ["revenue", "total", "amount"]);
-
-  const callIn = async (queueId: string, name: string) => {
-    try {
-      await queueActions.callIn(queueId, "ALLOPATHY");
-      toast.success(`Calling ${name} · reception notified`);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't call patient");
-    }
-  };
-
-  const openConsult = (patientId: string, queueId: string) => {
-    navigate({
-      to: "/consultation/$patientId",
-      params: { patientId },
-      search: { queue_id: queueId } as never,
-    });
-  };
-
-  const firstName = (profile?.full_name || "").split(" ")[0] || "Doctor";
+  const filtered = useMemo(() => {
+    if (!search.trim()) return patients.slice(0, 20);
+    const q = search.toLowerCase();
+    return patients
+      .filter(
+        (p) =>
+          p.full_name.toLowerCase().includes(q) ||
+          p.reg_no.toLowerCase().includes(q) ||
+          p.phone.includes(q),
+      )
+      .slice(0, 20);
+  }, [patients, search]);
 
   return (
-    <div className="grid grid-cols-12 gap-4">
-      {/* Greeting */}
-      <div className="col-span-12 flex items-end justify-between flex-wrap gap-2">
-        <div>
-          <div className="font-display text-lg leading-tight inline-flex items-center gap-2">
-            Welcome, Dr. {firstName}
-            {(statsQ.isLoading || dashQ.isLoading) && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {clinicName ? `${clinicName} · ` : ""}Real-time data from your clinic.
-          </div>
+    <div className="space-y-5">
+      {/* Welcome */}
+      <div>
+        <div className="font-display text-2xl">Welcome, Dr. {firstName}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {clinicName || "Vennova Clinic"} · Real-time data from your clinic.
         </div>
-        {(statsQ.error || dashQ.error) && (
-          <div className="inline-flex items-center gap-1.5 text-xs text-amber-600">
-            <AlertTriangle className="size-3.5" /> Some widgets failed to load.
-          </div>
-        )}
       </div>
 
-      {/* KPI tiles */}
-      <Kpi className="col-span-6 md:col-span-3" label="Waiting" value={waitingN.toLocaleString("en-IN")} icon={<Users className="size-4" />} />
-      <Kpi className="col-span-6 md:col-span-3" label="With me" value={inTreatN.toLocaleString("en-IN")} icon={<Stethoscope className="size-4" />} />
-      <Kpi className="col-span-6 md:col-span-3" label="Completed today" value={doneN.toLocaleString("en-IN")} icon={<ClipboardList className="size-4" />} />
-      <Kpi className="col-span-6 md:col-span-3" label="Follow-ups due" value={followupsToday.toLocaleString("en-IN")} icon={<BellRing className="size-4" />} />
-
-      {/* Now seeing */}
-      <Card className="col-span-12 lg:col-span-8">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Now seeing</div>
-            <div className="font-display text-xl">
-              {current ? `${current.patient_name} · #${current.token_number}` : "No patient with you right now"}
+      {/* Active consultation banner */}
+      {activeVisitId && activePatientId && (
+        <Card className="border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="size-10 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
+              <User className="size-5" />
             </div>
-          </div>
-          {current ? (
-            <button
-              onClick={() => openConsult(current.patient_id, current.queue_id)}
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] uppercase tracking-widest text-primary/80">
+                Active consultation
+              </div>
+              <div className="font-display text-lg truncate">
+                {activePatientName || "Current patient"}
+              </div>
+            </div>
+            <Link
+              to="/consultation/$patientId"
+              params={{ patientId: activePatientId }}
+              search={{ queue_id: activeVisitId } as never}
               className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
             >
-              Open consultation <ArrowRight className="size-4" />
-            </button>
-          ) : null}
-        </div>
-        {!current && (
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
-            <div className="mx-auto size-12 rounded-full bg-muted grid place-items-center mb-3">
-              <Coffee className="size-5 text-muted-foreground" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              When reception sends a patient in, they'll appear here automatically.
-            </p>
+              Continue consultation <ArrowRight className="size-4" />
+            </Link>
           </div>
-        )}
+        </Card>
+      )}
+
+      {/* Go to queue */}
+      <Card>
+        <Link
+          to="/doctor/queue"
+          className="flex items-center gap-3 -m-2 p-2 rounded-xl hover:bg-muted/60 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="font-display text-lg">Today's queue</div>
+            <div className="text-xs text-muted-foreground">
+              Call patients in and start consultations
+            </div>
+          </div>
+          <ArrowRight className="size-5 text-muted-foreground" />
+        </Link>
       </Card>
 
-      {/* Active queue */}
-      <Card className="col-span-12 lg:col-span-4 p-0 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3 border-b clinic-divider">
-          <div>
-            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Active queue</div>
-            <div className="font-display text-base">{waiting.length} waiting</div>
-          </div>
-          <Link to="/doctor/queue" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-            Full queue <ArrowRight className="size-3" />
-          </Link>
+      {/* Patient history search */}
+      <Card>
+        <div className="font-display text-lg mb-3">Patient history</div>
+        <div className="relative">
+          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, reg no or phone…"
+            className="h-10 pl-9 pr-3 w-full rounded-xl bg-muted/60 border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
         </div>
-        {waiting.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-            No one waiting. Take a breath ☕
+
+        {patientsQ.isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            Loading patients…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            No patients found.
           </div>
         ) : (
-          <ul className="divide-y clinic-divider max-h-[420px] overflow-y-auto">
-            {waiting.slice(0, 8).map((q) => (
-              <li key={q.queue_id} className="px-4 py-3 flex items-center gap-3">
-                <span className="font-mono text-xs w-8 text-right tabular-nums text-muted-foreground">#{q.token_number}</span>
-                <Avatar name={q.patient_name} />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate text-sm">{q.patient_name}</div>
-                  <div className="text-xs text-muted-foreground truncate">
-                    {q.visit_type === "APPOINTMENT" ? "Booked" : "Walk-in"} · {Math.max(0, q.wait_minutes)}m wait
-                  </div>
-                </div>
-                <button
-                  onClick={() => callIn(q.queue_id, q.patient_name)}
-                  className="h-9 px-3 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 inline-flex items-center gap-1.5"
+          <ul className="mt-4 divide-y clinic-divider">
+            {filtered.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to="/doctor/patients/$id"
+                  params={{ id: p.id }}
+                  className="flex items-center gap-3 py-2.5 hover:bg-muted/40 rounded-lg px-2 -mx-2"
                 >
-                  <PlayCircle className="size-3.5" /> Call in
-                </button>
+                  <div className="size-9 rounded-full bg-primary/10 text-primary grid place-items-center text-sm font-medium shrink-0">
+                    {(p.full_name[0] || "?").toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{p.full_name}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {p.reg_no}
+                      {p.phone ? ` · ${p.phone}` : ""}
+                    </div>
+                  </div>
+                  {p.last_visit && (
+                    <div className="hidden sm:inline-flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                      <Clock className="size-3" />
+                      {new Date(p.last_visit).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </div>
+                  )}
+                  <ArrowRight className="size-4 text-muted-foreground shrink-0" />
+                </Link>
               </li>
             ))}
           </ul>
         )}
       </Card>
-
-      {/* Practice snapshot */}
-      <Card className="col-span-12 md:col-span-6">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
-          <Users className="size-3.5" /> Total patients
-        </div>
-        <div className="font-display text-3xl mt-1 tabular-nums">{totalPatients.toLocaleString("en-IN")}</div>
-        <div className="text-xs text-muted-foreground mt-1">Across all consultations.</div>
-      </Card>
-      <Card className="col-span-12 md:col-span-6">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
-          <IndianRupee className="size-3.5" /> Today's revenue
-        </div>
-        <div className="font-display text-3xl mt-1 tabular-nums">{inr(revenueToday)}</div>
-        <div className="text-xs text-muted-foreground mt-1">Collected through billing today.</div>
-      </Card>
     </div>
-  );
-}
-
-function Kpi({
-  className = "", label, value, icon,
-}: { className?: string; label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <Card className={className}>
-      <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
-        {icon} {label}
-      </div>
-      <div className="font-display text-2xl mt-0.5 tabular-nums">{value}</div>
-    </Card>
   );
 }
