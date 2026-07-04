@@ -102,7 +102,7 @@ function DashboardPage() {
   const firstName = (profile?.full_name || "").split(" ")[0] || "Doctor";
 
   return (
-    <div className="grid grid-cols-12 gap-3">
+    <div className="grid grid-cols-12 gap-3 px-4 sm:px-6">
       {/* Greeting */}
       <div className="col-span-12 flex items-end justify-between flex-wrap gap-2">
         <div>
