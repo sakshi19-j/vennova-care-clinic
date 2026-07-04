@@ -218,7 +218,7 @@ function Kpi({
   className = "", label, value, icon, loading,
 }: { className?: string; label: string; value: string; icon: React.ReactNode; loading?: boolean }) {
   return (
-    <Card className={className}>
+    <Card className={`${className} hover:shadow-md hover:border-primary/20 transition-all duration-200`}>
       <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
         {icon} {label}
       </div>
