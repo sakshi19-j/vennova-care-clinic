@@ -82,7 +82,7 @@ function DoctorHomePage() {
 
       {/* Active consultation banner */}
       {activeVisitId && activePatientId && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-primary/30 bg-primary/5 shadow-[0_0_20px_-4px] shadow-primary/30 animate-pulse">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="size-10 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
               <User className="size-5" />
@@ -95,17 +95,17 @@ function DoctorHomePage() {
                 {activePatientName || "Current patient"}
               </div>
             </div>
-            <Link
-              to="/consultation/$patientId"
-              params={{ patientId: activePatientId }}
-              search={{ queue_id: activeVisitId } as never}
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/doctor/queue" })}
               className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
             >
               Continue consultation <ArrowRight className="size-4" />
-            </Link>
+            </button>
           </div>
         </Card>
       )}
+
 
       {/* Go to queue */}
       <Card>
