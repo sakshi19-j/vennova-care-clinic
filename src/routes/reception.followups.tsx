@@ -281,11 +281,23 @@ function FollowupsPage() {
     completed: num("completed") ?? num("done") ?? num("sent") ?? buckets.completed.length,
   };
 
+  const notified = useRef(false);
+  useEffect(() => {
+    if (notified.current) return;
+    if (counts.today > 0) {
+      notified.current = true;
+      toast.info(
+        `${counts.today} patient${counts.today === 1 ? "" : "s"} due for follow-up today`,
+        { duration: 6000 },
+      );
+    }
+  }, [counts.today]);
+
   return (
     <div className="grid grid-cols-12 gap-5">
       <div className="col-span-12 lg:col-span-8 space-y-4">
         {/* Header */}
-        <Card className="p-5 bg-gradient-to-br from-primary/5 to-card border-primary/20">
+        <Card className="p-5 bg-gradient-to-br from-primary/8 to-card border-primary/20">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="text-[10px] uppercase tracking-widest text-primary/80 font-medium">Follow-ups</div>
