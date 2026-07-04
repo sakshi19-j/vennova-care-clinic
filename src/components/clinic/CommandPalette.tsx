@@ -5,8 +5,8 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, ListOrdered, Calendar, Stethoscope, Users, FileText,
-  Receipt, BellRing, BarChart3, Upload, Download, Loader2,
+  LayoutDashboard, ListOrdered, Calendar, Stethoscope, Users,
+  Receipt, BellRing, Settings, Loader2,
 } from "lucide-react";
 import { patientsService, patientDisplayName, type Patient } from "@/services/patients";
 
