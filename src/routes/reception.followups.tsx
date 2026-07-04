@@ -482,7 +482,7 @@ function FollowupRowView({
             onClick={onSend}
             disabled={busy || !phone}
             title={!phone ? "No phone number on file" : undefined}
-            className="h-9 px-4 rounded-full bg-[#25D366] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:bg-[#1ebe5d] disabled:opacity-60 shrink-0"
+            className="h-9 px-4 rounded-full bg-[#25D366] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:bg-[#1ebe5d] hover:scale-105 transition-transform duration-150 disabled:opacity-60 shrink-0"
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
             Send now
