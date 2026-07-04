@@ -76,7 +76,7 @@ function ClinicProfilePage() {
           >
             Reset
           </button>
-          <Button onClick={onSave} disabled={saving} className="rounded-xl bg-primary">
+          <Button onClick={onSave} disabled={saving} className={`rounded-xl bg-primary ${saving ? "animate-pulse" : ""}`}>
             {saving ? <Loader2 className="size-4 mr-1 animate-spin" /> : <Save className="size-4 mr-1" />}
             Save changes
           </Button>
