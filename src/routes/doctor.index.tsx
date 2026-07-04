@@ -20,6 +20,7 @@ type PatientRow = {
 
 function DoctorHomePage() {
   const { profile, clinicName } = useAuth();
+  const navigate = useNavigate();
   const firstName = (profile?.full_name || "Doctor").split(" ")[0];
   const [activeVisitId, setActiveVisitId] = useState<string | null>(null);
   const [activePatientName, setActivePatientName] = useState<string | null>(null);
