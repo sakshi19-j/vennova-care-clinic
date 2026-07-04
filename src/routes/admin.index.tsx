@@ -268,7 +268,7 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
     >
       <span className="size-7 rounded-md bg-primary/10 text-primary grid place-items-center">{icon}</span>
       <span className="font-medium">{label}</span>
-      <ArrowRight className="size-4 ml-auto text-muted-foreground group-hover:text-foreground transition-colors" />
+      <ArrowRight className="size-4 ml-auto text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-transform duration-150" />
     </Link>
   );
 }
