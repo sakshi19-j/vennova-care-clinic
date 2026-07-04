@@ -102,7 +102,7 @@ function DashboardPage() {
   const firstName = (profile?.full_name || "").split(" ")[0] || "Doctor";
 
   return (
-    <div className="grid grid-cols-12 gap-3">
+    <div className="grid grid-cols-12 gap-3 px-4 sm:px-6">
       {/* Greeting */}
       <div className="col-span-12 flex items-end justify-between flex-wrap gap-2">
         <div>
@@ -156,7 +156,7 @@ function DashboardPage() {
           </Card>
 
           {/* Revenue trend */}
-          <Card className="col-span-12 lg:col-span-8">
+          <Card className="col-span-12 lg:col-span-8 bg-gradient-to-br from-card to-muted/30">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="font-display text-base">Revenue this week</div>
@@ -218,7 +218,7 @@ function Kpi({
   className = "", label, value, icon, loading,
 }: { className?: string; label: string; value: string; icon: React.ReactNode; loading?: boolean }) {
   return (
-    <Card className={className}>
+    <Card className={`${className} hover:shadow-md hover:border-primary/20 transition-all duration-200`}>
       <div className="text-[11px] uppercase tracking-widest text-muted-foreground inline-flex items-center gap-1.5">
         {icon} {label}
       </div>
@@ -268,7 +268,7 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
     >
       <span className="size-7 rounded-md bg-primary/10 text-primary grid place-items-center">{icon}</span>
       <span className="font-medium">{label}</span>
-      <ArrowRight className="size-4 ml-auto text-muted-foreground group-hover:text-foreground transition-colors" />
+      <ArrowRight className="size-4 ml-auto text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-transform duration-150" />
     </Link>
   );
 }

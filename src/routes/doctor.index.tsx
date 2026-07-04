@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
@@ -20,6 +20,7 @@ type PatientRow = {
 
 function DoctorHomePage() {
   const { profile, clinicName } = useAuth();
+  const navigate = useNavigate();
   const firstName = (profile?.full_name || "Doctor").split(" ")[0];
   const [activeVisitId, setActiveVisitId] = useState<string | null>(null);
   const [activePatientName, setActivePatientName] = useState<string | null>(null);
@@ -81,7 +82,7 @@ function DoctorHomePage() {
 
       {/* Active consultation banner */}
       {activeVisitId && activePatientId && (
-        <Card className="border-primary/30 bg-primary/5">
+        <Card className="border-primary/30 bg-primary/5 shadow-[0_0_20px_-4px] shadow-primary/30 animate-pulse">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="size-10 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
               <User className="size-5" />
@@ -94,17 +95,17 @@ function DoctorHomePage() {
                 {activePatientName || "Current patient"}
               </div>
             </div>
-            <Link
-              to="/consultation/$patientId"
-              params={{ patientId: activePatientId }}
-              search={{ queue_id: activeVisitId } as never}
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/doctor/queue" })}
               className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
             >
               Continue consultation <ArrowRight className="size-4" />
-            </Link>
+            </button>
           </div>
         </Card>
       )}
+
 
       {/* Go to queue */}
       <Card>
@@ -147,10 +148,10 @@ function DoctorHomePage() {
           <ul className="mt-4 divide-y clinic-divider">
             {filtered.map((p) => (
               <li key={p.id}>
-                <Link
-                  to="/doctor/patients/$id"
-                  params={{ id: p.id }}
-                  className="flex items-center gap-3 py-2.5 hover:bg-muted/40 rounded-lg px-2 -mx-2"
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/reception/patients" })}
+                  className="w-full text-left flex items-center gap-3 py-2.5 hover:bg-primary/5 transition-colors duration-150 rounded-lg px-2 -mx-2"
                 >
                   <div className="size-9 rounded-full bg-primary/10 text-primary grid place-items-center text-sm font-medium shrink-0">
                     {(p.full_name[0] || "?").toUpperCase()}
@@ -172,7 +173,7 @@ function DoctorHomePage() {
                     </div>
                   )}
                   <ArrowRight className="size-4 text-muted-foreground shrink-0" />
-                </Link>
+                </button>
               </li>
             ))}
           </ul>

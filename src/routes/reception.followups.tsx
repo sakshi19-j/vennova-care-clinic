@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, Tag, Avatar } from "@/components/clinic/PageHeader";
@@ -281,11 +281,23 @@ function FollowupsPage() {
     completed: num("completed") ?? num("done") ?? num("sent") ?? buckets.completed.length,
   };
 
+  const notified = useRef(false);
+  useEffect(() => {
+    if (notified.current) return;
+    if (counts.today > 0) {
+      notified.current = true;
+      toast.info(
+        `${counts.today} patient${counts.today === 1 ? "" : "s"} due for follow-up today`,
+        { duration: 6000 },
+      );
+    }
+  }, [counts.today]);
+
   return (
     <div className="grid grid-cols-12 gap-5">
       <div className="col-span-12 lg:col-span-8 space-y-4">
         {/* Header */}
-        <Card className="p-5 bg-gradient-to-br from-primary/5 to-card border-primary/20">
+        <Card className="p-5 bg-gradient-to-br from-primary/8 to-card border-primary/20">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="text-[10px] uppercase tracking-widest text-primary/80 font-medium">Follow-ups</div>
@@ -470,7 +482,7 @@ function FollowupRowView({
             onClick={onSend}
             disabled={busy || !phone}
             title={!phone ? "No phone number on file" : undefined}
-            className="h-9 px-4 rounded-full bg-[#25D366] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:bg-[#1ebe5d] disabled:opacity-60 shrink-0"
+            className="h-9 px-4 rounded-full bg-[#25D366] text-white text-xs font-medium inline-flex items-center gap-1.5 hover:bg-[#1ebe5d] hover:scale-105 transition-transform duration-150 disabled:opacity-60 shrink-0"
           >
             {busy ? <Loader2 className="size-3.5 animate-spin" /> : <MessageCircle className="size-3.5" />}
             Send now

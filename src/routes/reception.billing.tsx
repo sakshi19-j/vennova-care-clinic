@@ -372,7 +372,7 @@ function BillingPage() {
       <div className="col-span-12 lg:col-span-4 space-y-5">
         <Card>
           <div className="font-display text-xl mb-1">Today's revenue</div>
-          <div className="font-display text-5xl text-primary inline-flex items-center mt-1">
+          <div className={`font-display text-5xl text-primary inline-flex items-center mt-1 transition-all duration-500 ${todayPaid.length > 0 ? "drop-shadow-sm" : ""}`}>
             <IndianRupee className="size-7" />
             {totalToday.toLocaleString("en-IN")}
           </div>

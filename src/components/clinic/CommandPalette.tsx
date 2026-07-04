@@ -5,8 +5,8 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  LayoutDashboard, ListOrdered, Calendar, Stethoscope, Users, FileText,
-  Receipt, BellRing, BarChart3, Upload, Download, Loader2,
+  LayoutDashboard, ListOrdered, Calendar, Stethoscope, Users,
+  Receipt, BellRing, Settings, Loader2,
 } from "lucide-react";
 import { patientsService, patientDisplayName, type Patient } from "@/services/patients";
 
@@ -72,17 +72,14 @@ export function CommandPalette({
               ) : q.trim().length >= 2 ? "No patients found." : "No results."}
             </CommandEmpty>
             <CommandGroup heading="Navigate">
-              <CommandItem onSelect={() => go("/")}><LayoutDashboard className="size-4 mr-2" /> Dashboard</CommandItem>
-              <CommandItem onSelect={() => go("/queue")}><ListOrdered className="size-4 mr-2" /> Live Queue</CommandItem>
-              <CommandItem onSelect={() => go("/appointments")}><Calendar className="size-4 mr-2" /> Appointments</CommandItem>
-              <CommandItem onSelect={() => go("/queue")}><Stethoscope className="size-4 mr-2" /> Consultation queue</CommandItem>
-              <CommandItem onSelect={() => go("/patients")}><Users className="size-4 mr-2" /> Patients</CommandItem>
-              <CommandItem onSelect={() => go("/prescriptions")}><FileText className="size-4 mr-2" /> Prescriptions</CommandItem>
-              <CommandItem onSelect={() => go("/billing")}><Receipt className="size-4 mr-2" /> Billing</CommandItem>
-              <CommandItem onSelect={() => go("/reminders")}><BellRing className="size-4 mr-2" /> Reminders</CommandItem>
-              <CommandItem onSelect={() => go("/analytics")}><BarChart3 className="size-4 mr-2" /> Analytics</CommandItem>
-              <CommandItem onSelect={() => go("/imports")}><Upload className="size-4 mr-2" /> Import Patients</CommandItem>
-              <CommandItem onSelect={() => go("/exports")}><Download className="size-4 mr-2" /> Export Center</CommandItem>
+              <CommandItem onSelect={() => go("/admin")}><LayoutDashboard className="size-4 mr-2" /> Dashboard</CommandItem>
+              <CommandItem onSelect={() => go("/reception")}><ListOrdered className="size-4 mr-2" /> Live Queue</CommandItem>
+              <CommandItem onSelect={() => go("/reception/appointments")}><Calendar className="size-4 mr-2" /> Appointments</CommandItem>
+              <CommandItem onSelect={() => go("/doctor/queue")}><Stethoscope className="size-4 mr-2" /> Consultation queue</CommandItem>
+              <CommandItem onSelect={() => go("/reception/patients")}><Users className="size-4 mr-2" /> Patients</CommandItem>
+              <CommandItem onSelect={() => go("/reception/billing")}><Receipt className="size-4 mr-2" /> Billing</CommandItem>
+              <CommandItem onSelect={() => go("/reception/followups")}><BellRing className="size-4 mr-2" /> Follow-ups</CommandItem>
+              <CommandItem onSelect={() => go("/admin/settings")}><Settings className="size-4 mr-2" /> Settings</CommandItem>
             </CommandGroup>
             {results.length > 0 && (
               <CommandGroup heading="Patients">
