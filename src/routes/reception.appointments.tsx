@@ -358,14 +358,15 @@ function AppointmentsPage() {
           )}
 
           <label className="text-[11px] uppercase tracking-widest text-muted-foreground mt-4 block">Visit type</label>
-          <div className="grid grid-cols-2 gap-1.5 mt-1.5">
-            {(["HOMEOPATHY", "ALLOPATHY"] as const).map((v) => (
-              <button key={v} onClick={() => setBVisitType(v)}
-                className={`h-10 rounded-lg border text-xs font-medium ${bVisitType === v ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border hover:bg-muted"}`}>
-                {v}
-              </button>
-            ))}
+          <div className="mt-1.5">
+            <button
+              className="h-10 px-6 rounded-lg border text-xs font-medium bg-primary text-primary-foreground border-primary"
+              disabled
+            >
+              HOMEOPATHY
+            </button>
           </div>
+
 
           <label className="text-[11px] uppercase tracking-widest text-muted-foreground mt-4 block">Duration</label>
           <div className="grid grid-cols-4 gap-1.5 mt-1.5">
