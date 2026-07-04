@@ -156,7 +156,7 @@ function DashboardPage() {
           </Card>
 
           {/* Revenue trend */}
-          <Card className="col-span-12 lg:col-span-8">
+          <Card className="col-span-12 lg:col-span-8 bg-gradient-to-br from-card to-muted/30">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="font-display text-base">Revenue this week</div>
