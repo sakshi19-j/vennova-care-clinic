@@ -148,10 +148,10 @@ function DoctorHomePage() {
           <ul className="mt-4 divide-y clinic-divider">
             {filtered.map((p) => (
               <li key={p.id}>
-                <Link
-                  to="/doctor/patients/$id"
-                  params={{ id: p.id }}
-                  className="flex items-center gap-3 py-2.5 hover:bg-muted/40 rounded-lg px-2 -mx-2"
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/reception/patients" })}
+                  className="w-full text-left flex items-center gap-3 py-2.5 hover:bg-primary/5 transition-colors duration-150 rounded-lg px-2 -mx-2"
                 >
                   <div className="size-9 rounded-full bg-primary/10 text-primary grid place-items-center text-sm font-medium shrink-0">
                     {(p.full_name[0] || "?").toUpperCase()}
@@ -173,7 +173,7 @@ function DoctorHomePage() {
                     </div>
                   )}
                   <ArrowRight className="size-4 text-muted-foreground shrink-0" />
-                </Link>
+                </button>
               </li>
             ))}
           </ul>
