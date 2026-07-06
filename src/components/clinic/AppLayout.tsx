@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   UserCog, Settings, Search, Bell, Leaf, Command, CalendarDays,
   Building2, Activity, ShieldCheck, LogOut,
@@ -7,6 +8,7 @@ import {
 import { CommandPalette } from "./CommandPalette";
 import { canAccess, roleMeta, type Role } from "@/lib/role-store";
 import { useAuth } from "@/hooks/use-auth";
+import { remindersService } from "@/services/reminders";
 
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; live?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
@@ -79,16 +81,29 @@ export function AppLayout() {
   const meta = roleMeta[role];
   const displayName = profile?.full_name || meta.label;
 
+  const remindersStatsQ = useQuery({
+    queryKey: ["reminders", "stats", "header"],
+    queryFn: () => remindersService.stats(),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+  const pendingCount = Number((remindersStatsQ.data as any)?.pending ?? 0);
+
   return (
     <div className="min-h-screen flex w-full">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 sticky top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col">
+      <aside
+        className="w-64 shrink-0 sticky top-0 h-screen text-sidebar-foreground flex flex-col"
+        style={{ background: "linear-gradient(180deg, #1e1b4b 0%, #0f0e1a 100%)" }}
+      >
         <div className="px-5 pt-5 pb-6 flex items-center gap-3">
           <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md">
             <Leaf className="size-5" />
           </div>
           <div>
-            <div className="font-display text-lg leading-none">Vedic</div>
+            <div className="font-display text-lg leading-none font-semibold">
+              {clinicName || "Vedic"}
+            </div>
             <div className="text-xs text-sidebar-foreground/70 mt-1">Homeopathic Clinic</div>
           </div>
         </div>
@@ -110,7 +125,7 @@ export function AppLayout() {
                         className={[
                           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                           active
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-gold pl-[10px]"
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-primary pl-[10px]"
                             : "hover:bg-sidebar-accent/50 text-sidebar-foreground/80",
                         ].join(" ")}
                       >
@@ -143,7 +158,7 @@ export function AppLayout() {
           <div className="mt-3">
             <button
               onClick={async () => { await signOut(); navigate({ to: "/auth" as any, replace: true }); }}
-              className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-sidebar-accent/60 hover:bg-sidebar-accent text-[11px] font-medium"
+              className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-sidebar-accent/60 hover:bg-destructive/10 hover:text-destructive text-[11px] font-medium transition-colors"
             >
               <LogOut className="size-3" /> Sign out
             </button>
@@ -153,41 +168,45 @@ export function AppLayout() {
 
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 backdrop-blur bg-background/70 border-b clinic-divider">
+        <header className="sticky top-0 z-30 backdrop-blur-sm bg-background/95 border-b border-border/50">
           <div className="flex items-center gap-3 px-6 h-14">
             <button
               onClick={() => setPaletteOpen(true)}
-              className="flex-1 max-w-2xl flex items-center gap-3 h-9 px-3 rounded-full bg-card/80 border border-border text-sm text-muted-foreground hover:bg-card transition"
+              className="flex-1 max-w-2xl min-w-0 md:min-w-[500px] flex items-center gap-3 h-9 px-3 rounded-full bg-card/80 border border-border text-sm text-muted-foreground hover:bg-card transition"
             >
               <Search className="size-4" />
-              <span>Search patients, visits, invoices…</span>
-              <span className="ml-auto inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-border bg-background">
+              <span className="truncate">Search patients, visits, invoices…</span>
+              <span className="ml-auto inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded border border-border bg-background shrink-0">
                 <Command className="size-3" /> K
               </span>
             </button>
-            <div className="hidden sm:flex items-center gap-2 text-right">
-              <CalendarDays className="size-4 text-muted-foreground" />
-              <div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground leading-none">Today</div>
-                <div className="text-sm font-medium">
-                  {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+            <div className="ml-auto flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 text-right">
+                <CalendarDays className="size-4 text-muted-foreground" />
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground leading-none">Today</div>
+                  <div className="text-sm font-medium">
+                    {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+                  </div>
                 </div>
               </div>
-            </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-gold/20 text-[color-mix(in_oklab,var(--gold)_30%,black)] border border-gold/30">
-              {meta.label}
-            </span>
-            <button className="relative size-9 rounded-full hover:bg-muted flex items-center justify-center">
-              <Bell className="size-4" />
-              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-saffron" />
-            </button>
-            <div className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
-              {meta.initials}
+              <span className="text-xs px-2.5 py-1 rounded-full bg-gold/20 text-[color-mix(in_oklab,var(--gold)_30%,black)] border border-gold/30">
+                {meta.label}
+              </span>
+              <button className="relative size-9 rounded-full hover:bg-muted flex items-center justify-center">
+                <Bell className="size-4" />
+                {pendingCount > 0 && (
+                  <span className="absolute top-0 right-0 size-2 rounded-full bg-red-500" />
+                )}
+              </button>
+              <div className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
+                {meta.initials}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-6">
+        <main key={path} className="flex-1 px-6 py-6 animate-in fade-in duration-200">
           <Outlet />
         </main>
       </div>
