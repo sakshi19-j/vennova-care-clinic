@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   UserCog, Settings, Search, Bell, Leaf, Command, CalendarDays,
   Building2, Activity, ShieldCheck, LogOut,
@@ -7,6 +8,7 @@ import {
 import { CommandPalette } from "./CommandPalette";
 import { canAccess, roleMeta, type Role } from "@/lib/role-store";
 import { useAuth } from "@/hooks/use-auth";
+import { remindersService } from "@/services/reminders";
 
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; live?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
