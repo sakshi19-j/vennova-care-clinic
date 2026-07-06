@@ -69,6 +69,15 @@ export function AppLayout() {
     }
   }, [loading, session, role, path, navigate]);
 
+  const remindersStatsQ = useQuery({
+    queryKey: ["reminders", "stats", "header"],
+    queryFn: () => remindersService.stats(),
+    enabled: !!session && !!role,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+  const pendingCount = Number((remindersStatsQ.data as any)?.pending ?? 0);
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
@@ -80,14 +89,6 @@ export function AppLayout() {
   const groups = groupsByRole[role];
   const meta = roleMeta[role];
   const displayName = profile?.full_name || meta.label;
-
-  const remindersStatsQ = useQuery({
-    queryKey: ["reminders", "stats", "header"],
-    queryFn: () => remindersService.stats(),
-    staleTime: 60_000,
-    refetchInterval: 60_000,
-  });
-  const pendingCount = Number((remindersStatsQ.data as any)?.pending ?? 0);
 
   return (
     <div className="min-h-screen flex w-full">
@@ -206,7 +207,7 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main key={path} className="flex-1 px-6 py-6 animate-in fade-in duration-200">
+        <main key={path} className="flex-1 px-6 py-6">
           <Outlet />
         </main>
       </div>
