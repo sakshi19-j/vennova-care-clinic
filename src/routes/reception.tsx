@@ -1,7 +1,9 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { ListOrdered, CalendarDays, Users, Receipt, BellRing } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { refreshAll } from "@/lib/queue-store";
+import { remindersService } from "@/services/reminders";
 
 
 export const Route = createFileRoute("/reception")({
@@ -28,6 +30,15 @@ function ReceptionLayout() {
     void refreshAll();
   }, []);
 
+  const statsQ = useQuery({
+    queryKey: ["reminders", "stats", "reception-nav"],
+    queryFn: () => remindersService.stats(),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+  const todayCount = Number(
+    (statsQ.data as any)?.today ?? (statsQ.data as any)?.pending ?? 0,
+  );
 
   return (
     <div className="max-w-[1500px] mx-auto">
@@ -37,6 +48,7 @@ function ReceptionLayout() {
           {tabs.map((t) => {
             const active = t.end ? path === t.to : path.startsWith(t.to);
             const Icon = t.icon;
+            const isFollowups = t.to === "/reception/followups";
             return (
               <Link
                 key={t.to}
@@ -47,6 +59,11 @@ function ReceptionLayout() {
                 ].join(" ")}
               >
                 <Icon className="size-4" /> {t.label}
+                {isFollowups && todayCount > 0 && (
+                  <span className="ml-1 inline-flex size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
+                    {todayCount}
+                  </span>
+                )}
               </Link>
             );
           })}
