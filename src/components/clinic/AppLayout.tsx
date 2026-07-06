@@ -207,7 +207,7 @@ export function AppLayout() {
           </div>
         </header>
 
-        <main key={path} className="flex-1 px-6 py-6 animate-in fade-in duration-200">
+        <main key={path} className="flex-1 px-6 py-6">
           <Outlet />
         </main>
       </div>
