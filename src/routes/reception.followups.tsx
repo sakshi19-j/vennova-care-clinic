@@ -284,14 +284,26 @@ function FollowupsPage() {
   const notified = useRef(false);
   useEffect(() => {
     if (notified.current) return;
-    if (counts.today > 0) {
+    if (buckets.today.length > 0) {
       notified.current = true;
+      const names = buckets.today
+        .slice(0, 3)
+        .map((r) => rowName(r))
+        .filter(Boolean)
+        .join(", ");
+      const extra =
+        buckets.today.length > 3
+          ? ` and ${buckets.today.length - 3} more`
+          : "";
       toast.info(
-        `${counts.today} patient${counts.today === 1 ? "" : "s"} due for follow-up today`,
-        { duration: 6000 },
+        `${buckets.today.length} follow-up${buckets.today.length === 1 ? "" : "s"} due today`,
+        {
+          description: (names + extra) || "Check Follow-ups tab",
+          duration: 8000,
+        },
       );
     }
-  }, [counts.today]);
+  }, [buckets.today.length]);
 
   return (
     <div className="grid grid-cols-12 gap-5">
