@@ -40,6 +40,7 @@ import { Route as PrescriptionVisitIdRouteImport } from './routes/prescription.$
 import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
 import { Route as HomeopathyQueueRouteImport } from './routes/homeopathy.queue'
 import { Route as DoctorQueueRouteImport } from './routes/doctor.queue'
+import { Route as DoctorPatientsRouteImport } from './routes/doctor.patients'
 import { Route as ConsultationPatientIdRouteImport } from './routes/consultation.$patientId'
 import { Route as AdminStaffManagementRouteImport } from './routes/admin.staff-management'
 import { Route as AdminStaffRouteImport } from './routes/admin.staff'
@@ -211,6 +212,11 @@ const DoctorQueueRoute = DoctorQueueRouteImport.update({
   path: '/queue',
   getParentRoute: () => DoctorRoute,
 } as any)
+const DoctorPatientsRoute = DoctorPatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => DoctorRoute,
+} as any)
 const ConsultationPatientIdRoute = ConsultationPatientIdRouteImport.update({
   id: '/consultation/$patientId',
   path: '/consultation/$patientId',
@@ -263,9 +269,9 @@ const HomeopathyPatientsIdRoute = HomeopathyPatientsIdRouteImport.update({
   getParentRoute: () => HomeopathyRoute,
 } as any)
 const DoctorPatientsIdRoute = DoctorPatientsIdRouteImport.update({
-  id: '/patients/$id',
-  path: '/patients/$id',
-  getParentRoute: () => DoctorRoute,
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DoctorPatientsRoute,
 } as any)
 const ConsultationEditVisitIdRoute = ConsultationEditVisitIdRouteImport.update({
   id: '/consultation/edit/$visitId',
@@ -316,6 +322,7 @@ export interface FileRoutesByFullPath {
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
   '/patients/$patientId': typeof PatientsPatientIdRouteWithChildren
@@ -359,6 +366,7 @@ export interface FileRoutesByTo {
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
   '/patients/$patientId': typeof PatientsPatientIdRouteWithChildren
@@ -408,6 +416,7 @@ export interface FileRoutesById {
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
   '/patients/$patientId': typeof PatientsPatientIdRouteWithChildren
@@ -458,6 +467,7 @@ export interface FileRouteTypes {
     | '/admin/staff'
     | '/admin/staff-management'
     | '/consultation/$patientId'
+    | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
     | '/patients/$patientId'
@@ -501,6 +511,7 @@ export interface FileRouteTypes {
     | '/admin/staff'
     | '/admin/staff-management'
     | '/consultation/$patientId'
+    | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
     | '/patients/$patientId'
@@ -549,6 +560,7 @@ export interface FileRouteTypes {
     | '/admin/staff'
     | '/admin/staff-management'
     | '/consultation/$patientId'
+    | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
     | '/patients/$patientId'
@@ -815,6 +827,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorQueueRouteImport
       parentRoute: typeof DoctorRoute
     }
+    '/doctor/patients': {
+      id: '/doctor/patients'
+      path: '/patients'
+      fullPath: '/doctor/patients'
+      preLoaderRoute: typeof DoctorPatientsRouteImport
+      parentRoute: typeof DoctorRoute
+    }
     '/consultation/$patientId': {
       id: '/consultation/$patientId'
       path: '/consultation/$patientId'
@@ -887,10 +906,10 @@ declare module '@tanstack/react-router' {
     }
     '/doctor/patients/$id': {
       id: '/doctor/patients/$id'
-      path: '/patients/$id'
+      path: '/$id'
       fullPath: '/doctor/patients/$id'
       preLoaderRoute: typeof DoctorPatientsIdRouteImport
-      parentRoute: typeof DoctorRoute
+      parentRoute: typeof DoctorPatientsRoute
     }
     '/consultation/edit/$visitId': {
       id: '/consultation/edit/$visitId'
@@ -963,16 +982,28 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface DoctorRouteChildren {
-  DoctorQueueRoute: typeof DoctorQueueRoute
-  DoctorIndexRoute: typeof DoctorIndexRoute
+interface DoctorPatientsRouteChildren {
   DoctorPatientsIdRoute: typeof DoctorPatientsIdRoute
 }
 
+const DoctorPatientsRouteChildren: DoctorPatientsRouteChildren = {
+  DoctorPatientsIdRoute: DoctorPatientsIdRoute,
+}
+
+const DoctorPatientsRouteWithChildren = DoctorPatientsRoute._addFileChildren(
+  DoctorPatientsRouteChildren,
+)
+
+interface DoctorRouteChildren {
+  DoctorPatientsRoute: typeof DoctorPatientsRouteWithChildren
+  DoctorQueueRoute: typeof DoctorQueueRoute
+  DoctorIndexRoute: typeof DoctorIndexRoute
+}
+
 const DoctorRouteChildren: DoctorRouteChildren = {
+  DoctorPatientsRoute: DoctorPatientsRouteWithChildren,
   DoctorQueueRoute: DoctorQueueRoute,
   DoctorIndexRoute: DoctorIndexRoute,
-  DoctorPatientsIdRoute: DoctorPatientsIdRoute,
 }
 
 const DoctorRouteWithChildren =
@@ -1064,13 +1095,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

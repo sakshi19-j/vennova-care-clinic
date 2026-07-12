@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Stethoscope, ListChecks, Bell } from "lucide-react";
+import { Stethoscope, ListChecks, Bell, Users } from "lucide-react";
 import { useQueue } from "@/lib/queue-store";
 
 export const Route = createFileRoute("/doctor")({
