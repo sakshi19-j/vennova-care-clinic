@@ -122,11 +122,29 @@ function AppointmentsPage() {
   const checkInAppt = async (appt: RxAppointment) => {
     try {
       await api.post(`/appointments/${encodeURIComponent(appt.id)}/checkin`);
-      toast.success(`${appt.patient_name} added to queue`);
+      toast.success(`${appt.patient_name} checked in and added to queue`);
       qc.invalidateQueries({ queryKey: ["appointments"] });
       qc.invalidateQueries({ queryKey: ["queue"] });
-    } catch (e) {
-      toast.error((e as Error).message || "Check-in failed");
+    } catch {
+      const patientId = (appt as any).patient_id || appt.id;
+      try {
+        await api.post("/queue/add", {
+          patient_id: patientId,
+          visit_type: "HOMEOPATHY",
+          priority: 0,
+          notes: (appt as any).chief_complaint || null,
+        });
+        await api.put(`/appointments/${encodeURIComponent(appt.id)}`, {
+          status: "CHECKED_IN",
+        });
+        toast.success(`${appt.patient_name} added to queue`);
+        qc.invalidateQueries({ queryKey: ["appointments"] });
+        qc.invalidateQueries({ queryKey: ["queue"] });
+      } catch (e2) {
+        toast.error(
+          "Could not check in: " + ((e2 as Error).message || "server error"),
+        );
+      }
     }
   };
 
