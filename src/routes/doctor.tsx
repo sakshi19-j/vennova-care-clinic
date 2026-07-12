@@ -16,6 +16,7 @@ function DoctorLayout() {
   const tabs = [
     { to: "/doctor", label: "Now seeing", icon: Stethoscope, end: true },
     { to: "/doctor/queue", label: `Today's list (${waiting + (current ? 1 : 0)})`, icon: ListChecks },
+    { to: "/doctor/patients", label: "Patient records", icon: Users },
   ];
 
   return (
