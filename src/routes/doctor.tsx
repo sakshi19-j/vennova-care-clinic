@@ -23,7 +23,7 @@ function DoctorLayout() {
     <div className="max-w-[1400px] mx-auto">
       <div className="flex items-end justify-between gap-4 mb-5 flex-wrap">
         <div>
-          <div className="text-[11px] tracking-[0.22em] uppercase text-muted-foreground mb-2">Doctor · Allopathy</div>
+          <div className="text-[11px] tracking-[0.22em] uppercase text-muted-foreground mb-2">Doctor · Homeopathy</div>
           <h1 className="font-display text-4xl md:text-5xl leading-[1.05]">Consultation</h1>
           <p className="text-muted-foreground mt-2 max-w-2xl">
             Reception sends patients in. You see one patient at a time — review, prescribe, click <span className="font-medium text-foreground">Mark done</span>.
