@@ -194,12 +194,18 @@ export function AppLayout() {
               <span className="text-xs px-2.5 py-1 rounded-full bg-gold/20 text-[color-mix(in_oklab,var(--gold)_30%,black)] border border-gold/30">
                 {meta.label}
               </span>
-              <button className="relative size-9 rounded-full hover:bg-muted flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => navigate({ to: "/reception/followups" as any })}
+                className="relative size-9 rounded-full hover:bg-muted flex items-center justify-center"
+                aria-label="Follow-ups"
+              >
                 <Bell className="size-4" />
                 {pendingCount > 0 && (
                   <span className="absolute top-0 right-0 size-2 rounded-full bg-red-500" />
                 )}
               </button>
+
               <div className="size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-medium">
                 {meta.initials}
               </div>
