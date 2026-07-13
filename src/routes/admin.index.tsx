@@ -155,6 +155,26 @@ function DashboardPage() {
             </div>
           </Card>
 
+          {/* Doctor queue shortcut — prominent, full-width */}
+          <Card className="col-span-12 border-primary/30 bg-gradient-to-br from-primary/10 to-card animate-float">
+            <Link
+              to="/homeopathy/queue"
+              className="flex items-center gap-3 -m-2 p-2 rounded-xl hover:bg-primary/5 transition-colors"
+            >
+              <div className="size-11 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
+                <PlayCircle className="size-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] uppercase tracking-widest text-primary/80">Doctor</div>
+                <div className="font-display text-lg">Open today's queue</div>
+                <div className="text-xs text-muted-foreground">
+                  Call patients in and start consultations
+                </div>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground" />
+            </Link>
+          </Card>
+
           {/* Revenue trend */}
           <Card className="col-span-12 lg:col-span-8 bg-gradient-to-br from-card to-muted/30">
             <div className="flex items-center justify-between mb-2">
@@ -196,27 +216,6 @@ function DashboardPage() {
             )}
           </Card>
 
-
-          {/* Doctor queue shortcut — prominent */}
-          <Card className="col-span-12 lg:col-span-4 border-primary/30 bg-gradient-to-br from-primary/10 to-card">
-            <Link
-              to="/homeopathy/queue"
-              className="flex items-center gap-3 -m-2 p-2 rounded-xl hover:bg-primary/5 transition-colors"
-            >
-              <div className="size-11 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
-                <PlayCircle className="size-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[11px] uppercase tracking-widest text-primary/80">Doctor</div>
-                <div className="font-display text-lg">Open today's queue</div>
-                <div className="text-xs text-muted-foreground">
-                  Call patients in and start consultations
-                </div>
-              </div>
-              <ArrowRight className="size-5 text-muted-foreground" />
-            </Link>
-          </Card>
-
           {/* Quick actions */}
           <Card className="col-span-12 lg:col-span-4">
             <div className="font-display text-base mb-3 inline-flex items-center gap-2">
@@ -229,6 +228,7 @@ function DashboardPage() {
               <QuickAction to="/staff" icon={<UserCog className="size-4" />} label="Manage staff" />
             </div>
           </Card>
+
       </>
     </div>
   );
