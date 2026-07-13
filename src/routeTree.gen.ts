@@ -54,6 +54,7 @@ import { Route as HomeopathyPatientsIdRouteImport } from './routes/homeopathy.pa
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor.patients.$id'
 import { Route as ConsultationEditVisitIdRouteImport } from './routes/consultation.edit.$visitId'
 import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
+import { Route as AdminSettingsImportRouteImport } from './routes/admin.settings.import'
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
 import { Route as AdminSettingsAccessRouteImport } from './routes/admin.settings.access'
 
@@ -284,6 +285,11 @@ const AdminSettingsSubscriptionRoute =
     path: '/subscription',
     getParentRoute: () => AdminSettingsRoute,
   } as any)
+const AdminSettingsImportRoute = AdminSettingsImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
 const AdminSettingsBackupsRoute = AdminSettingsBackupsRouteImport.update({
   id: '/backups',
   path: '/backups',
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/reception/': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
+  '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -381,6 +388,7 @@ export interface FileRoutesByTo {
   '/reception': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
+  '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -431,6 +439,7 @@ export interface FileRoutesById {
   '/reception/': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
+  '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
@@ -482,6 +491,7 @@ export interface FileRouteTypes {
     | '/reception/'
     | '/admin/settings/access'
     | '/admin/settings/backups'
+    | '/admin/settings/import'
     | '/admin/settings/subscription'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
@@ -526,6 +536,7 @@ export interface FileRouteTypes {
     | '/reception'
     | '/admin/settings/access'
     | '/admin/settings/backups'
+    | '/admin/settings/import'
     | '/admin/settings/subscription'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
@@ -575,6 +586,7 @@ export interface FileRouteTypes {
     | '/reception/'
     | '/admin/settings/access'
     | '/admin/settings/backups'
+    | '/admin/settings/import'
     | '/admin/settings/subscription'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
@@ -925,6 +937,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsSubscriptionRouteImport
       parentRoute: typeof AdminSettingsRoute
     }
+    '/admin/settings/import': {
+      id: '/admin/settings/import'
+      path: '/import'
+      fullPath: '/admin/settings/import'
+      preLoaderRoute: typeof AdminSettingsImportRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
     '/admin/settings/backups': {
       id: '/admin/settings/backups'
       path: '/backups'
@@ -945,6 +964,7 @@ declare module '@tanstack/react-router' {
 interface AdminSettingsRouteChildren {
   AdminSettingsAccessRoute: typeof AdminSettingsAccessRoute
   AdminSettingsBackupsRoute: typeof AdminSettingsBackupsRoute
+  AdminSettingsImportRoute: typeof AdminSettingsImportRoute
   AdminSettingsSubscriptionRoute: typeof AdminSettingsSubscriptionRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
 }
@@ -952,6 +972,7 @@ interface AdminSettingsRouteChildren {
 const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsAccessRoute: AdminSettingsAccessRoute,
   AdminSettingsBackupsRoute: AdminSettingsBackupsRoute,
+  AdminSettingsImportRoute: AdminSettingsImportRoute,
   AdminSettingsSubscriptionRoute: AdminSettingsSubscriptionRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 }
