@@ -154,53 +154,39 @@ function PatientCard({
         <div className="pb-4 pl-13 pr-2">
           {visitsQ.isLoading ? (
             <div className="py-4 text-sm text-muted-foreground">
-              Loading visits…
+              Loading visit timeline…
             </div>
           ) : visits.length === 0 ? (
             <div className="py-4 text-sm text-muted-foreground">
               No visits recorded yet.
             </div>
           ) : (
+            <div className="mb-2 text-[11px] uppercase tracking-widest text-muted-foreground">
+              Visit timeline · {visits.length} visit{visits.length === 1 ? "" : "s"} · newest first
+            </div>
+          )}
+          {visits.length > 0 && (
             <ul className="space-y-2">
-              {visits.map((v: any) => {
-                const date = v.visit_date || v.created_at;
-                const displayDate = date
-                  ? new Date(date).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : "—";
-                return (
-                  <li
-                    key={v.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card"
-                  >
-                    <div className="size-8 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0">
-                      <FileText className="size-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{displayDate}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {v.chief_complaint || v.visit_type || "Consultation"}
-                        {v.payment_status === "PAID" ? " · Paid" : ""}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate({
-                          to: "/consultation/edit/$visitId",
-                          params: { visitId: v.id },
-                        })
-                      }
-                      className="h-8 px-3 rounded-full bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors shrink-0"
-                    >
-                      Open
-                    </button>
-                  </li>
-                );
-              })}
+              {visits
+                .slice()
+                .sort((a: any, b: any) => {
+                  const da = new Date(a.visit_date || a.created_at || 0).getTime();
+                  const db = new Date(b.visit_date || b.created_at || 0).getTime();
+                  return db - da;
+                })
+                .map((v: any, idx: number) => (
+                  <VisitTimelineCard
+                    key={v.id || idx}
+                    visit={v}
+                    visitNumber={visits.length - idx}
+                    onOpen={() =>
+                      navigate({
+                        to: "/consultation/edit/$visitId",
+                        params: { visitId: v.id },
+                      })
+                    }
+                  />
+                ))}
             </ul>
           )}
         </div>
@@ -208,3 +194,118 @@ function PatientCard({
     </li>
   );
 }
+
+function VisitTimelineCard({
+  visit,
+  visitNumber,
+  onOpen,
+}: {
+  visit: any;
+  visitNumber: number;
+  onOpen: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const date = visit.visit_date || visit.created_at;
+  const displayDate = date
+    ? new Date(date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "—";
+  const visitType =
+    visit.visit_type ||
+    (visitNumber === 1 ? "New" : "Follow-up");
+  const paid = String(visit.payment_status || "").toUpperCase() === "PAID";
+  const homeo = visit.homeopathy || {};
+  const remedy = homeo.remedy || visit.remedy;
+  const potency = homeo.potency || visit.potency;
+  const advice = homeo.advice || visit.advice;
+  const followupDate = visit.followup_date || visit.next_followup;
+
+  return (
+    <li className="rounded-xl border border-border bg-card overflow-hidden transition-all hover:shadow-sm hover:border-primary/20">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 p-3 text-left"
+      >
+        <div className="size-9 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0 font-medium text-xs tabular-nums">
+          #{visitNumber}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium">{displayDate}</div>
+          <div className="text-xs text-muted-foreground truncate">
+            {visitType}
+            {visit.chief_complaint ? ` · ${visit.chief_complaint}` : ""}
+          </div>
+        </div>
+        <span
+          className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border shrink-0 ${
+            paid
+              ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30"
+              : "bg-amber-500/10 text-amber-700 border-amber-500/30"
+          }`}
+        >
+          {paid ? "Paid" : visit.payment_status || "—"}
+        </span>
+        {open ? (
+          <ChevronUp className="size-4 text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronDown className="size-4 text-muted-foreground shrink-0" />
+        )}
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 pt-1 border-t clinic-divider space-y-2 text-sm animate-in fade-in">
+          <TimelineField label="Chief complaint" value={visit.chief_complaint} />
+          <TimelineField label="Diagnosis" value={visit.diagnosis} />
+          <TimelineField label="Symptoms" value={visit.symptoms} />
+          <TimelineField label="Vitals" value={visit.vitals} />
+          <TimelineField label="Remedy" value={remedy} />
+          <TimelineField label="Potency" value={potency} />
+          <TimelineField label="Advice" value={advice} />
+          <TimelineField label="Prescription" value={visit.prescription} />
+          <TimelineField label="Clinical notes" value={visit.clinical_notes || visit.notes} />
+          <TimelineField
+            label="Follow-up date"
+            value={
+              followupDate
+                ? new Date(followupDate).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : null
+            }
+          />
+          <TimelineField label="Doctor" value={visit.doctor_name} />
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={onOpen}
+              className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5"
+            >
+              <FileText className="size-3.5" /> Open consultation
+            </button>
+          </div>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function TimelineField({ label, value }: { label: string; value: any }) {
+  if (value === null || value === undefined || value === "") return null;
+  const display =
+    typeof value === "object" ? JSON.stringify(value) : String(value);
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <div className="text-[11px] uppercase tracking-widest text-muted-foreground pt-0.5">
+        {label}
+      </div>
+      <div className="col-span-2 text-sm">{display}</div>
+    </div>
+  );
+}
+
