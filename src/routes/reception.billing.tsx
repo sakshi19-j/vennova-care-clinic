@@ -187,17 +187,8 @@ function BillingPage() {
         }
       }
 
-      // 4) Schedule follow-up reminders (non-fatal)
-      try {
-        await api.post("/reminders/schedule", {
-          visit_id: id,
-          patient_id: pid,
-          offsets_days: [3, 7, 15],
-          channel: "WHATSAPP",
-        });
-      } catch (e) {
-        console.warn("reminders/schedule failed", e);
-      }
+
+
 
       const receiptUrl = billingService.receiptUrl(id);
       toast.success(`${mode} ₹${billFee(bill)} collected · receipt ready`, {
