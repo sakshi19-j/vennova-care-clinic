@@ -206,7 +206,37 @@ function CaseTakingQueue() {
             <div className="font-display text-xl">Case-taking · {waitingCount ?? queue.filter((q) => !DOCTOR_HIDDEN.has(normalizedStatus(q.status))).length}</div>
             <div className="text-xs text-muted-foreground">Live · refreshes every 15s</div>
           </div>
+          <button
+            onClick={() => setShowWalkIn((v) => !v)}
+            className="h-9 px-3 text-sm rounded-lg bg-teal-600 hover:bg-teal-700 text-white inline-flex items-center gap-1.5"
+          >
+            <UserPlus className="size-4" /> Existing patient
+          </button>
         </div>
+
+        {showWalkIn && (
+          <div className="px-5 py-3 border-b clinic-divider bg-muted/30">
+            <WalkInSearch
+              onClose={() => setShowWalkIn(false)}
+              onSelect={async (p) => {
+                setShowWalkIn(false);
+                const visits = Number((p as any).total_visits ?? p.visit_count ?? 0);
+                const mode: "new" | "followup" = visits > 0 ? "followup" : "new";
+                try {
+                  sessionStorage.setItem("active_patient_id", p.id);
+                  sessionStorage.setItem(
+                    "active_patient_name",
+                    (p as any).full_name ||
+                      [p.first_name, p.last_name].filter(Boolean).join(" ") ||
+                      "",
+                  );
+                } catch { /* ignore */ }
+                goToConsultation(p.id, mode);
+              }}
+            />
+          </div>
+        )}
+
 
         {loading ? (
           <div className="px-5 py-10 text-center text-sm text-muted-foreground inline-flex items-center gap-2 justify-center w-full">
