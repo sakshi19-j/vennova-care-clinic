@@ -82,6 +82,8 @@ function CaseTakingQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [callingId, setCallingId] = useState<string | null>(null);
+  const [showWalkIn, setShowWalkIn] = useState(false);
+
   // FIX 3: header count must come from /queue/stats/today (single source of truth).
   const [waitingCount, setWaitingCount] = useState<number | null>(null);
   // 60s tick so wait-time labels recalc without refetching the queue.
