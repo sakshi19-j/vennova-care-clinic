@@ -298,3 +298,82 @@ function CaseTakingQueue() {
   );
 }
 
+
+function WalkInSearch({ onClose, onSelect }: { onClose: () => void; onSelect: (p: Patient) => void }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(false);
+  const tref = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (tref.current) clearTimeout(tref.current);
+    const term = q.trim();
+    if (!term) { setResults([]); return; }
+    tref.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const r = await patientsService.list({ search: term, limit: 8 });
+        setResults(r.items);
+      } catch (e) {
+        toast.error(errMsg(e));
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+    return () => { if (tref.current) clearTimeout(tref.current); };
+  }, [q]);
+
+  return (
+    <div className="relative">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            autoFocus
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search patient by name or phone…"
+            className="w-full h-10 pl-9 pr-3 rounded-full border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-ring/40"
+          />
+          {loading && <Loader2 className="size-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />}
+        </div>
+        <button onClick={onClose} className="size-9 grid place-items-center rounded-full border border-border hover:bg-muted">
+          <X className="size-4" />
+        </button>
+      </div>
+      {q.trim() !== "" && (
+        <div className="mt-2 rounded-xl border border-border bg-card overflow-hidden max-h-72 overflow-y-auto">
+          {results.length === 0 && !loading ? (
+            <div className="px-3 py-4 text-sm text-muted-foreground">No matches</div>
+          ) : (
+            <ul className="divide-y clinic-divider">
+              {results.map((p) => {
+                const rec = p as unknown as Record<string, unknown>;
+                const name = (typeof rec.full_name === "string" && rec.full_name) ||
+                  [p.first_name, p.last_name].filter(Boolean).join(" ") || "";
+                const phone = (typeof rec.phone === "string" && rec.phone) || p.phone_mobile || "";
+                const visits = Number((p as any).total_visits ?? p.visit_count ?? 0);
+                return (
+                  <li key={p.id}>
+                    <button
+                      onClick={() => onSelect(p)}
+                      className="w-full text-left px-3 py-2.5 hover:bg-muted/60 flex items-center gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">{name}</div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
+                          {phone || "—"}{visits > 0 ? ` · ${visits} visit${visits === 1 ? "" : "s"}` : " · New patient"}
+                        </div>
+                      </div>
+                      <ArrowRight className="size-4 text-muted-foreground" />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
