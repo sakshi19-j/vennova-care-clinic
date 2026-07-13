@@ -1,16 +1,18 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Building2, DatabaseBackup, Sparkles, Users } from "lucide-react";
+import { Building2, DatabaseBackup, Sparkles, Upload, Users } from "lucide-react";
 
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsLayout,
 });
 
 const tabs = [
-  { to: "/admin/settings",              label: "Clinic profile",       icon: Building2,      end: true },
-  { to: "/admin/settings/access",       label: "Staff & Access",       icon: Users },
-  { to: "/admin/settings/backups",      label: "Backups",              icon: DatabaseBackup },
-  { to: "/admin/settings/subscription", label: "Subscription",         icon: Sparkles },
+  { to: "/admin/settings",              label: "Clinic profile",   icon: Building2,      end: true },
+  { to: "/admin/settings/access",       label: "Staff & Access",   icon: Users },
+  { to: "/admin/settings/import",       label: "Import patients",  icon: Upload },
+  { to: "/admin/settings/backups",      label: "Backups",          icon: DatabaseBackup },
+  { to: "/admin/settings/subscription", label: "Subscription",     icon: Sparkles },
 ];
+
 
 function SettingsLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
