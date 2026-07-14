@@ -13,9 +13,11 @@ export const Route = createFileRoute("/admin/settings/subscription")({
 type Plan = {
   id: "starter" | "growth" | "clinicpro";
   planKeyMonthly: string;
+  planKey6month: string;
   planKeyYearly: string;
   name: string;
   monthlyPrice: number;
+  price6month: number;
   yearlyPrice: number;
   tagline: string;
   icon: typeof Zap;
