@@ -30,6 +30,7 @@ function AppointmentsPage() {
     const arr = Array.isArray(raw) ? raw : raw?.appointments ?? [];
     return arr.map((a: any) => ({
       id: a.id,
+      patient_id: a.patient_id,
       patient_name: a.patient_name,
       patient_phone: a.patient_phone,
       scheduled_at: a.scheduled_at,
@@ -300,6 +301,29 @@ function AppointmentsPage() {
                   onCancel={() => { updateStatus(a.id, "CANCELLED"); toast("Cancelled"); }}
                   onReschedule={() => toast("Reschedule — coming soon")}
                   onReminder={() => sendReminder(a)}
+                  onAddQueue={async () => {
+                    const patientId = (a as any).patient_id;
+                    if (!patientId) {
+                      toast.error("No patient linked — rebook this appointment");
+                      return;
+                    }
+                    try {
+                      await api.post("/queue/add", {
+                        patient_id: patientId,
+                        visit_type: "HOMEOPATHY",
+                        priority: 0,
+                        notes: (a as any).chief_complaint || null,
+                      });
+                      await api.put(`/appointments/${encodeURIComponent(a.id)}`, {
+                        status: "CHECKED_IN",
+                      });
+                      toast.success(`${a.patient_name} added to queue`);
+                      qc.invalidateQueries({ queryKey: ["appointments"] });
+                      qc.invalidateQueries({ queryKey: ["queue"] });
+                    } catch (e) {
+                      toast.error((e as Error).message || "Could not add to queue");
+                    }
+                  }}
                 />
               ))}
             </ul>
@@ -422,7 +446,7 @@ function AppointmentsPage() {
 }
 
 function AppointmentRow({
-  appt, showDate, reminderSent, onConfirm, onCheckIn, onCancel, onReschedule, onReminder,
+  appt, showDate, reminderSent, onConfirm, onCheckIn, onCancel, onReschedule, onReminder, onAddQueue,
 }: {
   appt: RxAppointment;
   showDate: boolean;
@@ -432,6 +456,7 @@ function AppointmentRow({
   onCancel: () => void;
   onReschedule: () => void;
   onReminder: () => void;
+  onAddQueue: () => void;
 }) {
   const isActive = appt.status === "SCHEDULED" || appt.status === "CONFIRMED";
   return (
@@ -484,6 +509,15 @@ function AppointmentRow({
           <button onClick={onCheckIn}
             className="h-8 px-3 text-xs rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1">
             <LogIn className="size-3.5" /> Check in
+          </button>
+        )}
+        {isActive && (
+          <button
+            onClick={onAddQueue}
+            title="Add directly to queue"
+            className="h-8 px-3 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1 transition-colors"
+          >
+            + Queue
           </button>
         )}
         {isActive && (

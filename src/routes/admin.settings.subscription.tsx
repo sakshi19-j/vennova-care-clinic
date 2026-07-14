@@ -13,9 +13,11 @@ export const Route = createFileRoute("/admin/settings/subscription")({
 type Plan = {
   id: "starter" | "growth" | "clinicpro";
   planKeyMonthly: string;
+  planKey6month: string;
   planKeyYearly: string;
   name: string;
   monthlyPrice: number;
+  price6month: number;
   yearlyPrice: number;
   tagline: string;
   icon: typeof Zap;
@@ -28,9 +30,11 @@ const PLANS: Plan[] = [
   {
     id: "starter",
     planKeyMonthly: "starter_monthly",
+    planKey6month: "starter_6month",
     planKeyYearly: "starter_yearly",
     name: "Starter",
     monthlyPrice: 999,
+    price6month: 2999,
     yearlyPrice: 4999,
     tagline: "For solo practitioners",
     icon: Zap,
@@ -47,9 +51,11 @@ const PLANS: Plan[] = [
   {
     id: "growth",
     planKeyMonthly: "growth_monthly",
+    planKey6month: "growth_6month",
     planKeyYearly: "growth_yearly",
     name: "Growth",
     monthlyPrice: 1999,
+    price6month: 5999,
     yearlyPrice: 9999,
     tagline: "Most popular for growing clinics",
     icon: Sparkles,
@@ -67,9 +73,11 @@ const PLANS: Plan[] = [
   {
     id: "clinicpro",
     planKeyMonthly: "clinicpro_monthly",
+    planKey6month: "clinicpro_6month",
     planKeyYearly: "clinicpro_yearly",
     name: "ClinicPro",
     monthlyPrice: 3499,
+    price6month: 9999,
     yearlyPrice: 17999,
     tagline: "Multi-clinic & enterprise",
     icon: Crown,
@@ -111,7 +119,7 @@ type SubscriptionStatus = {
 };
 
 function SubscriptionPage() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
+  const [billing, setBilling] = useState<"monthly" | "6month" | "yearly">("yearly");
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
   const statusQ = useQuery<SubscriptionStatus>({
@@ -134,13 +142,16 @@ function SubscriptionPage() {
     try {
       const ready = await loadRazorpay();
       if (!ready) throw new Error("Payment gateway failed to load.");
-      const planKey = billing === "yearly" ? plan.planKeyYearly : plan.planKeyMonthly;
+      const planKey =
+        billing === "yearly" ? plan.planKeyYearly :
+        billing === "6month" ? plan.planKey6month :
+        plan.planKeyMonthly;
       const order = await api.post<any>("/subscription/create", { plan_key: planKey });
       const rzp = new window.Razorpay({
         key: order.razorpay_key,
         subscription_id: order.subscription_id,
         name: "Vennova Clinic OS",
-        description: `${plan.name} — ${billing === "yearly" ? "Annual" : "Monthly"}`,
+        description: `${plan.name} — ${billing === "yearly" ? "Annual" : billing === "6month" ? "6 Months" : "Monthly"}`,
         prefill: { email: order.clinic_email },
         theme: { color: "#6D28D9" },
         handler: async (response: any) => {
@@ -201,26 +212,41 @@ function SubscriptionPage() {
 
       <div className="col-span-12 flex justify-center">
         <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted border border-border">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={`h-9 px-5 rounded-full text-sm font-medium transition-all ${billing === "monthly" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBilling("yearly")}
-            className={`h-9 px-5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-2 ${billing === "yearly" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Yearly
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700">SAVE 50%+</span>
-          </button>
+          {([
+            { key: "monthly", label: "Monthly" },
+            { key: "6month", label: "6 Months", badge: "SAVE 25%" },
+            { key: "yearly", label: "Yearly", badge: "SAVE 50%" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setBilling(opt.key)}
+              className={`h-9 px-4 rounded-full text-sm font-medium transition-all inline-flex items-center gap-2 ${
+                billing === opt.key
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opt.label}
+              {"badge" in opt && billing !== opt.key && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700">
+                  {opt.badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
       {PLANS.map((p) => {
         const Icon = p.icon;
-        const price = billing === "yearly" ? p.yearlyPrice : p.monthlyPrice;
-        const period = billing === "yearly" ? "/ year" : "/ month";
+        const price =
+          billing === "yearly" ? p.yearlyPrice :
+          billing === "6month" ? p.price6month :
+          p.monthlyPrice;
+        const period =
+          billing === "yearly" ? "/ year" :
+          billing === "6month" ? "/ 6 months" :
+          "/ month";
         return (
           <Card
             key={p.id}

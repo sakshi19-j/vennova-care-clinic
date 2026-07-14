@@ -205,14 +205,22 @@ function VisitTimelineCard({
   onOpen: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const date = visit.visit_date || visit.created_at;
-  const displayDate = date
-    ? new Date(date).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "—";
+  const rawDate = visit.closed_at || visit.visit_date || visit.created_at;
+  let displayDate = "—";
+  if (rawDate) {
+    try {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        displayDate = d.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    } catch {
+      displayDate = "—";
+    }
+  }
   const visitType =
     visit.visit_type ||
     (visitNumber === 1 ? "New" : "Follow-up");
@@ -267,6 +275,23 @@ function VisitTimelineCard({
           <TimelineField label="Advice" value={advice} />
           <TimelineField label="Prescription" value={visit.prescription} />
           <TimelineField label="Clinical notes" value={visit.clinical_notes || visit.notes} />
+          {visit.medicines && Array.isArray(visit.medicines) && visit.medicines.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-[11px] uppercase tracking-widest text-muted-foreground pt-0.5">
+                Medicines
+              </div>
+              <ul className="col-span-2 space-y-1">
+                {visit.medicines.map((m: any, mi: number) => (
+                  <li key={mi} className="text-sm">
+                    • {m.name}
+                    {m.potency ? ` ${m.potency}` : ""}
+                    {m.timing ? ` · ${m.timing}` : ""}
+                    {m.days ? ` · ${m.days} days` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <TimelineField
             label="Follow-up date"
             value={
