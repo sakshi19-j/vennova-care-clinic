@@ -239,8 +239,14 @@ function SubscriptionPage() {
 
       {PLANS.map((p) => {
         const Icon = p.icon;
-        const price = billing === "yearly" ? p.yearlyPrice : p.monthlyPrice;
-        const period = billing === "yearly" ? "/ year" : "/ month";
+        const price =
+          billing === "yearly" ? p.yearlyPrice :
+          billing === "6month" ? p.price6month :
+          p.monthlyPrice;
+        const period =
+          billing === "yearly" ? "/ year" :
+          billing === "6month" ? "/ 6 months" :
+          "/ month";
         return (
           <Card
             key={p.id}
