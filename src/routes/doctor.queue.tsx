@@ -245,7 +245,12 @@ function CaseTakingQueue() {
         ) : error ? (
           <div className="px-5 py-10 text-center text-sm text-destructive">{error}</div>
         ) : queue.length === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-muted-foreground">No patients waiting right now</div>
+          <div className="px-5 py-10 text-center text-sm text-muted-foreground">
+            <div>No patients waiting right now</div>
+            <Link to="/doctor/patients" className="mt-3 inline-flex text-xs text-primary hover:underline">
+              View patient records →
+            </Link>
+          </div>
         ) : (
           <ul className="divide-y clinic-divider">
             {queue
