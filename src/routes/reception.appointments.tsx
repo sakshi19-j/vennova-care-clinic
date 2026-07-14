@@ -30,6 +30,7 @@ function AppointmentsPage() {
     const arr = Array.isArray(raw) ? raw : raw?.appointments ?? [];
     return arr.map((a: any) => ({
       id: a.id,
+      patient_id: a.patient_id,
       patient_name: a.patient_name,
       patient_phone: a.patient_phone,
       scheduled_at: a.scheduled_at,
