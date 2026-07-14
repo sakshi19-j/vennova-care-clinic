@@ -446,7 +446,7 @@ function AppointmentsPage() {
 }
 
 function AppointmentRow({
-  appt, showDate, reminderSent, onConfirm, onCheckIn, onCancel, onReschedule, onReminder,
+  appt, showDate, reminderSent, onConfirm, onCheckIn, onCancel, onReschedule, onReminder, onAddQueue,
 }: {
   appt: RxAppointment;
   showDate: boolean;
@@ -456,6 +456,7 @@ function AppointmentRow({
   onCancel: () => void;
   onReschedule: () => void;
   onReminder: () => void;
+  onAddQueue: () => void;
 }) {
   const isActive = appt.status === "SCHEDULED" || appt.status === "CONFIRMED";
   return (
