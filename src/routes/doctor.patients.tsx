@@ -205,14 +205,22 @@ function VisitTimelineCard({
   onOpen: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const date = visit.visit_date || visit.created_at;
-  const displayDate = date
-    ? new Date(date).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })
-    : "—";
+  const rawDate = visit.closed_at || visit.visit_date || visit.created_at;
+  let displayDate = "—";
+  if (rawDate) {
+    try {
+      const d = new Date(rawDate);
+      if (!isNaN(d.getTime())) {
+        displayDate = d.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    } catch {
+      displayDate = "—";
+    }
+  }
   const visitType =
     visit.visit_type ||
     (visitNumber === 1 ? "New" : "Follow-up");
