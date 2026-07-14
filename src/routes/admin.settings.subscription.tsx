@@ -142,13 +142,16 @@ function SubscriptionPage() {
     try {
       const ready = await loadRazorpay();
       if (!ready) throw new Error("Payment gateway failed to load.");
-      const planKey = billing === "yearly" ? plan.planKeyYearly : plan.planKeyMonthly;
+      const planKey =
+        billing === "yearly" ? plan.planKeyYearly :
+        billing === "6month" ? plan.planKey6month :
+        plan.planKeyMonthly;
       const order = await api.post<any>("/subscription/create", { plan_key: planKey });
       const rzp = new window.Razorpay({
         key: order.razorpay_key,
         subscription_id: order.subscription_id,
         name: "Vennova Clinic OS",
-        description: `${plan.name} — ${billing === "yearly" ? "Annual" : "Monthly"}`,
+        description: `${plan.name} — ${billing === "yearly" ? "Annual" : billing === "6month" ? "6 Months" : "Monthly"}`,
         prefill: { email: order.clinic_email },
         theme: { color: "#6D28D9" },
         handler: async (response: any) => {
