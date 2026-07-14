@@ -119,7 +119,7 @@ type SubscriptionStatus = {
 };
 
 function SubscriptionPage() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("yearly");
+  const [billing, setBilling] = useState<"monthly" | "6month" | "yearly">("yearly");
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
   const statusQ = useQuery<SubscriptionStatus>({
