@@ -512,6 +512,15 @@ function AppointmentRow({
           </button>
         )}
         {isActive && (
+          <button
+            onClick={onAddQueue}
+            title="Add directly to queue"
+            className="h-8 px-3 text-xs rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 inline-flex items-center gap-1 transition-colors"
+          >
+            + Queue
+          </button>
+        )}
+        {isActive && (
           <>
             <button onClick={onReschedule} className="hidden sm:grid size-8 place-items-center rounded-lg border border-border hover:bg-muted" title="Reschedule">
               <CalendarClock className="size-3.5" />
