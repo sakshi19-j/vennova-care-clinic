@@ -212,19 +212,28 @@ function SubscriptionPage() {
 
       <div className="col-span-12 flex justify-center">
         <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted border border-border">
-          <button
-            onClick={() => setBilling("monthly")}
-            className={`h-9 px-5 rounded-full text-sm font-medium transition-all ${billing === "monthly" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBilling("yearly")}
-            className={`h-9 px-5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-2 ${billing === "yearly" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Yearly
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700">SAVE 50%+</span>
-          </button>
+          {([
+            { key: "monthly", label: "Monthly" },
+            { key: "6month", label: "6 Months", badge: "SAVE 25%" },
+            { key: "yearly", label: "Yearly", badge: "SAVE 50%" },
+          ] as const).map((opt) => (
+            <button
+              key={opt.key}
+              onClick={() => setBilling(opt.key)}
+              className={`h-9 px-4 rounded-full text-sm font-medium transition-all inline-flex items-center gap-2 ${
+                billing === opt.key
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opt.label}
+              {"badge" in opt && billing !== opt.key && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700">
+                  {opt.badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
