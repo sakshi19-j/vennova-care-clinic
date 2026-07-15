@@ -18,10 +18,16 @@ const groupsByRole: Record<Role, NavGroup[]> = {
     { label: "Reception", items: [{ to: "/reception", icon: Building2, label: "Front Office", live: true }] },
   ],
   allopathy: [
-    { label: "Doctor", items: [{ to: "/doctor", icon: Activity, label: "Allopathy OPD", live: true }] },
+    { label: "Doctor", items: [
+      { to: "/doctor", icon: Activity, label: "Allopathy OPD", live: true },
+      { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
+    ] },
   ],
   homeopathy: [
-    { label: "Doctor", items: [{ to: "/homeopathy", icon: Leaf, label: "Homeopathy OPD", live: true }] },
+    { label: "Doctor", items: [
+      { to: "/homeopathy", icon: Leaf, label: "Homeopathy OPD", live: true },
+      { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
+    ] },
   ],
   admin: [
     {
