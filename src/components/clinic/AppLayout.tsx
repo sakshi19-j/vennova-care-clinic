@@ -221,6 +221,7 @@ export function AppLayout() {
         </header>
 
         <main key={path} className="flex-1 px-6 py-6">
+          {role === "reception" && <ReceptionFollowupsBanner />}
           <Outlet />
         </main>
       </div>
@@ -229,3 +230,65 @@ export function AppLayout() {
     </div>
   );
 }
+
+function ReceptionFollowupsBanner() {
+  const navigate = useNavigate();
+  const [dismissed, setDismissed] = useState(false);
+  const q = useQuery({
+    queryKey: ["followups", "upcoming", 3],
+    queryFn: () => api.get<unknown>("/followups/upcoming", { query: { days: 3 } }),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    retry: false,
+  });
+  if (dismissed) return null;
+  const raw = q.data as any;
+  const list: any[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.items) ? raw.items
+    : Array.isArray(raw?.data) ? raw.data
+    : Array.isArray(raw?.followups) ? raw.followups
+    : [];
+  const now = Date.now();
+  const soon = list.filter((f) => {
+    const d = f?.due_at || f?.due_date || f?.scheduled_for;
+    if (!d) return false;
+    const t = new Date(d).getTime();
+    if (Number.isNaN(t)) return false;
+    const diffDays = (t - now) / 86400000;
+    return diffDays <= 3;
+  });
+  if (soon.length === 0) return null;
+  const names = soon
+    .map((f) => f?.patient_name || f?.name)
+    .filter(Boolean)
+    .slice(0, 3)
+    .join(", ");
+  const extra = soon.length > 3 ? ` +${soon.length - 3} more` : "";
+  return (
+    <div
+      role="button"
+      onClick={() => navigate({ to: "/reception/followups" as any })}
+      className="mb-4 flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm cursor-pointer hover:bg-amber-500/15 transition-colors"
+    >
+      <Phone className="size-4 text-amber-700 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-amber-900">
+          📞 {soon.length} patient{soon.length === 1 ? "" : "s"} to call — follow-up due within 3 days
+        </div>
+        {names && (
+          <div className="text-xs text-amber-800/80 truncate">{names}{extra}</div>
+        )}
+      </div>
+      <button
+        type="button"
+        aria-label="Dismiss"
+        onClick={(e) => { e.stopPropagation(); setDismissed(true); }}
+        className="size-7 rounded-full hover:bg-amber-500/20 grid place-items-center text-amber-800"
+      >
+        <XIcon className="size-3.5" />
+      </button>
+    </div>
+  );
+}
+
