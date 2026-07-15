@@ -64,10 +64,41 @@ const empty: FormState = {
 export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props) {
   const [f, setF] = useState<FormState>(empty);
   const [saving, setSaving] = useState(false);
+  const [dupe, setDupe] = useState<null | { patient: any; payload: any; fullName: string }>(null);
 
   if (!open) return null;
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }));
   const reset = () => setF(empty);
+
+  const doCreate = async (payload: any, fullName: string) => {
+    setSaving(true);
+    try {
+      const created = await api.post<{ id?: string; reg_no?: string | number }>("/patients", payload);
+      if (!created?.id) {
+        toast.error("Patient created but no id returned");
+        return;
+      }
+      const reg_no = created.reg_no != null ? String(created.reg_no) : "";
+      queueActions.createPatient(created.id, reg_no, fullName, f.phone_mobile.trim(), {
+        city: f.res_city,
+        patient_type: "HOMEOPATHY",
+        age: f.age ? Number(f.age) : undefined,
+        gender: (f.gender || undefined) as any,
+        dob: f.dob || undefined,
+        email: f.email || undefined,
+        address: f.res_address || undefined,
+      });
+      toast.success(`Patient ${reg_no || created.id} registered`);
+      onRegistered?.({ id: created.id, full_name: fullName, reg_no, phone: f.phone_mobile.trim() });
+      onOpenChange(false);
+      reset();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to register patient";
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,35 +138,34 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
 
     };
 
+    // Duplicate phone check before creation.
     setSaving(true);
     try {
-      const created = await api.post<{ id?: string; reg_no?: string | number }>("/patients", payload);
-      if (!created?.id) {
-        toast.error("Patient created but no id returned");
+      const phone = f.phone_mobile.trim();
+      const digits = phone.replace(/[^\d]/g, "");
+      const raw = await api.get<unknown>("/patients", { query: { search: phone } });
+      const arr: any[] = Array.isArray(raw)
+        ? raw
+        : Array.isArray((raw as any)?.items) ? (raw as any).items
+        : Array.isArray((raw as any)?.data) ? (raw as any).data
+        : Array.isArray((raw as any)?.patients) ? (raw as any).patients
+        : [];
+      const match = arr.find((p) => {
+        const pd = String(p?.phone_mobile || p?.phone_res || "").replace(/[^\d]/g, "");
+        return pd && (pd === digits || pd.endsWith(digits) || digits.endsWith(pd));
+      });
+      if (match) {
+        setSaving(false);
+        setDupe({ patient: match, payload, fullName });
         return;
       }
-      const reg_no = created.reg_no != null ? String(created.reg_no) : "";
-      // Mirror into local store using the backend id (never fake)
-      queueActions.createPatient(created.id, reg_no, fullName, f.phone_mobile.trim(), {
-        city: f.res_city,
-        patient_type: "HOMEOPATHY",
-        age: f.age ? Number(f.age) : undefined,
-        gender: (f.gender || undefined) as any,
-        dob: f.dob || undefined,
-        email: f.email || undefined,
-        address: f.res_address || undefined,
-      });
-      toast.success(`Patient ${reg_no || created.id} registered`);
-      onRegistered?.({ id: created.id, full_name: fullName, reg_no, phone: f.phone_mobile.trim() });
-      onOpenChange(false);
-      reset();
-    } catch (err) {
-      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Failed to register patient";
-      toast.error(msg);
-    } finally {
-      setSaving(false);
+    } catch {
+      // Non-blocking: if lookup fails, fall through to create.
     }
+    setSaving(false);
+    await doCreate(payload, fullName);
   };
+
 
   return (
     <div
