@@ -256,6 +256,62 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
           </button>
         </div>
       </form>
+
+      {dupe && (
+        <div
+          className="fixed inset-0 z-[60] grid place-items-center bg-foreground/40 backdrop-blur-sm p-4"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-full max-w-md clinic-card p-5 bg-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-lg mb-2">Existing patient found</h3>
+            <p className="text-sm text-muted-foreground">
+              A patient with this phone number already exists:{" "}
+              <span className="font-medium text-foreground">
+                {dupe.patient.full_name ||
+                  [dupe.patient.title, dupe.patient.first_name, dupe.patient.middle_name, dupe.patient.last_name].filter(Boolean).join(" ")}
+              </span>
+              {dupe.patient.reg_no != null && (
+                <> (<span className="font-medium text-foreground">#{String(dupe.patient.reg_no)}</span>)</>
+              )}
+              .<br />Use existing patient instead of creating a new one?
+            </p>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                type="button"
+                onClick={async () => {
+                  const p = dupe.payload;
+                  const fn = dupe.fullName;
+                  setDupe(null);
+                  await doCreate(p, fn);
+                }}
+                className="h-9 px-4 rounded-full border border-border text-sm hover:bg-muted"
+              >
+                Create anyway
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const p = dupe.patient;
+                  const name = p.full_name ||
+                    [p.title, p.first_name, p.middle_name, p.last_name].filter(Boolean).join(" ");
+                  onRegistered?.({
+                    id: String(p.id),
+                    full_name: name,
+                    reg_no: p.reg_no != null ? String(p.reg_no) : "",
+                    phone: String(p.phone_mobile || p.phone_res || ""),
+                  });
+                  setDupe(null);
+                  onOpenChange(false);
+                  reset();
+                }}
+                className="h-9 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90"
+              >
+                Use existing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
