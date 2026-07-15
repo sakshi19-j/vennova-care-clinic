@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -183,10 +185,60 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppLayout />
+        <TrialExpiredGate>
+          <AppLayout />
+        </TrialExpiredGate>
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
 }
+
+// Global 402 → trial-expired gate. Intercepts every fetch response; if any
+// backend call answers 402, the app locks to the subscription/settings area
+// with a banner until a plan is picked.
+const ALLOWED_WHEN_LOCKED = ["/admin/settings", "/admin/billing", "/auth"];
+
+function TrialExpiredGate({ children }: { children: React.ReactNode }) {
+  const [locked, setLocked] = useState(false);
+  const navigate = useNavigate();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const orig = window.fetch.bind(window);
+    let disposed = false;
+    window.fetch = async (...args: Parameters<typeof fetch>) => {
+      const res = await orig(...args);
+      if (!disposed && res && res.status === 402) {
+        setLocked(true);
+      }
+      return res;
+    };
+    return () => {
+      disposed = true;
+      window.fetch = orig;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!locked) return;
+    const allowed = ALLOWED_WHEN_LOCKED.some((p) => path === p || path.startsWith(p + "/"));
+    if (!allowed) {
+      navigate({ to: "/admin/settings/subscription" as any, replace: true });
+    }
+  }, [locked, path, navigate]);
+
+  return (
+    <>
+      {locked && (
+        <div className="fixed top-0 inset-x-0 z-[70] bg-destructive text-destructive-foreground px-4 py-2.5 text-sm text-center shadow-md">
+          Your trial has ended — choose a plan to continue using Vennova.
+        </div>
+      )}
+      <div className={locked ? "pt-10" : ""}>{children}</div>
+    </>
+  );
+}
+
 
