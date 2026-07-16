@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Stethoscope, ListChecks, Bell } from "lucide-react";
+import { Stethoscope, ListChecks, Bell, UserCog } from "lucide-react";
 import { useQueue, refreshAll } from "@/lib/queue-store";
 
 
