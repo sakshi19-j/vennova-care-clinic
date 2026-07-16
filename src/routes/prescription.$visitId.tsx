@@ -139,6 +139,20 @@ function PrescriptionPage() {
         patient_rx: patientRx + (advice ? `\n\nAdvice: ${advice}` : ""),
       });
 
+      try {
+        await api.post(`/visits/${encodeURIComponent(visitId)}/medicines`, {
+          medicines: valid.map((b) => ({
+            name: b.remedy,
+            potency: b.potency,
+            timing: b.timing,
+            days: b.days,
+            food_relation: b.food || "",
+          })),
+        });
+      } catch (e) {
+        console.warn("medicines save non-fatal:", e);
+      }
+
       // FIX 1: after the primary save, PDF + WhatsApp are best-effort.
       // Failures are logged but never shown as toast errors and never block navigation.
       toast.loading("Generating prescription PDF…", { id: tid });
