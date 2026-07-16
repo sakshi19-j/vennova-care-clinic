@@ -29,6 +29,7 @@ function HomeopathyLayout() {
   const tabs = [
     { to: "/homeopathy", label: "Now seeing", icon: Stethoscope, end: true },
     { to: "/homeopathy/queue", label: `Today's list (${waiting + (current ? 1 : 0)})`, icon: ListChecks },
+    { to: "/doctor/patients", label: "Patient records", icon: UserCog },
   ];
 
   return (
