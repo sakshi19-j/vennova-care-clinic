@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { Stethoscope, ListChecks, Bell } from "lucide-react";
+import { Stethoscope, ListChecks, Bell, UserCog } from "lucide-react";
 import { useQueue, refreshAll } from "@/lib/queue-store";
 
 
@@ -29,6 +29,7 @@ function HomeopathyLayout() {
   const tabs = [
     { to: "/homeopathy", label: "Now seeing", icon: Stethoscope, end: true },
     { to: "/homeopathy/queue", label: `Today's list (${waiting + (current ? 1 : 0)})`, icon: ListChecks },
+    { to: "/doctor/patients", label: "Patient records", icon: UserCog },
   ];
 
   return (

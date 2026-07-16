@@ -353,8 +353,14 @@ function AppointmentsPage() {
           ) : (
             <div className="mt-1.5 relative">
               <Search className="size-4 absolute left-3 top-3 text-muted-foreground" />
-              <input value={bQuery} onChange={(e) => setBQuery(e.target.value)} placeholder="Name or phone…"
-                className="w-full h-10 pl-9 pr-3 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40" />
+              <input
+                value={bQuery}
+                onChange={(e) => setBQuery(e.target.value)}
+                placeholder="Name or phone…"
+                autoFocus
+                ref={(el) => { if (el && !el.dataset.focused) { el.dataset.focused = "1"; el.focus(); } }}
+                className="w-full h-10 pl-9 pr-3 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring/40"
+              />
               {bMatches.length > 0 && (
                 <ul className="absolute z-10 left-0 right-0 mt-1 clinic-card p-1 max-h-60 overflow-auto">
                   {bMatches.map((p: any) => (
@@ -373,8 +379,14 @@ function AppointmentsPage() {
                   ))}
                 </ul>
               )}
-              <button onClick={() => setRegOpen(true)} className="mt-2 w-full h-10 rounded-lg border border-dashed border-border hover:bg-muted text-sm inline-flex items-center justify-center gap-2 text-muted-foreground">
-                <UserPlus className="size-4" /> New patient
+              <p className="mt-3 text-[11px] text-muted-foreground text-center">
+                Search existing patients first — click New patient only if not found.
+              </p>
+              <button
+                onClick={() => setRegOpen(true)}
+                className="mt-1.5 w-full h-9 rounded-lg border border-border bg-card hover:bg-muted text-xs inline-flex items-center justify-center gap-2 text-muted-foreground"
+              >
+                <UserPlus className="size-3.5" /> New patient
               </button>
             </div>
           )}
