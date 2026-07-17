@@ -280,16 +280,16 @@ function VisitTimelineCard({
               <div className="text-[11px] uppercase tracking-widest text-muted-foreground pt-0.5">
                 Medicines
               </div>
-              <ul className="col-span-2 space-y-1">
+              <div className="col-span-2 space-y-1.5">
                 {visit.medicines.map((m: any, mi: number) => (
-                  <li key={mi} className="text-sm">
-                    • {m.name}
-                    {m.potency ? ` ${m.potency}` : ""}
-                    {m.timing ? ` · ${m.timing}` : ""}
-                    {m.days ? ` · ${m.days} days` : ""}
-                  </li>
+                  <div key={mi} className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm">
+                    <span className="font-medium">{m.name}</span>
+                    {m.potency ? <span className="text-muted-foreground"> · {m.potency}</span> : ""}
+                    {m.timing ? <span className="text-muted-foreground"> · {m.timing}</span> : ""}
+                    {m.days ? <span className="text-muted-foreground"> · {m.days} days</span> : ""}
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
           <TimelineField
