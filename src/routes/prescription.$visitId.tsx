@@ -195,6 +195,11 @@ function PrescriptionPage() {
               : selectedPreset?.backendType,
           followup_channel: "WHATSAPP",
         });
+        try {
+          sessionStorage.removeItem("active_visit_id");
+          sessionStorage.removeItem("active_patient_id");
+          sessionStorage.removeItem("active_patient_name");
+        } catch { /* ignore */ }
       } catch (e) {
         console.error("[visit close] failed:", e);
         toast.error("Could not move visit to billing. Please retry.");

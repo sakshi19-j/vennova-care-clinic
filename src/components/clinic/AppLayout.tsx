@@ -35,6 +35,7 @@ const groupsByRole: Record<Role, NavGroup[]> = {
       label: "Admin",
       items: [
         { to: "/admin", icon: ShieldCheck, label: "Owner Console", live: true },
+        { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
         { to: "/admin/staff-management", icon: UserCog, label: "Staff management" },
         { to: "/admin/settings", icon: Settings, label: "Settings" },
       ],

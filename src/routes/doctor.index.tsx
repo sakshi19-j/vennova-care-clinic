@@ -91,7 +91,11 @@ function DoctorHomePage() {
             </div>
             <button
               type="button"
-              onClick={() => navigate({ to: "/doctor/queue" })}
+              onClick={() =>
+                activeVisitId
+                  ? navigate({ to: "/consultation/edit/$visitId", params: { visitId: activeVisitId } })
+                  : navigate({ to: "/doctor/queue" })
+              }
               className="h-10 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 inline-flex items-center gap-2"
             >
               Continue consultation <ArrowRight className="size-4" />
