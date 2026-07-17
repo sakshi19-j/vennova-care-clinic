@@ -444,9 +444,6 @@ function AppointmentRow({
   onCheckIn: () => void;
   onCancel: () => void;
   onReschedule: () => void;
-  onReminder: () => void;
-  onAddQueue: () => void;
-}) {
   const isActive = appt.status === "SCHEDULED" || appt.status === "CONFIRMED";
   return (
     <li className={["px-5 py-3 flex items-center gap-3", !isActive ? "opacity-60" : ""].join(" ")}>
