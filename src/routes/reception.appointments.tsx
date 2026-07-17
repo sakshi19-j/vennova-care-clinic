@@ -301,29 +301,6 @@ function AppointmentsPage() {
                   onCancel={() => { updateStatus(a.id, "CANCELLED"); toast("Cancelled"); }}
                   onReschedule={() => toast("Reschedule — coming soon")}
                   onReminder={() => sendReminder(a)}
-                  onAddQueue={async () => {
-                    const patientId = (a as any).patient_id;
-                    if (!patientId) {
-                      toast.error("No patient linked — rebook this appointment");
-                      return;
-                    }
-                    try {
-                      await api.post("/queue/add", {
-                        patient_id: patientId,
-                        visit_type: "HOMEOPATHY",
-                        priority: 0,
-                        notes: (a as any).chief_complaint || null,
-                      });
-                      await api.put(`/appointments/${encodeURIComponent(a.id)}`, {
-                        status: "CHECKED_IN",
-                      });
-                      toast.success(`${a.patient_name} added to queue`);
-                      qc.invalidateQueries({ queryKey: ["appointments"] });
-                      qc.invalidateQueries({ queryKey: ["queue"] });
-                    } catch (e) {
-                      toast.error((e as Error).message || "Could not add to queue");
-                    }
-                  }}
                 />
               ))}
             </ul>
