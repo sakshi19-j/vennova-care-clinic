@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Download, FileSpreadsheet, FileText, Search, Users, ListOrdered,
   Stethoscope, Receipt, ChevronDown,
@@ -15,11 +16,10 @@ import {
   Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem,
 } from "@/components/ui/command";
 import { useQueue } from "@/lib/queue-store";
-import {
-  rxAppointments, rxPendingBills, rxPatients, rxRevenueToday,
-  apptStatusStyles, queueStatusStyles, formatTime,
-} from "@/lib/reception-data";
-import { clinicalRecords } from "@/lib/doctor-data";
+import { queueStatusStyles, formatTime } from "@/lib/reception-data";
+import { patientsService, patientDisplayName, patientPhone } from "@/services/patients";
+import { dashboardService } from "@/services/dashboard";
+import { billingService, billingAmount, billingPatientName } from "@/services/billing";
 
 // ---------- CSV helpers ----------
 function toCSV(rows: Array<Record<string, unknown>>): string {
@@ -70,7 +70,15 @@ export function AdminToolbar() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // ---------- exports ----------
+  // Live patient search (server-side). Opens only while modal is active.
+  const patientsQ = useQuery({
+    queryKey: ["admin-search", "patients", query],
+    queryFn: () => patientsService.list({ search: query || undefined, limit: 8 }),
+    enabled: searchOpen && query.trim().length > 0,
+    staleTime: 15_000,
+  });
+
+  // ---------- exports (fetch fresh from backend on click) ----------
   const exportQueueCSV = () => {
     const rows = queue.map((q) => ({
       token: q.token_number,
@@ -95,62 +103,65 @@ export function AdminToolbar() {
       ]),
     );
   };
-  const exportApptCSV = () => {
-    const rows = rxAppointments.map((a) => ({
-      time: formatTime(a.scheduled_at),
-      patient: a.patient_name,
-      phone: a.patient_phone,
-      type: a.visit_type,
+  const exportApptCSV = async () => {
+    const appts = await dashboardService.appointmentsToday();
+    const rows = appts.map((a: any) => ({
+      time: a.scheduled_at ? formatTime(a.scheduled_at) : "",
+      patient: a.patient_name ?? "",
+      phone: a.patient_phone ?? "",
+      type: a.visit_type ?? "",
       complaint: a.chief_complaint ?? "",
-      duration_min: a.duration_mins,
-      status: a.status,
+      duration_min: a.duration_mins ?? "",
+      status: a.status ?? "",
     }));
     download(`appointments-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(rows), "text/csv");
   };
-  const exportApptPDF = () => {
+  const exportApptPDF = async () => {
+    const appts = await dashboardService.appointmentsToday();
     downloadPDF(
       "Daily Appointments Report",
       ["Time", "Patient", "Phone", "Type", "Complaint", "Duration", "Status"],
-      rxAppointments.map((a) => [
-        formatTime(a.scheduled_at), a.patient_name, a.patient_phone, a.visit_type,
-        a.chief_complaint ?? "—", `${a.duration_mins}m`, a.status,
+      appts.map((a: any) => [
+        a.scheduled_at ? formatTime(a.scheduled_at) : "—",
+        a.patient_name ?? "—", a.patient_phone ?? "—", a.visit_type ?? "—",
+        a.chief_complaint ?? "—", a.duration_mins ? `${a.duration_mins}m` : "—", a.status ?? "—",
       ]),
     );
   };
-  const exportCollectionsCSV = () => {
-    const summary = [
-      { metric: "Total", amount: rxRevenueToday.total, count: rxRevenueToday.count },
-      { metric: "Cash", amount: rxRevenueToday.CASH, count: "" },
-      { metric: "UPI", amount: rxRevenueToday.UPI, count: "" },
-      { metric: "Card", amount: rxRevenueToday.CARD, count: "" },
-      { metric: "Online", amount: rxRevenueToday.ONLINE, count: "" },
+  const exportCollectionsCSV = async () => {
+    const [summary, pending] = await Promise.all([
+      dashboardService.summaryToday(),
+      billingService.pending(),
+    ]);
+    const s: any = summary || {};
+    const rev = s.revenue_today ?? s.total ?? 0;
+    const rows = [
+      { metric: "Total revenue today", amount: rev, count: s.visits_today ?? "" },
+      ...pending.map((b) => ({
+        metric: `Pending — ${billingPatientName(b)} (${b.visit_id ?? b.id ?? ""})`,
+        amount: billingAmount(b),
+        count: b.doctor_name ?? "",
+      })),
     ];
-    const pending = rxPendingBills.map((b) => ({
-      metric: `Pending — ${b.patient_name} (${b.visit_id})`,
-      amount: b.suggested_fee,
-      count: b.doctor_name,
-    }));
-    download(
-      `collections-${new Date().toISOString().slice(0, 10)}.csv`,
-      toCSV([...summary, ...pending]),
-      "text/csv",
-    );
+    download(`collections-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(rows), "text/csv");
   };
-  const exportCollectionsPDF = () => {
+  const exportCollectionsPDF = async () => {
+    const [summary, pending] = await Promise.all([
+      dashboardService.summaryToday(),
+      billingService.pending(),
+    ]);
+    const s: any = summary || {};
+    const rev = Number(s.revenue_today ?? s.total ?? 0);
     downloadPDF(
       "Daily Collections Report",
       ["Item", "Amount (₹)", "Detail"],
       [
-        ["Total collected today", rxRevenueToday.total.toLocaleString("en-IN"), `${rxRevenueToday.count} bills`],
-        ["Cash",   rxRevenueToday.CASH.toLocaleString("en-IN"),   ""],
-        ["UPI",    rxRevenueToday.UPI.toLocaleString("en-IN"),    ""],
-        ["Card",   rxRevenueToday.CARD.toLocaleString("en-IN"),   ""],
-        ["Online", rxRevenueToday.ONLINE.toLocaleString("en-IN"), ""],
+        ["Total collected today", rev.toLocaleString("en-IN"), `${s.visits_today ?? 0} visits`],
         ["—— Pending bills ——", "", ""],
-        ...rxPendingBills.map((b) => [
-          `${b.patient_name} · ${b.visit_id}`,
-          b.suggested_fee.toLocaleString("en-IN"),
-          `${b.doctor_name} · ${b.visit_type}`,
+        ...pending.map((b) => [
+          `${billingPatientName(b)} · ${b.visit_id ?? b.id ?? ""}`,
+          billingAmount(b).toLocaleString("en-IN"),
+          `${b.doctor_name ?? "—"} · ${b.visit_type ?? "—"}`,
         ]),
       ],
     );
@@ -159,31 +170,15 @@ export function AdminToolbar() {
   // ---------- global search ----------
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return { patients: [], queue: [], visits: [], rx: [], bills: [] };
+    if (!q) return { patients: [], queue: [] };
     const match = (s: string) => s.toLowerCase().includes(q);
     return {
-      patients: rxPatients.filter((p) =>
-        match(p.full_name) || match(p.reg_no) || match(p.phone) || match(p.city),
-      ).slice(0, 6),
+      patients: patientsQ.data?.items ?? [],
       queue: queue.filter((x) =>
         match(x.patient_name) || match(String(x.token_number)) || match(x.queue_id) || match(x.notes ?? ""),
       ).slice(0, 6),
-      visits: rxAppointments.filter((a) =>
-        match(a.patient_name) || match(a.id) || match(a.chief_complaint ?? "") || match(a.visit_type),
-      ).slice(0, 6),
-      rx: Object.values(clinicalRecords).filter((c) => {
-        const p = rxPatients.find((pp) => pp.id === c.patient_id);
-        return (
-          match(c.chief_complaint) ||
-          c.history.some((h) => match(h.rx) || match(h.complaint)) ||
-          (p && (match(p.full_name) || match(p.reg_no)))
-        );
-      }).slice(0, 6),
-      bills: rxPendingBills.filter((b) =>
-        match(b.patient_name) || match(b.visit_id) || match(b.doctor_name) || match(b.chief_complaint),
-      ).slice(0, 6),
     };
-  }, [query, queue]);
+  }, [query, queue, patientsQ.data]);
 
   const go = (to: string) => { setSearchOpen(false); navigate({ to } as any); };
 
@@ -194,7 +189,7 @@ export function AdminToolbar() {
         className="inline-flex items-center gap-2 h-10 px-3 rounded-xl border border-border bg-card text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition min-w-[260px]"
       >
         <Search className="size-4" />
-        <span>Search patients, visits, Rx, bills…</span>
+        <span>Search patients &amp; queue…</span>
         <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded border border-border bg-background">⌘/</span>
       </button>
 
@@ -223,21 +218,17 @@ export function AdminToolbar() {
         <DialogContent className="p-0 max-w-2xl overflow-hidden">
           <Command shouldFilter={false}>
             <CommandInput
-              placeholder="Search by name, token, reg no, visit id, RX, invoice…"
+              placeholder="Search patients by name, phone, reg no…"
               value={query}
               onValueChange={setQuery}
             />
             <CommandList className="max-h-[420px]">
-              {query && (
-                <CommandEmpty>
-                  No results across queue, patients, visits, prescriptions or billing.
-                </CommandEmpty>
+              {query && !patientsQ.isLoading && results.patients.length === 0 && results.queue.length === 0 && (
+                <CommandEmpty>No results.</CommandEmpty>
               )}
               {!query && (
                 <div className="px-4 py-6 text-sm text-muted-foreground">
-                  Search across <strong>queue</strong>, <strong>patients</strong>,{" "}
-                  <strong>visits</strong>, <strong>prescriptions</strong> and{" "}
-                  <strong>billing</strong> at once.
+                  Search across <strong>patients</strong> and the <strong>live queue</strong>.
                 </div>
               )}
 
@@ -259,51 +250,11 @@ export function AdminToolbar() {
                   {results.patients.map((p) => (
                     <CommandItem key={p.id} onSelect={() => go(`/doctor/patients/${p.id}`)}>
                       <Users className="size-4 mr-2 text-primary" />
-                      <span className="font-medium">{p.full_name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{p.reg_no} · {p.phone}</span>
-                      <span className="ml-auto text-[10px] uppercase tracking-widest text-muted-foreground">{p.patient_type}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-
-              {results.visits.length > 0 && (
-                <CommandGroup heading="Visits / appointments">
-                  {results.visits.map((a) => (
-                    <CommandItem key={a.id} onSelect={() => go("/admin/monitor")}>
-                      <Stethoscope className="size-4 mr-2 text-success" />
-                      <span className="font-medium">{a.patient_name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{formatTime(a.scheduled_at)} · {a.visit_type}</span>
-                      <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded border ${apptStatusStyles[a.status]}`}>{a.status}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-
-              {results.rx.length > 0 && (
-                <CommandGroup heading="Prescriptions">
-                  {results.rx.map((c) => {
-                    const p = rxPatients.find((pp) => pp.id === c.patient_id);
-                    return (
-                      <CommandItem key={c.patient_id} onSelect={() => go(`/doctor/patients/${c.patient_id}`)}>
-                        <FileText className="size-4 mr-2 text-blue-600" />
-                        <span className="font-medium">{p?.full_name ?? c.patient_id}</span>
-                        <span className="ml-2 text-xs text-muted-foreground truncate max-w-[260px]">{c.chief_complaint}</span>
-                        <span className="ml-auto text-xs text-muted-foreground">{c.history.length} Rx</span>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              )}
-
-              {results.bills.length > 0 && (
-                <CommandGroup heading="Billing">
-                  {results.bills.map((b) => (
-                    <CommandItem key={b.visit_id} onSelect={() => go("/admin/billing")}>
-                      <Receipt className="size-4 mr-2 text-violet-600" />
-                      <span className="font-medium">{b.patient_name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">{b.visit_id} · {b.doctor_name}</span>
-                      <span className="ml-auto text-sm tabular-nums">₹{b.suggested_fee.toLocaleString("en-IN")}</span>
+                      <span className="font-medium">{patientDisplayName(p)}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {p.reg_no ? `VNC-${String(p.reg_no).padStart(4, "0")}` : ""}
+                        {patientPhone(p) ? ` · ${patientPhone(p)}` : ""}
+                      </span>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -312,6 +263,11 @@ export function AdminToolbar() {
           </Command>
         </DialogContent>
       </Dialog>
+
+      {/* keep icon imports referenced */}
+      <span className="hidden">
+        <Stethoscope /><Receipt />
+      </span>
     </div>
   );
 }

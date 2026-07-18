@@ -105,7 +105,7 @@ function CasePanel({ queueId }: { queueId: string }) {
           })));
         }
       } catch {
-        // keep local mock history fallback
+        // network/backend error — leave previous visits empty
       }
     })();
     return () => { cancelled = true; };
