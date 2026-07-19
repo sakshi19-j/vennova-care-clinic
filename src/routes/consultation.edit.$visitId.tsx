@@ -202,25 +202,34 @@ async function saveConsultationEdits(visitId: string, patientId: string, form: F
   }
 
   // 3) Medicines (only saved if at least one row has a name).
+  //    Backend expects: { name, potency, timing, days, notes } — NOT
+  //    { dosage, frequency, duration }.
   const meds = form.medicines.filter((m) => m.name.trim());
   if (meds.length > 0) {
     try {
-      await api.put(`/visits/${encodeURIComponent(visitId)}/medicines`, { medicines: meds });
+      await api.put(`/visits/${encodeURIComponent(visitId)}/medicines`, {
+        medicines: meds.map((m) => ({
+          name: m.name,
+          potency: m.dosage,
+          timing: m.frequency,
+          days: m.duration,
+          notes: m.notes,
+        })),
+      });
       saved.push("medicines");
     } catch (e) {
       warnings.push(`Medicines: ${errMsg(e)}`);
     }
   }
 
-  // 4) Follow-up scheduling is handled by the backend via POST /visits/{id}/close.
-  //    We forward the chosen schedule as part of the close call so the backend
-  //    creates the follow-up reminder atomically with billing/queue updates.
+  // 4) Follow-up — dedicated endpoint. NEVER call /close from Edit
+  //    Consultation: /close re-triggers billing, payment and visit-count
+  //    side effects meant only for the original close action.
   if (form.followup_type !== "NONE" && form.followup_date) {
     try {
-      await api.post(`/visits/${encodeURIComponent(visitId)}/close`, {
+      await api.post(`/visits/${encodeURIComponent(visitId)}/followup`, {
         followup_date: form.followup_date,
-        followup_preset: form.followup_type,
-        followup_channel: "WHATSAPP",
+        followup_type: form.followup_type,
       });
       saved.push("followup");
     } catch (e) {
