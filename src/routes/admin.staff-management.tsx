@@ -174,8 +174,6 @@ function AddStaffForm({
           className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm"
         >
           <option value="reception">Reception</option>
-          <option value="allopathy">Allopathy doctor</option>
-          <option value="homeopathy">Homeopathy doctor</option>
           <option value="admin">Admin</option>
         </select>
       </label>
