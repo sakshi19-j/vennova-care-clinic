@@ -96,19 +96,66 @@ type Patient = {
   [k: string]: unknown;
 };
 
+type BackendMedicine = {
+  name?: string;
+  potency?: string;
+  timing?: string;
+  days?: string | number;
+  food_relation?: string;
+  notes?: string;
+  // Legacy fallbacks
+  dosage?: string;
+  frequency?: string;
+  duration?: string | number;
+};
+
+type BackendVitals = {
+  bp_systolic?: number | string;
+  bp_diastolic?: number | string;
+  pulse_rate?: number | string;
+  weight_kg?: number | string;
+  temperature?: number | string;
+};
+
 type LastVisit = {
   id?: string;
+  visit_id?: string;
   visit_date?: string;
   created_at?: string;
   chief_complaint?: string;
+  diagnosis?: string;
+  notes?: string;
+  advice?: string;
+  fee?: number | string;
+  followup_date?: string;
+  followup_type?: string;
   homeopathy?: {
+    chief_complaint?: string;
+    diagnosis?: string;
+    history_present?: string;
+    history_past?: string;
+    history_surgical?: string;
+    history_family?: string;
+    thermal_sensation?: string;
+    appetite?: string;
+    thirst?: string;
+    sleep?: string;
+    dreams?: string;
+    mind_symptoms?: string;
+    particulars?: { text?: string } | string;
+    rubrics?: Array<{ text?: string } | string>;
+    patient_rx?: string;
     remedy?: string;
     potency?: string;
-    thermal_sensation?: string;
-    rubrics?: Array<{ text?: string } | string>;
+    repetition?: string;
+    miasm?: string;
+    advice?: string;
   };
+  medicines?: BackendMedicine[];
+  vitals?: BackendVitals;
   [k: string]: unknown;
 };
+
 
 function displayName(p?: Patient | null): string {
   if (!p) return "";
