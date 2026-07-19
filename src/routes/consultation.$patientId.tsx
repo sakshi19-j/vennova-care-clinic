@@ -222,9 +222,22 @@ function ConsultationPage() {
   const lastVisitQ = useQuery({
     queryKey: ["last-visit", patientId],
     queryFn: async () => {
+      // Get the most recent visit summary…
       const raw = await api.get<unknown>(`/visits/patient/${encodeURIComponent(patientId)}`, { query: { limit: 1 } });
       const arr = asArray<LastVisit>(raw);
-      return arr.length > 0 ? arr[0] : null;
+      const head = arr.length > 0 ? arr[0] : null;
+      if (!head) return null;
+      // …then fetch the full detail so nested homeopathy / medicines / vitals
+      // fields are guaranteed to be present regardless of what the list
+      // endpoint chooses to include.
+      const id = head.id || head.visit_id;
+      if (!id) return head;
+      try {
+        const full = await api.get<LastVisit>(`/visits/${encodeURIComponent(id)}`);
+        return { ...head, ...full } as LastVisit;
+      } catch {
+        return head;
+      }
     },
     retry: 1,
     enabled: explicitMode !== "new",
@@ -270,26 +283,75 @@ function ConsultationPage() {
     setChiefError(false);
   }, [patientId, explicitMode]);
 
-  // Pre-fill from last visit — ONLY when this is explicitly a follow-up.
+  // Pre-fill from last visit — ONLY when this is explicitly a follow-up (or
+  // the patient has prior history and we haven't been told this is a new case).
+  // Restore EVERY field the backend has. Do NOT clobber a value the user has
+  // already typed: only overwrite when the current form field is still empty.
   useEffect(() => {
-    if (explicitMode === "new") return; // FIX 3: never prefill on a new case
+    if (explicitMode === "new") return; // never prefill on a fresh new case
     if (!lastVisit || prefilled) return;
+
     const homeo = lastVisit.homeopathy || {};
+    const vit = lastVisit.vitals || {};
     const rubrics = Array.isArray(homeo.rubrics)
-      ? homeo.rubrics
-          .map((r) => (typeof r === "string" ? r : r?.text || ""))
-          .filter(Boolean)
+      ? homeo.rubrics.map((r) => (typeof r === "string" ? r : r?.text || "")).filter(Boolean)
       : [];
+    const particularsStr =
+      typeof homeo.particulars === "string"
+        ? homeo.particulars
+        : (homeo.particulars && typeof homeo.particulars === "object" && homeo.particulars.text) || "";
+
+    const meds: Medicine[] = Array.isArray(lastVisit.medicines) && lastVisit.medicines.length > 0
+      ? lastVisit.medicines.map((m) => ({
+          name: (m.name || "").toString(),
+          dosage: (m.potency ?? m.dosage ?? "").toString(),
+          frequency: (m.timing ?? m.frequency ?? "").toString(),
+          duration: (m.days ?? m.duration ?? "").toString(),
+        }))
+      : [];
+
+    const s = (v: unknown) => (v === undefined || v === null ? "" : String(v));
+    const keep = (cur: string, next: string) => (cur && cur.trim() ? cur : next);
+
     setForm((f) => ({
       ...f,
-      chief_complaint: lastVisit.chief_complaint || f.chief_complaint,
-      remedy: homeo.remedy || f.remedy,
-      potency: homeo.potency || f.potency,
-      thermal: homeo.thermal_sensation || f.thermal,
-      rubrics: rubrics.length ? rubrics : f.rubrics,
+      chief_complaint: keep(f.chief_complaint, s(lastVisit.chief_complaint || homeo.chief_complaint)),
+      diagnosis:       keep(f.diagnosis,       s(lastVisit.diagnosis || homeo.diagnosis)),
+      fee:             keep(f.fee,             s(lastVisit.fee ?? "")) || f.fee,
+      // History
+      history_present:  keep(f.history_present,  s(homeo.history_present)),
+      history_past:     keep(f.history_past,     s(homeo.history_past)),
+      history_surgical: keep(f.history_surgical, s(homeo.history_surgical)),
+      history_family:   keep(f.history_family,   s(homeo.history_family)),
+      // Generals
+      thermal:      keep(f.thermal,      s(homeo.thermal_sensation)),
+      appetite:     keep(f.appetite,     s(homeo.appetite)),
+      thirst:       keep(f.thirst,       s(homeo.thirst)),
+      sleep:        keep(f.sleep,        s(homeo.sleep)),
+      dreams:       keep(f.dreams,       s(homeo.dreams)),
+      mind_symptoms: keep(f.mind_symptoms, s(homeo.mind_symptoms)),
+      // Particulars & rubrics
+      particulars:  keep(f.particulars,  s(particularsStr)),
+      rubrics:      f.rubrics.length > 0 ? f.rubrics : rubrics,
+      // Analysis
+      remedy:     keep(f.remedy,     s(homeo.remedy)),
+      potency:    keep(f.potency,    s(homeo.potency)),
+      repetition: keep(f.repetition, s(homeo.repetition)),
+      miasm:      keep(f.miasm,      s(homeo.miasm)),
+      // Notes / advice
+      advice: keep(f.advice, s(lastVisit.advice || homeo.advice || lastVisit.notes)),
+      // Medicines
+      medicines: f.medicines.some((m) => m.name.trim()) || meds.length === 0 ? f.medicines : meds,
+      // Vitals
+      bp_sys:      keep(f.bp_sys,      s(vit.bp_systolic)),
+      bp_dia:      keep(f.bp_dia,      s(vit.bp_diastolic)),
+      pulse:       keep(f.pulse,       s(vit.pulse_rate)),
+      weight:      keep(f.weight,      s(vit.weight_kg)),
+      temperature: keep(f.temperature, s(vit.temperature)),
     }));
     setPrefilled(true);
   }, [lastVisit, prefilled, explicitMode]);
+
 
   const setField = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
