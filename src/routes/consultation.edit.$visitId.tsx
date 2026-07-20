@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
-import { prescriptionsService } from "@/services/prescriptions";
+
 import { billingService } from "@/services/billing";
 
 // ---------- Types ----------
