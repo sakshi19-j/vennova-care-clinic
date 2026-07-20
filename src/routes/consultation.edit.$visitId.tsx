@@ -368,7 +368,10 @@ function EditConsultationPage() {
     }
   };
 
-  const prescriptionPdf = useMemo(() => prescriptionsService.pdfUrl(visitId), [visitId]);
+  const prescriptionPdf = useMemo(() => {
+    const base = (import.meta.env.VITE_API_URL as string).replace(/\/+$/, "");
+    return `${base}/visits/${encodeURIComponent(visitId)}/pdf`;
+  }, [visitId]);
   const receiptPdf = useMemo(() => billingService.receiptUrl(visitId), [visitId]);
 
   if (visitQ.isLoading) {
