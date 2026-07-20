@@ -33,10 +33,35 @@ import { billingService } from "@/services/billing";
 type Medicine = {
   id?: string;
   name: string;
-  dosage: string;
-  frequency: string;
-  duration: string;
+  dosage: string;       // ↔ backend `potency`
+  frequency: string;    // ↔ backend `timing`
+  duration: string;     // ↔ backend `days`
   notes?: string;
+  food_relation?: string;
+};
+
+type HomeoCase = {
+  chief_complaint?: string;
+  diagnosis?: string;
+  history_present?: string;
+  history_past?: string;
+  history_surgical?: string;
+  history_family?: string;
+  thermal_sensation?: string;
+  appetite?: string;
+  thirst?: string;
+  sleep?: string;
+  dreams?: string;
+  menstrual?: string;
+  mind_symptoms?: string;
+  particulars?: { text?: string } | string;
+  rubrics?: string;
+  advice?: string;
+  remedy?: string;
+  potency?: string;
+  repetition?: string;
+  miasm?: string;
+  patient_rx?: string;
 };
 
 type Visit = {
@@ -52,20 +77,11 @@ type Visit = {
   fee?: number | string;
   followup_date?: string;
   followup_type?: string;
+  vitals?: Record<string, unknown>;
   patient?: { id?: string; full_name?: string; phone?: string; phone_mobile?: string };
-  homeopathy?: {
-    chief_complaint?: string;
-    diagnosis?: string;
-    history_present?: string;
-    mind_symptoms?: string;
-    particulars?: { text?: string } | string;
-    advice?: string;
-    remedy?: string;
-    potency?: string;
-    repetition?: string;
-    patient_rx?: string;
-  };
-  medicines?: Medicine[];
+  homeopathy?: HomeoCase;
+  homeopathy_case?: HomeoCase;
+  medicines?: Array<Medicine & { potency?: string; timing?: string; days?: string | number }>;
   [k: string]: unknown;
 };
 
@@ -124,14 +140,24 @@ function particularsText(p: unknown): string {
 }
 
 function hydrateForm(v: Visit | null | undefined): FormState {
-  const h = v?.homeopathy ?? {};
+  const h: HomeoCase = { ...(v?.homeopathy ?? {}), ...(v?.homeopathy_case ?? {}) };
+  const observations = pickStr(
+    v?.observations,
+    h.mind_symptoms,
+    particularsText(h.particulars),
+    h.thermal_sensation,
+    h.appetite,
+    h.thirst,
+    h.sleep,
+    h.dreams,
+  );
   return {
     chief_complaint: pickStr(v?.chief_complaint, h.chief_complaint),
     diagnosis:       pickStr(v?.diagnosis, h.diagnosis),
-    examination:     pickStr(v?.examination, h.history_present),
-    observations:    pickStr(v?.observations, h.mind_symptoms, particularsText(h.particulars)),
+    examination:     pickStr(v?.examination, h.history_present, h.history_past, h.history_family, h.history_surgical),
+    observations,
     advice:          pickStr(v?.advice, h.advice),
-    notes:           pickStr(v?.notes),
+    notes:           pickStr(v?.notes, h.patient_rx, h.remedy),
     fee:             pickStr(v?.fee),
     followup_date:   pickStr(v?.followup_date),
     followup_type:   (pickStr(v?.followup_type) as FollowupType) || "NONE",
@@ -139,10 +165,13 @@ function hydrateForm(v: Visit | null | undefined): FormState {
       ? v!.medicines!.map((m) => ({
           id: m.id,
           name: pickStr(m.name),
-          dosage: pickStr(m.dosage),
-          frequency: pickStr(m.frequency),
-          duration: pickStr(m.duration),
-          notes: pickStr(m.notes),
+          // Backend canonical fields are potency/timing/days; fall back to
+          // dosage/frequency/duration for legacy payloads.
+          dosage:    pickStr(m.potency, m.dosage),
+          frequency: pickStr(m.timing, m.frequency),
+          duration:  pickStr(m.days, m.duration),
+          notes:     pickStr(m.notes),
+          food_relation: pickStr(m.food_relation),
         }))
       : [{ name: "", dosage: "", frequency: "", duration: "" }],
   };
