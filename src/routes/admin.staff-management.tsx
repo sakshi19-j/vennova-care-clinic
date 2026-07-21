@@ -145,16 +145,35 @@ function StaffManagement() {
   );
 }
 
+function slugifyClinic(name: string | null | undefined): string {
+  return String(name || "clinic").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "") || "clinic";
+}
+
 function AddStaffForm({
   onSubmit,
+  members,
+  clinicName,
 }: {
   onSubmit: (data: { email: string; password: string; fullName: string; role: Role }) => Promise<void>;
+  members: Member[];
+  clinicName: string | null;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("reception");
   const [busy, setBusy] = useState(false);
+
+  // Auto-fill Reception suggestions when role is reception and fields are empty.
+  // Re-runs whenever the panel mounts or the members list changes.
+  useEffect(() => {
+    if (role !== "reception") return;
+    const n = members.filter((m) => m.role === "reception").length + 1;
+    const slug = slugifyClinic(clinicName);
+    if (!fullName.trim()) setFullName(`Reception${n}`);
+    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, members, clinicName]);
 
   return (
     <form
@@ -189,6 +208,7 @@ function AddStaffForm({
     </form>
   );
 }
+
 
 function Input({
   label, value, onChange, type = "text", required, maxLength, minLength,
