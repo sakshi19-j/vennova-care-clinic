@@ -62,6 +62,8 @@ function StaffManagement() {
       {open && (
         <Card className="col-span-12">
           <AddStaffForm
+            members={members}
+            clinicName={profile?.clinic_name ?? null}
             onSubmit={async (data) => {
               try {
                 await api.post("/auth/staff", {
@@ -81,6 +83,7 @@ function StaffManagement() {
           />
         </Card>
       )}
+
 
       <Card className="col-span-12 p-0 overflow-hidden">
         <div className="overflow-x-auto">
