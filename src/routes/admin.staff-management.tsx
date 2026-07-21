@@ -63,7 +63,7 @@ function StaffManagement() {
         <Card className="col-span-12">
           <AddStaffForm
             members={members}
-            clinicName={profile?.clinic_name ?? null}
+            clinicName={clinicName}
             onSubmit={async (data) => {
               try {
                 await api.post("/auth/staff", {
