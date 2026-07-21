@@ -13,6 +13,8 @@ import { Card } from "@/components/clinic/PageHeader";
 
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
+import { clinicProfileService, type ClinicProfile } from "@/services/clinic-profile";
+
 
 export const Route = createFileRoute("/admin/")({
   component: DashboardPage,
