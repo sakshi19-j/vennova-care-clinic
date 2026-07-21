@@ -1,36 +1,65 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card } from "@/components/clinic/PageHeader";
 import { UserPlus, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin/settings/access")({
   component: StaffAccess,
 });
 
-type Role = "admin" | "reception" | "allopathy" | "homeopathy";
+type Role = "admin" | "reception";
 
 const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
-  { value: "admin",      label: "Admin / Owner",       hint: "Full access — can manage clinic, staff, billing, settings" },
-  { value: "reception",  label: "Receptionist",        hint: "Queue, billing, appointments, patients" },
-  { value: "homeopathy", label: "Doctor (Homeopathy)", hint: "Consultation, prescriptions for homeopathy clinic type" },
-  { value: "allopathy",  label: "Doctor (Allopathy)",  hint: "Consultation, prescriptions for allopathy clinic type" },
+  { value: "admin",     label: "Admin / Owner", hint: "Full access — can manage clinic, staff, billing, settings" },
+  { value: "reception", label: "Receptionist",  hint: "Queue, billing, appointments, patients" },
 ];
 
+function slugifyClinic(name: string | null | undefined): string {
+  return String(name || "clinic").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "") || "clinic";
+}
+
 function StaffAccess() {
+  const { profile, clinicName } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("reception");
+  const [receptionCount, setReceptionCount] = useState<number | null>(null);
+
+  const loadReceptionCount = async () => {
+    if (!profile?.clinic_id) return;
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id", { count: "exact", head: false })
+      .eq("clinic_id", profile.clinic_id)
+      .eq("role", "reception");
+    setReceptionCount((data ?? []).length);
+  };
+
+  useEffect(() => { void loadReceptionCount(); }, [profile?.clinic_id]);
+
+  // Auto-fill reception suggestions when role is reception and fields are empty.
+  useEffect(() => {
+    if (role !== "reception" || receptionCount == null) return;
+    const n = receptionCount + 1;
+    const slug = slugifyClinic(clinicName);
+    if (!name.trim()) setName(`Reception${n}`);
+    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, receptionCount, clinicName]);
 
   const createStaff = useMutation({
     mutationFn: () => api.post("/auth/staff", { name, email, password, role }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success(`${name} can now log in as ${role}`);
       setName(""); setEmail(""); setPassword(""); setRole("reception");
+      await loadReceptionCount();
     },
     onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : (e as Error)?.message ?? "Failed to create account";
@@ -47,9 +76,9 @@ function StaffAccess() {
           <UserPlus className="size-4 text-muted-foreground" /> Add staff or admin login
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Create a new login for this clinic — a second admin/owner account,
-          a receptionist, or a doctor. They will be able to sign in immediately
-          with the email and password you set below.
+          Create a new login for this clinic — a second admin/owner account
+          or a receptionist. They will be able to sign in immediately with the
+          email and password you set below.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -93,8 +122,8 @@ function StaffAccess() {
         <div className="space-y-2 text-xs text-muted-foreground">
           <p>• The new account can sign in right away with the email/password above — no confirmation email needed.</p>
           <p>• "Admin / Owner" gives full access to everything in this clinic, same as your own login.</p>
-          <p>• Choose the doctor role that matches your clinic type so the right consultation screens appear.</p>
-          <p>• To change your OWN email or password, use your account settings in the top-right profile menu (not this form — this form is for adding new logins).</p>
+          <p>• Doctor accounts are created through a separate registration flow, not this form.</p>
+          <p>• To change your OWN email or password, use your account settings in the top-right profile menu.</p>
         </div>
       </Card>
     </div>
