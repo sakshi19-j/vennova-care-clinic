@@ -22,7 +22,7 @@ type Member = {
 };
 
 function StaffManagement() {
-  const { profile } = useAuth();
+  const { profile, clinicName } = useAuth();
   const [members, setMembers] = useState<Member[]>([]);
   const [open, setOpen] = useState(false);
   const remove = useServerFn(deleteStaffMember);
