@@ -72,8 +72,16 @@ function DashboardPage() {
     retry: 1,
   });
 
+  const clinicQ = useQuery({
+    queryKey: ["clinic", "profile"],
+    queryFn: () => clinicProfileService.get(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
   const loading = dashQ.isLoading || queueStatsQ.isLoading;
   const anyError = dashQ.error || queueStatsQ.error;
+
 
   const d = dashQ.data;
   const revenueToday = pick(get(d, ["revenue", "today"]), ["revenue", "total", "amount"]);
