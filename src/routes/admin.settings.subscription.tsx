@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles, Check, Zap, Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/clinic/PageHeader";
+import { TrialBanner } from "@/components/clinic/TrialBanner";
 import { api } from "@/lib/api-client";
 
 export const Route = createFileRoute("/admin/settings/subscription")({
