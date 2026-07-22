@@ -148,7 +148,9 @@ function DashboardPage() {
       </div>
 
 
-      
+      <div className="col-span-12">
+        <TrialBanner />
+      </div>
 
       <>
           {/* KPI tiles */}
