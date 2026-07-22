@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, Tag } from "@/components/clinic/PageHeader";
 import { UserPlus, Mail, Trash2, Loader2 } from "lucide-react";
