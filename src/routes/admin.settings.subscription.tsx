@@ -185,6 +185,8 @@ function SubscriptionPage() {
 
   return (
     <div className="grid grid-cols-12 gap-5">
+      <div className="col-span-12"><TrialBanner /></div>
+
       <Card className="col-span-12 bg-gradient-to-br from-saffron/15 via-card to-card border-saffron/30">
         <div className="flex items-center gap-3">
           <div className="size-12 rounded-full bg-saffron/20 text-[color-mix(in_oklab,var(--saffron)_30%,black)] grid place-items-center">
