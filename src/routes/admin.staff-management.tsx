@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, Tag } from "@/components/clinic/PageHeader";
 import { UserPlus, Mail, Trash2, Loader2 } from "lucide-react";
@@ -163,15 +163,23 @@ function AddStaffForm({
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("reception");
   const [busy, setBusy] = useState(false);
+  const lastSuggestRef = useRef<{ name: string; email: string }>({ name: "", email: "" });
 
-  // Auto-fill Reception suggestions when role is reception and fields are empty.
-  // Re-runs whenever the panel mounts or the members list changes.
+  // Auto-fill suggestions when role changes. Re-runs on role/members/clinic
+  // changes; only overwrites fields whose current value still matches the
+  // last auto-suggestion (so we never clobber manual edits).
   useEffect(() => {
-    if (role !== "reception") return;
-    const n = members.filter((m) => m.role === "reception").length + 1;
+    const n = members.filter((m) => m.role === role).length + 1;
     const slug = slugifyClinic(clinicName);
-    if (!fullName.trim()) setFullName(`Reception${n}`);
-    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    const roleLabel = role === "reception" ? "Reception" : "Admin";
+    const roleSlug = role === "reception" ? "reception" : "admin";
+    const suggestedName = `${roleLabel}${n}`;
+    const suggestedEmail = `${roleSlug}${n}@${slug}.com`;
+
+    const prev = lastSuggestRef.current;
+    if (!fullName.trim() || fullName === prev.name) setFullName(suggestedName);
+    if (!email.trim() || email === prev.email) setEmail(suggestedEmail);
+    lastSuggestRef.current = { name: suggestedName, email: suggestedEmail };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, members, clinicName]);
 
@@ -183,6 +191,7 @@ function AddStaffForm({
         await onSubmit({ email, password, fullName, role });
         setBusy(false);
         setEmail(""); setPassword(""); setFullName(""); setRole("reception");
+        lastSuggestRef.current = { name: "", email: "" };
       }}
       className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
     >

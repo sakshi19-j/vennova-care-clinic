@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -10,10 +10,12 @@ import {
   TrendingDown, UserX,
 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
+import { TrialBanner } from "@/components/clinic/TrialBanner";
 
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { clinicProfileService, type ClinicProfile } from "@/services/clinic-profile";
+import { isOnboardingComplete, isOnboardingDismissed } from "@/lib/onboarding";
 
 
 export const Route = createFileRoute("/admin/")({
@@ -56,6 +58,17 @@ type QueueStats = {
 
 function DashboardPage() {
   const { profile, clinicName } = useAuth();
+  const navigate = useNavigate();
+
+  // Auto-trigger onboarding on first-ever visit: if the checklist isn't
+  // complete and hasn't been dismissed, hop into the guided setup.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isOnboardingComplete() && !isOnboardingDismissed()) {
+      navigate({ to: "/onboarding" as any, replace: true });
+    }
+  }, [navigate]);
+
 
   const dashQ = useQuery({
     queryKey: ["analytics", "dashboard"],
@@ -135,7 +148,9 @@ function DashboardPage() {
       </div>
 
 
-      
+      <div className="col-span-12">
+        <TrialBanner />
+      </div>
 
       <>
           {/* KPI tiles */}
@@ -175,19 +190,27 @@ function DashboardPage() {
               to="/homeopathy/queue"
               className="flex items-center gap-3 -m-2 p-2 rounded-xl hover:bg-primary/5 transition-colors"
             >
-              <div className="size-11 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
+              <div className="relative size-11 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
                 <PlayCircle className="size-6" />
+                {appointmentsToday > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold grid place-items-center pulse-dot border-2 border-card">
+                    {appointmentsToday}
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] uppercase tracking-widest text-primary/80">Doctor</div>
                 <div className="font-display text-lg">Open today's queue</div>
                 <div className="text-xs text-muted-foreground">
-                  Call patients in and start consultations
+                  {appointmentsToday > 0
+                    ? `${appointmentsToday} patient${appointmentsToday === 1 ? "" : "s"} waiting — call them in and start consultations`
+                    : "Call patients in and start consultations"}
                 </div>
               </div>
               <ArrowRight className="size-5 text-muted-foreground" />
             </Link>
           </Card>
+
 
           {/* Revenue trend */}
           <Card className="col-span-12 lg:col-span-8 bg-gradient-to-br from-card to-muted/30">

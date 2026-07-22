@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles, Check, Zap, Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/clinic/PageHeader";
+import { TrialBanner } from "@/components/clinic/TrialBanner";
 import { api } from "@/lib/api-client";
 
 export const Route = createFileRoute("/admin/settings/subscription")({
@@ -184,6 +185,8 @@ function SubscriptionPage() {
 
   return (
     <div className="grid grid-cols-12 gap-5">
+      <div className="col-span-12"><TrialBanner /></div>
+
       <Card className="col-span-12 bg-gradient-to-br from-saffron/15 via-card to-card border-saffron/30">
         <div className="flex items-center gap-3">
           <div className="size-12 rounded-full bg-saffron/20 text-[color-mix(in_oklab,var(--saffron)_30%,black)] grid place-items-center">

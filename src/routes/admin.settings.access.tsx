@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card } from "@/components/clinic/PageHeader";
@@ -30,36 +30,47 @@ function StaffAccess() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("reception");
-  const [receptionCount, setReceptionCount] = useState<number | null>(null);
+  const [counts, setCounts] = useState<{ reception: number; admin: number }>({ reception: 0, admin: 0 });
+  const lastSuggestRef = useRef<{ name: string; email: string }>({ name: "", email: "" });
 
-  const loadReceptionCount = async () => {
+  const loadCounts = async () => {
     if (!profile?.clinic_id) return;
     const { data } = await supabase
       .from("user_roles")
-      .select("user_id", { count: "exact", head: false })
-      .eq("clinic_id", profile.clinic_id)
-      .eq("role", "reception");
-    setReceptionCount((data ?? []).length);
+      .select("role")
+      .eq("clinic_id", profile.clinic_id);
+    const rows = (data ?? []) as { role: string }[];
+    setCounts({
+      reception: rows.filter((r) => r.role === "reception").length,
+      admin: rows.filter((r) => r.role === "admin").length,
+    });
   };
 
-  useEffect(() => { void loadReceptionCount(); }, [profile?.clinic_id]);
+  useEffect(() => { void loadCounts(); }, [profile?.clinic_id]);
 
-  // Auto-fill reception suggestions when role is reception and fields are empty.
+  // Auto-fill on every role change; only overwrite when field still equals the
+  // last auto-suggestion (never clobber manually typed values).
   useEffect(() => {
-    if (role !== "reception" || receptionCount == null) return;
-    const n = receptionCount + 1;
+    const n = (role === "reception" ? counts.reception : counts.admin) + 1;
     const slug = slugifyClinic(clinicName);
-    if (!name.trim()) setName(`Reception${n}`);
-    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    const roleLabel = role === "reception" ? "Reception" : "Admin";
+    const roleSlug = role === "reception" ? "reception" : "admin";
+    const suggestedName = `${roleLabel}${n}`;
+    const suggestedEmail = `${roleSlug}${n}@${slug}.com`;
+    const prev = lastSuggestRef.current;
+    if (!name.trim() || name === prev.name) setName(suggestedName);
+    if (!email.trim() || email === prev.email) setEmail(suggestedEmail);
+    lastSuggestRef.current = { name: suggestedName, email: suggestedEmail };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, receptionCount, clinicName]);
+  }, [role, counts, clinicName]);
 
   const createStaff = useMutation({
     mutationFn: () => api.post("/auth/staff", { name, email, password, role }),
     onSuccess: async () => {
       toast.success(`${name} can now log in as ${role}`);
       setName(""); setEmail(""); setPassword(""); setRole("reception");
-      await loadReceptionCount();
+      lastSuggestRef.current = { name: "", email: "" };
+      await loadCounts();
     },
     onError: (e: unknown) => {
       const msg = e instanceof ApiError ? e.message : (e as Error)?.message ?? "Failed to create account";
