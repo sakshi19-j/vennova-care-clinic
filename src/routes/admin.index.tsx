@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -10,10 +10,12 @@ import {
   TrendingDown, UserX,
 } from "lucide-react";
 import { Card } from "@/components/clinic/PageHeader";
+import { TrialBanner } from "@/components/clinic/TrialBanner";
 
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
 import { clinicProfileService, type ClinicProfile } from "@/services/clinic-profile";
+import { isOnboardingComplete, isOnboardingDismissed } from "@/lib/onboarding";
 
 
 export const Route = createFileRoute("/admin/")({
@@ -56,6 +58,17 @@ type QueueStats = {
 
 function DashboardPage() {
   const { profile, clinicName } = useAuth();
+  const navigate = useNavigate();
+
+  // Auto-trigger onboarding on first-ever visit: if the checklist isn't
+  // complete and hasn't been dismissed, hop into the guided setup.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isOnboardingComplete() && !isOnboardingDismissed()) {
+      navigate({ to: "/onboarding" as any, replace: true });
+    }
+  }, [navigate]);
+
 
   const dashQ = useQuery({
     queryKey: ["analytics", "dashboard"],
