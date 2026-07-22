@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   UserCog, Settings, Search, Bell, Leaf, Command, CalendarDays,
-  Building2, Activity, ShieldCheck, LogOut, Phone, X as XIcon, HelpCircle,
+  Building2, Activity, ShieldCheck, LogOut, Phone, X as XIcon,
 } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { canAccess, roleMeta, type Role } from "@/lib/role-store";
@@ -151,18 +151,6 @@ export function AppLayout() {
             </div>
           ))}
         </nav>
-
-        {(role === "admin" || role === "reception") && (
-          <div className="px-3 pb-2">
-            <Link
-              to="/onboarding"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 transition-colors"
-            >
-              <HelpCircle className="size-4" />
-              <span>Setup guide</span>
-            </Link>
-          </div>
-        )}
 
         <div className="m-3 p-3 rounded-xl bg-sidebar-accent/40 border border-sidebar-border">
           <div className="flex items-center gap-2.5">

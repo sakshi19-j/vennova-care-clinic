@@ -9,7 +9,6 @@ export type OnboardingStep = {
 };
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
-  { id: "clinic_profile", title: "Complete your Clinic Profile", description: "Logo, doctor name, address, timings — appears on every prescription, receipt & dashboard", href: "/admin/settings" },
   { id: "profile", title: "Complete clinic profile", description: "Name, address, contact, registration", href: "/admin/settings" },
   { id: "logo", title: "Upload clinic logo", description: "Used on prescriptions, receipts & header", href: "/admin/settings" },
   { id: "signature", title: "Upload digital signature", description: "Embedded in every prescription PDF", href: "/admin/settings" },
@@ -18,7 +17,6 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { id: "staff", title: "Add doctor / staff", description: "Invite team & assign roles", href: "/admin/staff" },
   { id: "queue", title: "Test the queue", description: "Add a patient and walk through the flow", href: "/queue" },
   { id: "prescription_test", title: "Send a test prescription", description: "Verify WhatsApp delivery end-to-end", href: "/doctor/queue" },
-  { id: "reception_tour", title: "Explore your Reception dashboard", description: "Queue, Appointments, Billing & Follow-ups tabs — the daily front-office workflow", href: "/reception" },
 ];
 
 const KEY = "vennova.onboarding.completed";
