@@ -186,15 +186,21 @@ function AddStaffForm({
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("reception");
   const [busy, setBusy] = useState(false);
+  // Track last auto-suggestion so we only overwrite our own suggestions,
+  // never text the user typed manually.
+  const [lastSuggest, setLastSuggest] = useState<{ name: string; email: string }>({ name: "", email: "" });
 
-  // Auto-fill Reception suggestions when role is reception and fields are empty.
-  // Re-runs whenever the panel mounts or the members list changes.
   useEffect(() => {
-    if (role !== "reception") return;
-    const n = members.filter((m) => m.role === "reception").length + 1;
+    if (role !== "reception" && role !== "admin") return;
+    const label = role === "reception" ? "Reception" : "Admin";
+    const prefix = role === "reception" ? "reception" : "admin";
+    const n = members.filter((m) => m.role === role).length + 1;
     const slug = slugifyClinic(clinicName);
-    if (!fullName.trim()) setFullName(`Reception${n}`);
-    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    const suggestName = `${label}${n}`;
+    const suggestEmail = `${prefix}${n}@${slug}.com`;
+    setFullName((cur) => (!cur.trim() || cur === lastSuggest.name ? suggestName : cur));
+    setEmail((cur) => (!cur.trim() || cur === lastSuggest.email ? suggestEmail : cur));
+    setLastSuggest({ name: suggestName, email: suggestEmail });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, members, clinicName]);
 
@@ -206,6 +212,7 @@ function AddStaffForm({
         await onSubmit({ email, password, fullName, role });
         setBusy(false);
         setEmail(""); setPassword(""); setFullName(""); setRole("reception");
+        setLastSuggest({ name: "", email: "" });
       }}
       className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
     >
