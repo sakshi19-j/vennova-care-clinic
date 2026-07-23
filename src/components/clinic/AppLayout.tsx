@@ -113,16 +113,20 @@ export function AppLayout() {
         className="w-64 shrink-0 sticky top-0 h-screen text-sidebar-foreground flex flex-col"
         style={{ background: "linear-gradient(180deg, #1e1b4b 0%, #0f0e1a 100%)" }}
       >
-        <div className="px-5 pt-5 pb-6 flex items-center gap-3">
+        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
           <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md">
             <Leaf className="size-5" />
           </div>
-          <div>
-            <div className="font-display text-lg leading-none font-semibold">
+          <div className="min-w-0">
+            <div className="font-display text-lg leading-none font-semibold truncate">
               {clinicName || "Vedic"}
             </div>
             <div className="text-xs text-sidebar-foreground/70 mt-1">Homeopathic Clinic</div>
           </div>
+        </div>
+        <div className="px-5 pb-4 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
+          <img src={vennovaLogo.url} alt="Vennova" className="size-3.5 opacity-70" />
+          <span>Powered by Vennova</span>
         </div>
 
         <nav className="px-3 flex-1 overflow-y-auto">
