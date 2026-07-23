@@ -72,10 +72,15 @@ export function AppLayout() {
     }
     if (!role) return; // profile still loading
     if (path === "/" || path === "/auth") {
+      // First-time onboarding: admin lands on /onboarding until completed or dismissed.
+      if (role === "admin" && !isOnboardingComplete() && !isOnboardingDismissed()) {
+        navigate({ to: "/onboarding" as any, replace: true });
+        return;
+      }
       navigate({ to: roleMeta[role].home as any, replace: true });
       return;
     }
-    if (!canAccess(role, path)) {
+    if (!canAccess(role, path) && path !== "/onboarding") {
       navigate({ to: roleMeta[role].home as any, replace: true });
     }
   }, [loading, session, role, path, navigate]);
