@@ -194,8 +194,6 @@ export function AppLayout() {
               <LogOut className="size-3" /> Sign out
             </button>
           </div>
-            </button>
-          </div>
         </div>
       </aside>
 
