@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { clinicProfileService, type ClinicProfile } from "@/services/clinic-profile";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/reception/")({
   component: QueuePage,
