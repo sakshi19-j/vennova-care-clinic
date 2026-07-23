@@ -176,12 +176,24 @@ export function AppLayout() {
               </div>
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center gap-1.5">
+            {(role === "admin" || role === "reception") && (
+              <button
+                onClick={() => { reopenOnboarding(); navigate({ to: "/onboarding" as any }); }}
+                className="shrink-0 size-8 rounded-lg bg-sidebar-accent/60 hover:bg-primary/20 hover:text-primary text-sidebar-foreground/80 grid place-items-center transition-colors"
+                title="Setup guide"
+                aria-label="Setup guide"
+              >
+                <HelpCircle className="size-3.5" />
+              </button>
+            )}
             <button
               onClick={async () => { await signOut(); navigate({ to: "/auth" as any, replace: true }); }}
-              className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-sidebar-accent/60 hover:bg-destructive/10 hover:text-destructive text-[11px] font-medium transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-sidebar-accent/60 hover:bg-destructive/10 hover:text-destructive text-[11px] font-medium transition-colors"
             >
               <LogOut className="size-3" /> Sign out
+            </button>
+          </div>
             </button>
           </div>
         </div>
