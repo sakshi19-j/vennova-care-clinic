@@ -201,7 +201,9 @@ function QueuePage() {
   }, [list, statsQ.data]);
 
   return (
-    <Card className="p-0 overflow-hidden">
+    <div className="space-y-4">
+      <ReceptionClinicIdentity />
+      <Card className="p-0 overflow-hidden">
       {/* ── Command bar ── */}
       <div className="px-4 md:px-5 py-3 border-b clinic-divider">
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
@@ -377,6 +379,47 @@ function QueuePage() {
         }}
       />
     </Card>
+    </div>
+  );
+}
+
+function ReceptionClinicIdentity() {
+  const { clinicName, profile } = useAuth();
+  const clinicQ = useQuery({
+    queryKey: ["clinic", "profile"],
+    queryFn: () => clinicProfileService.get(),
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const clinic = clinicQ.data as ClinicProfile | undefined;
+  const name = (clinic?.clinic_name || clinic?.name || clinicName || "").trim();
+  const doctor = (clinic?.doctor_name || "").trim();
+  const logo = (clinic?.logo_url as string | undefined) || "";
+  const first = (profile?.full_name || "").split(" ")[0] || "there";
+  if (!name && !doctor && !logo) {
+    return (
+      <div className="font-display text-lg">
+        Welcome back, {first}
+      </div>
+    );
+  }
+  const initial = (name || doctor || "C").charAt(0).toUpperCase();
+  return (
+    <div className="flex items-center gap-3">
+      {logo ? (
+        <img src={logo} alt={name || "Clinic logo"} className="size-10 rounded-full object-cover border border-border" />
+      ) : (
+        <div className="size-10 rounded-full bg-primary/15 text-primary grid place-items-center text-base font-semibold">
+          {initial}
+        </div>
+      )}
+      <div className="min-w-0 leading-tight">
+        <div className="font-display text-lg truncate">Welcome back, {first}</div>
+        <div className="text-xs text-muted-foreground truncate">
+          {name}{name && doctor ? " · " : ""}{doctor}
+        </div>
+      </div>
+    </div>
   );
 }
 
