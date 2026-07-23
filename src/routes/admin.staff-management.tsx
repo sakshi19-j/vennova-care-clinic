@@ -77,7 +77,7 @@ function StaffManagement() {
                 setOpen(false);
                 await load();
               } catch (e: any) {
-                toast.error(e?.message ?? "Failed to create staff");
+                toast.error(friendlyStaffError(e, "Failed to create staff"));
               }
             }}
           />
@@ -123,7 +123,7 @@ function StaffManagement() {
                             toast.success("Removed");
                             await load();
                           } catch (e: any) {
-                            toast.error(e?.message ?? "Failed to remove");
+                            toast.error(friendlyStaffError(e, "Failed to remove"));
                           }
                         }}
                         className="inline-flex items-center gap-1 text-xs text-destructive hover:underline"
@@ -145,6 +145,29 @@ function StaffManagement() {
   );
 }
 
+// Expected/validation messages we intentionally surface to end-users.
+const EXPECTED_STAFF_MESSAGES = [
+  "You can't remove yourself",
+  "Only clinic admins can add staff",
+  "Only clinic admins can remove staff",
+  "Staff member not found in your clinic",
+];
+const TECHNICAL_HINTS = /supabase|postgres|environment variable|jwt|rls|policy|fetch failed|network|500|502|503|undefined|null/i;
+export function friendlyStaffError(err: unknown, _fallback = "Failed"): string {
+  const raw = err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  // Full context to the console for developer debugging.
+  console.error("[staff]", err);
+  if (raw && EXPECTED_STAFF_MESSAGES.some((m) => raw.toLowerCase().includes(m.toLowerCase()))) {
+    return raw;
+  }
+  if (!raw || TECHNICAL_HINTS.test(raw)) {
+    return "Something went wrong — please try again or contact support.";
+  }
+  // Short, non-technical string → show it. Everything else → generic.
+  if (raw.length <= 120 && !/[{}<>]/.test(raw)) return raw;
+  return "Something went wrong — please try again or contact support.";
+}
+
 function slugifyClinic(name: string | null | undefined): string {
   return String(name || "clinic").toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "") || "clinic";
 }
@@ -163,15 +186,21 @@ function AddStaffForm({
   const [fullName, setFullName] = useState("");
   const [role, setRole] = useState<Role>("reception");
   const [busy, setBusy] = useState(false);
+  // Track last auto-suggestion so we only overwrite our own suggestions,
+  // never text the user typed manually.
+  const [lastSuggest, setLastSuggest] = useState<{ name: string; email: string }>({ name: "", email: "" });
 
-  // Auto-fill Reception suggestions when role is reception and fields are empty.
-  // Re-runs whenever the panel mounts or the members list changes.
   useEffect(() => {
-    if (role !== "reception") return;
-    const n = members.filter((m) => m.role === "reception").length + 1;
+    if (role !== "reception" && role !== "admin") return;
+    const label = role === "reception" ? "Reception" : "Admin";
+    const prefix = role === "reception" ? "reception" : "admin";
+    const n = members.filter((m) => m.role === role).length + 1;
     const slug = slugifyClinic(clinicName);
-    if (!fullName.trim()) setFullName(`Reception${n}`);
-    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    const suggestName = `${label}${n}`;
+    const suggestEmail = `${prefix}${n}@${slug}.com`;
+    setFullName((cur) => (!cur.trim() || cur === lastSuggest.name ? suggestName : cur));
+    setEmail((cur) => (!cur.trim() || cur === lastSuggest.email ? suggestEmail : cur));
+    setLastSuggest({ name: suggestName, email: suggestEmail });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role, members, clinicName]);
 
@@ -183,6 +212,7 @@ function AddStaffForm({
         await onSubmit({ email, password, fullName, role });
         setBusy(false);
         setEmail(""); setPassword(""); setFullName(""); setRole("reception");
+        setLastSuggest({ name: "", email: "" });
       }}
       className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end"
     >

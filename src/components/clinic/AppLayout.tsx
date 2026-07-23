@@ -4,12 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import {
   UserCog, Settings, Search, Bell, Leaf, Command, CalendarDays,
   Building2, Activity, ShieldCheck, LogOut, Phone, X as XIcon,
+  HelpCircle,
 } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { canAccess, roleMeta, type Role } from "@/lib/role-store";
 import { useAuth } from "@/hooks/use-auth";
 import { remindersService } from "@/services/reminders";
 import { api } from "@/lib/api-client";
+import { isOnboardingComplete, isOnboardingDismissed, reopenOnboarding } from "@/lib/onboarding";
+import vennovaLogo from "@/assets/vennova-logo.png.asset.json";
 
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; live?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
@@ -69,10 +72,15 @@ export function AppLayout() {
     }
     if (!role) return; // profile still loading
     if (path === "/" || path === "/auth") {
+      // First-time onboarding: admin lands on /onboarding until completed or dismissed.
+      if (role === "admin" && !isOnboardingComplete() && !isOnboardingDismissed()) {
+        navigate({ to: "/onboarding" as any, replace: true });
+        return;
+      }
       navigate({ to: roleMeta[role].home as any, replace: true });
       return;
     }
-    if (!canAccess(role, path)) {
+    if (!canAccess(role, path) && path !== "/onboarding") {
       navigate({ to: roleMeta[role].home as any, replace: true });
     }
   }, [loading, session, role, path, navigate]);
@@ -105,16 +113,20 @@ export function AppLayout() {
         className="w-64 shrink-0 sticky top-0 h-screen text-sidebar-foreground flex flex-col"
         style={{ background: "linear-gradient(180deg, #1e1b4b 0%, #0f0e1a 100%)" }}
       >
-        <div className="px-5 pt-5 pb-6 flex items-center gap-3">
+        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
           <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md">
             <Leaf className="size-5" />
           </div>
-          <div>
-            <div className="font-display text-lg leading-none font-semibold">
+          <div className="min-w-0">
+            <div className="font-display text-lg leading-none font-semibold truncate">
               {clinicName || "Vedic"}
             </div>
             <div className="text-xs text-sidebar-foreground/70 mt-1">Homeopathic Clinic</div>
           </div>
+        </div>
+        <div className="px-5 pb-4 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/50">
+          <img src={vennovaLogo.url} alt="Vennova" className="size-3.5 opacity-70" />
+          <span>Powered by Vennova</span>
         </div>
 
         <nav className="px-3 flex-1 overflow-y-auto">
@@ -164,10 +176,20 @@ export function AppLayout() {
               </div>
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center gap-1.5">
+            {(role === "admin" || role === "reception") && (
+              <button
+                onClick={() => { reopenOnboarding(); navigate({ to: "/onboarding" as any }); }}
+                className="shrink-0 size-8 rounded-lg bg-sidebar-accent/60 hover:bg-primary/20 hover:text-primary text-sidebar-foreground/80 grid place-items-center transition-colors"
+                title="Setup guide"
+                aria-label="Setup guide"
+              >
+                <HelpCircle className="size-3.5" />
+              </button>
+            )}
             <button
               onClick={async () => { await signOut(); navigate({ to: "/auth" as any, replace: true }); }}
-              className="w-full inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-sidebar-accent/60 hover:bg-destructive/10 hover:text-destructive text-[11px] font-medium transition-colors"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 h-8 rounded-lg bg-sidebar-accent/60 hover:bg-destructive/10 hover:text-destructive text-[11px] font-medium transition-colors"
             >
               <LogOut className="size-3" /> Sign out
             </button>

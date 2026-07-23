@@ -30,40 +30,57 @@ function StaffAccess() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("reception");
-  const [receptionCount, setReceptionCount] = useState<number | null>(null);
+  const [counts, setCounts] = useState<{ admin: number; reception: number } | null>(null);
+  const [lastSuggest, setLastSuggest] = useState<{ name: string; email: string }>({ name: "", email: "" });
 
-  const loadReceptionCount = async () => {
+  const loadCounts = async () => {
     if (!profile?.clinic_id) return;
     const { data } = await supabase
       .from("user_roles")
-      .select("user_id", { count: "exact", head: false })
-      .eq("clinic_id", profile.clinic_id)
-      .eq("role", "reception");
-    setReceptionCount((data ?? []).length);
+      .select("role")
+      .eq("clinic_id", profile.clinic_id);
+    const rows = (data ?? []) as { role: string }[];
+    setCounts({
+      admin: rows.filter((r) => r.role === "admin").length,
+      reception: rows.filter((r) => r.role === "reception").length,
+    });
   };
 
-  useEffect(() => { void loadReceptionCount(); }, [profile?.clinic_id]);
+  useEffect(() => { void loadCounts(); }, [profile?.clinic_id]);
 
-  // Auto-fill reception suggestions when role is reception and fields are empty.
+  // Auto-suggest full name + email whenever role changes. Only overwrite if the
+  // current value is empty or matches the previous auto-suggestion — never
+  // replace something the user typed manually.
   useEffect(() => {
-    if (role !== "reception" || receptionCount == null) return;
-    const n = receptionCount + 1;
+    if (!counts) return;
+    const label = role === "reception" ? "Reception" : "Admin";
+    const prefix = role === "reception" ? "reception" : "admin";
+    const n = (role === "reception" ? counts.reception : counts.admin) + 1;
     const slug = slugifyClinic(clinicName);
-    if (!name.trim()) setName(`Reception${n}`);
-    if (!email.trim()) setEmail(`reception${n}@${slug}.com`);
+    const suggestName = `${label}${n}`;
+    const suggestEmail = `${prefix}${n}@${slug}.com`;
+    setName((cur) => (!cur.trim() || cur === lastSuggest.name ? suggestName : cur));
+    setEmail((cur) => (!cur.trim() || cur === lastSuggest.email ? suggestEmail : cur));
+    setLastSuggest({ name: suggestName, email: suggestEmail });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, receptionCount, clinicName]);
+  }, [role, counts, clinicName]);
 
   const createStaff = useMutation({
     mutationFn: () => api.post("/auth/staff", { name, email, password, role }),
     onSuccess: async () => {
       toast.success(`${name} can now log in as ${role}`);
       setName(""); setEmail(""); setPassword(""); setRole("reception");
-      await loadReceptionCount();
+      setLastSuggest({ name: "", email: "" });
+      await loadCounts();
     },
     onError: (e: unknown) => {
-      const msg = e instanceof ApiError ? e.message : (e as Error)?.message ?? "Failed to create account";
-      toast.error(msg);
+      console.error("[staff]", e);
+      const raw = e instanceof ApiError ? e.message : (e as Error)?.message ?? "";
+      const expected = /you can't remove yourself|only clinic admins|not found in your clinic/i;
+      const technical = /supabase|postgres|environment variable|jwt|rls|policy|fetch failed|network|500|502|503/i;
+      if (raw && expected.test(raw)) toast.error(raw);
+      else if (!raw || technical.test(raw) || raw.length > 120) toast.error("Something went wrong — please try again or contact support.");
+      else toast.error(raw);
     },
   });
 
