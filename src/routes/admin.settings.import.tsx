@@ -57,12 +57,13 @@ function ImportPage() {
 
   return (
     <div className="grid grid-cols-12 gap-5">
-      <Card className="col-span-12 lg:col-span-8">
+      <Card className="col-span-12">
         <div className="font-display text-xl inline-flex items-center gap-2">
           <FileSpreadsheet className="size-5 text-primary" /> Import patients from Excel / CSV
         </div>
-        <div className="text-xs text-muted-foreground mt-1">
-          Upload an Excel or CSV file with your existing patients. Duplicates (same phone number) are skipped automatically.
+        <div className="text-sm text-muted-foreground mt-1">
+          Upload your existing patient list — we'll automatically match your column names
+          (Name, Phone, Age, Gender, etc.), in any order.
         </div>
 
         <div
@@ -95,45 +96,17 @@ function ImportPage() {
               <div className="text-xs text-muted-foreground">{result.skipped} skipped (already exist)</div>
             )}
             {result.errors.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {result.errors.slice(0, 5).map((e, i) => (
-                  <div key={i} className="inline-flex items-center gap-2 text-xs text-destructive">
-                    <AlertCircle className="size-3.5" /> Row {e.row}: {e.error}
+              <div className="mt-2 space-y-1 max-h-64 overflow-auto">
+                <div className="text-xs font-medium text-muted-foreground">Errors ({result.errors.length})</div>
+                {result.errors.map((e, i) => (
+                  <div key={i} className="inline-flex items-start gap-2 text-xs text-destructive">
+                    <AlertCircle className="size-3.5 mt-0.5 shrink-0" /> Row {e.row}: {e.error}
                   </div>
                 ))}
               </div>
             )}
           </div>
         )}
-      </Card>
-
-      <Card className="col-span-12 lg:col-span-4">
-        <div className="font-display text-base mb-3">Required columns</div>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-[11px] uppercase tracking-widest text-muted-foreground">
-              <th className="py-1.5">Column name</th>
-              <th className="py-1.5">Required</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ["first_name", "Yes"],
-              ["last_name", "No"],
-              ["phone", "Yes"],
-              ["age", "No"],
-              ["gender", "No (MALE/FEMALE)"],
-            ].map(([col, req]) => (
-              <tr key={col} className="border-t clinic-divider">
-                <td className="py-1.5 font-mono text-xs">{col}</td>
-                <td className="py-1.5 text-xs text-muted-foreground">{req}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-4 text-xs text-muted-foreground">
-          Patients with the same phone number as an existing patient will be skipped automatically.
-        </div>
       </Card>
     </div>
   );
