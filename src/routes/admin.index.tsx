@@ -175,14 +175,24 @@ function DashboardPage() {
               to="/homeopathy/queue"
               className="flex items-center gap-3 -m-2 p-2 rounded-xl hover:bg-primary/5 transition-colors"
             >
-              <div className="size-11 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
+              <div className="relative size-11 rounded-full bg-primary/15 text-primary grid place-items-center shrink-0">
                 <PlayCircle className="size-6" />
+                {appointmentsToday > 0 && (
+                  <>
+                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[11px] font-bold grid place-items-center shadow-lg tabular-nums">
+                      {appointmentsToday}
+                    </span>
+                    <span className="absolute -top-1 -right-1 min-w-[20px] h-5 rounded-full bg-red-500 animate-ping opacity-60" />
+                  </>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[11px] uppercase tracking-widest text-primary/80">Doctor</div>
                 <div className="font-display text-lg">Open today's queue</div>
                 <div className="text-xs text-muted-foreground">
-                  Call patients in and start consultations
+                  {appointmentsToday > 0
+                    ? `${appointmentsToday} patient${appointmentsToday === 1 ? "" : "s"} waiting to be seen`
+                    : "Call patients in and start consultations"}
                 </div>
               </div>
               <ArrowRight className="size-5 text-muted-foreground" />
