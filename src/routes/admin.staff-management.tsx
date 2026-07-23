@@ -77,7 +77,7 @@ function StaffManagement() {
                 setOpen(false);
                 await load();
               } catch (e: any) {
-                toast.error(e?.message ?? "Failed to create staff");
+                toast.error(friendlyStaffError(e, "Failed to create staff"));
               }
             }}
           />
@@ -123,7 +123,7 @@ function StaffManagement() {
                             toast.success("Removed");
                             await load();
                           } catch (e: any) {
-                            toast.error(e?.message ?? "Failed to remove");
+                            toast.error(friendlyStaffError(e, "Failed to remove"));
                           }
                         }}
                         className="inline-flex items-center gap-1 text-xs text-destructive hover:underline"
@@ -143,6 +143,29 @@ function StaffManagement() {
       </Card>
     </div>
   );
+}
+
+// Expected/validation messages we intentionally surface to end-users.
+const EXPECTED_STAFF_MESSAGES = [
+  "You can't remove yourself",
+  "Only clinic admins can add staff",
+  "Only clinic admins can remove staff",
+  "Staff member not found in your clinic",
+];
+const TECHNICAL_HINTS = /supabase|postgres|environment variable|jwt|rls|policy|fetch failed|network|500|502|503|undefined|null/i;
+export function friendlyStaffError(err: unknown, _fallback = "Failed"): string {
+  const raw = err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  // Full context to the console for developer debugging.
+  console.error("[staff]", err);
+  if (raw && EXPECTED_STAFF_MESSAGES.some((m) => raw.toLowerCase().includes(m.toLowerCase()))) {
+    return raw;
+  }
+  if (!raw || TECHNICAL_HINTS.test(raw)) {
+    return "Something went wrong — please try again or contact support.";
+  }
+  // Short, non-technical string → show it. Everything else → generic.
+  if (raw.length <= 120 && !/[{}<>]/.test(raw)) return raw;
+  return "Something went wrong — please try again or contact support.";
 }
 
 function slugifyClinic(name: string | null | undefined): string {
