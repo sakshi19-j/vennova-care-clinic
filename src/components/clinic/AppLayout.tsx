@@ -4,12 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import {
   UserCog, Settings, Search, Bell, Leaf, Command, CalendarDays,
   Building2, Activity, ShieldCheck, LogOut, Phone, X as XIcon,
+  HelpCircle,
 } from "lucide-react";
 import { CommandPalette } from "./CommandPalette";
 import { canAccess, roleMeta, type Role } from "@/lib/role-store";
 import { useAuth } from "@/hooks/use-auth";
 import { remindersService } from "@/services/reminders";
 import { api } from "@/lib/api-client";
+import { isOnboardingComplete, isOnboardingDismissed, reopenOnboarding } from "@/lib/onboarding";
+import vennovaLogo from "@/assets/vennova-logo.png.asset.json";
 
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; live?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
