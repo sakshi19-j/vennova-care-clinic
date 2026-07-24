@@ -210,21 +210,10 @@ function DashboardPage() {
               ) : chartData.length === 0 ? (
                 <EmptyChart message="No collections recorded yet." />
               ) : (
-                <ResponsiveContainer>
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="dash-rev" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="oklch(0.42 0.08 250)" stopOpacity={0.45} />
-                        <stop offset="100%" stopColor="oklch(0.42 0.08 250)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.88 0.018 85)" vertical={false} />
-                    <XAxis dataKey="d" stroke="oklch(0.52 0.06 285)" fontSize={11} />
-                    <YAxis stroke="oklch(0.52 0.06 285)" fontSize={11} />
-                    <Tooltip formatter={(v: number) => inr(v)} />
-                    <Area type="monotone" dataKey="total" stroke="oklch(0.42 0.08 250)" fill="url(#dash-rev)" name="Revenue" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<Skeleton />}>
+                  <RevenueAreaChart data={chartData} formatValue={inr} />
+                </Suspense>
+
               )}
             </div>
             {revenueLost > 0 && (
