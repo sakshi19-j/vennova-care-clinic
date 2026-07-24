@@ -185,7 +185,7 @@ export function AppLayout() {
           <div className="mt-3 flex items-center gap-1.5">
             {(role === "admin" || role === "reception") && (
               <button
-                onClick={() => { reopenOnboarding(); navigate({ to: "/onboarding" as any }); }}
+                onClick={() => { reopenOnboarding(profile?.clinic_id ?? null); navigate({ to: "/onboarding" as any }); }}
                 className="shrink-0 size-8 rounded-lg bg-sidebar-accent/60 hover:bg-primary/20 hover:text-primary text-sidebar-foreground/80 grid place-items-center transition-colors"
                 title="Setup guide"
                 aria-label="Setup guide"
