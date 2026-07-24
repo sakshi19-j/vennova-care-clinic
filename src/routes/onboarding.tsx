@@ -8,6 +8,7 @@ import {
   setStepIncomplete,
   dismissOnboarding,
 } from "@/lib/onboarding";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
@@ -18,9 +19,11 @@ export const Route = createFileRoute("/onboarding")({
 
 function OnboardingPage() {
   const navigate = useNavigate();
-  const [done, setDone] = useState(() => getCompletedSteps());
+  const { profile } = useAuth();
+  const clinicId = profile?.clinic_id ?? null;
+  const [done, setDone] = useState(() => getCompletedSteps(clinicId));
   const [idx, setIdx] = useState(() => {
-    const completed = getCompletedSteps();
+    const completed = getCompletedSteps(clinicId);
     const first = ONBOARDING_STEPS.findIndex((s) => !completed.has(s.id));
     return first < 0 ? 0 : first;
   });
@@ -31,7 +34,7 @@ function OnboardingPage() {
   const pct = Math.round((completedCount / total) * 100);
 
   const markDone = () => {
-    setStepComplete(step.id);
+    setStepComplete(clinicId, step.id);
     const next = new Set(done);
     next.add(step.id);
     setDone(next);
@@ -40,13 +43,13 @@ function OnboardingPage() {
 
   const toggleStep = (id: string) => {
     const next = new Set(done);
-    if (next.has(id)) { next.delete(id); setStepIncomplete(id); }
-    else { next.add(id); setStepComplete(id); }
+    if (next.has(id)) { next.delete(id); setStepIncomplete(clinicId, id); }
+    else { next.add(id); setStepComplete(clinicId, id); }
     setDone(next);
   };
 
   const skip = () => {
-    dismissOnboarding();
+    dismissOnboarding(clinicId);
     navigate({ to: "/admin" });
   };
 

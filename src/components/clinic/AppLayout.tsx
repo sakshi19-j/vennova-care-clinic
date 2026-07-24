@@ -73,7 +73,13 @@ export function AppLayout() {
     if (!role) return; // profile still loading
     if (path === "/" || path === "/auth") {
       // First-time onboarding: admin lands on /onboarding until completed or dismissed.
-      if (role === "admin" && !isOnboardingComplete() && !isOnboardingDismissed()) {
+      const clinicId = profile?.clinic_id ?? null;
+      if (
+        role === "admin" &&
+        clinicId &&
+        !isOnboardingComplete(clinicId) &&
+        !isOnboardingDismissed(clinicId)
+      ) {
         navigate({ to: "/onboarding" as any, replace: true });
         return;
       }
@@ -83,7 +89,7 @@ export function AppLayout() {
     if (!canAccess(role, path) && path !== "/onboarding") {
       navigate({ to: roleMeta[role].home as any, replace: true });
     }
-  }, [loading, session, role, path, navigate]);
+  }, [loading, session, role, path, navigate, profile?.clinic_id]);
 
   const remindersStatsQ = useQuery({
     queryKey: ["reminders", "stats", "header"],

@@ -10,15 +10,18 @@ import {
   isOnboardingComplete,
   isOnboardingDismissed,
 } from "@/lib/onboarding";
+import { useAuth } from "@/hooks/use-auth";
 
 /** Persistent setup checklist for the admin dashboard. Hides when all steps
  *  are complete OR the user explicitly dismisses it. Can be re-opened from
  *  the Help menu or /onboarding. */
 export function OnboardingChecklist() {
-  const [done, setDone] = useState(() => getCompletedSteps());
-  const [dismissed, setDismissed] = useState(() => isOnboardingDismissed());
+  const { profile } = useAuth();
+  const clinicId = profile?.clinic_id ?? null;
+  const [done, setDone] = useState(() => getCompletedSteps(clinicId));
+  const [dismissed, setDismissed] = useState(() => isOnboardingDismissed(clinicId));
 
-  if (dismissed || isOnboardingComplete()) return null;
+  if (!clinicId || dismissed || isOnboardingComplete(clinicId)) return null;
 
   const total = ONBOARDING_STEPS.length;
   const completed = ONBOARDING_STEPS.filter((s) => done.has(s.id)).length;
@@ -26,7 +29,7 @@ export function OnboardingChecklist() {
 
   const toggle = (id: string) => {
     const s = new Set(done);
-    if (s.has(id)) { s.delete(id); setStepIncomplete(id); } else { s.add(id); setStepComplete(id); }
+    if (s.has(id)) { s.delete(id); setStepIncomplete(clinicId, id); } else { s.add(id); setStepComplete(clinicId, id); }
     setDone(s);
   };
 
@@ -52,7 +55,7 @@ export function OnboardingChecklist() {
             Open guided setup <ArrowRight className="size-3.5" />
           </Link>
           <button
-            onClick={() => { dismissOnboarding(); setDismissed(true); }}
+            onClick={() => { dismissOnboarding(clinicId); setDismissed(true); }}
             className="size-9 grid place-items-center rounded-full hover:bg-muted text-muted-foreground"
             title="Dismiss"
           >
