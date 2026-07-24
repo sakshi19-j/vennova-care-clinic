@@ -120,14 +120,12 @@ function DashboardPage() {
             {clinicName ? `${clinicName} · ` : ""}Real-time data from your clinic.
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <ClinicIdentity clinic={clinicQ.data} fallbackName={clinicName} />
-          {anyError && (
-            <div className="inline-flex items-center gap-1.5 text-xs text-amber-600">
-              <AlertTriangle className="size-3.5" /> Some widgets failed to load.
-            </div>
-          )}
-        </div>
+        {anyError && (
+          <div className="inline-flex items-center gap-1.5 text-xs text-amber-600">
+            <AlertTriangle className="size-3.5" /> Some widgets failed to load.
+          </div>
+        )}
+
       </div>
 
 
