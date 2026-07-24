@@ -1,9 +1,6 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-} from "recharts";
 import {
   IndianRupee, Users, CalendarDays, Stethoscope, BellRing, UserPlus,
   PlayCircle, UserCog, Loader2, AlertTriangle, ArrowRight, Sparkles,
@@ -13,7 +10,10 @@ import { Card } from "@/components/clinic/PageHeader";
 
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
-import { clinicProfileService, type ClinicProfile } from "@/services/clinic-profile";
+
+// Lazy-load the recharts area chart so the recharts bundle only downloads
+// when the dashboard actually renders the revenue graph.
+const RevenueAreaChart = lazy(() => import("@/components/charts/RevenueAreaChart"));
 
 
 export const Route = createFileRoute("/admin/")({
@@ -72,12 +72,8 @@ function DashboardPage() {
     retry: 1,
   });
 
-  const clinicQ = useQuery({
-    queryKey: ["clinic", "profile"],
-    queryFn: () => clinicProfileService.get(),
-    staleTime: 5 * 60_000,
-    retry: 1,
-  });
+
+
 
   const loading = dashQ.isLoading || queueStatsQ.isLoading;
   const anyError = dashQ.error || queueStatsQ.error;
