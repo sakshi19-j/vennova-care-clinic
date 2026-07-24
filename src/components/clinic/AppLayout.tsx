@@ -73,7 +73,13 @@ export function AppLayout() {
     if (!role) return; // profile still loading
     if (path === "/" || path === "/auth") {
       // First-time onboarding: admin lands on /onboarding until completed or dismissed.
-      if (role === "admin" && !isOnboardingComplete() && !isOnboardingDismissed()) {
+      const clinicId = profile?.clinic_id ?? null;
+      if (
+        role === "admin" &&
+        clinicId &&
+        !isOnboardingComplete(clinicId) &&
+        !isOnboardingDismissed(clinicId)
+      ) {
         navigate({ to: "/onboarding" as any, replace: true });
         return;
       }
@@ -83,7 +89,7 @@ export function AppLayout() {
     if (!canAccess(role, path) && path !== "/onboarding") {
       navigate({ to: roleMeta[role].home as any, replace: true });
     }
-  }, [loading, session, role, path, navigate]);
+  }, [loading, session, role, path, navigate, profile?.clinic_id]);
 
   const remindersStatsQ = useQuery({
     queryKey: ["reminders", "stats", "header"],
@@ -179,7 +185,7 @@ export function AppLayout() {
           <div className="mt-3 flex items-center gap-1.5">
             {(role === "admin" || role === "reception") && (
               <button
-                onClick={() => { reopenOnboarding(); navigate({ to: "/onboarding" as any }); }}
+                onClick={() => { reopenOnboarding(profile?.clinic_id ?? null); navigate({ to: "/onboarding" as any }); }}
                 className="shrink-0 size-8 rounded-lg bg-sidebar-accent/60 hover:bg-primary/20 hover:text-primary text-sidebar-foreground/80 grid place-items-center transition-colors"
                 title="Setup guide"
                 aria-label="Setup guide"

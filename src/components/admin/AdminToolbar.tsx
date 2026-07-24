@@ -5,8 +5,8 @@ import {
   Download, FileSpreadsheet, FileText, Search, Users, ListOrdered,
   Stethoscope, Receipt, ChevronDown,
 } from "lucide-react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// jsPDF + autoTable are loaded on demand so their ~150 KB bundle only
+// downloads when the admin actually exports a PDF.
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
@@ -38,7 +38,11 @@ function download(filename: string, content: string, mime: string) {
   a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-function downloadPDF(title: string, head: string[], body: (string | number)[][]) {
+async function downloadPDF(title: string, head: string[], body: (string | number)[][]) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   doc.setFontSize(16); doc.text(title, 40, 40);
   doc.setFontSize(10); doc.setTextColor(120);

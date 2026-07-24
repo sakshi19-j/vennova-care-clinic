@@ -1,9 +1,6 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-} from "recharts";
 import {
   IndianRupee, Users, CalendarDays, Stethoscope, BellRing, UserPlus,
   PlayCircle, UserCog, Loader2, AlertTriangle, ArrowRight, Sparkles,
@@ -13,7 +10,10 @@ import { Card } from "@/components/clinic/PageHeader";
 
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
-import { clinicProfileService, type ClinicProfile } from "@/services/clinic-profile";
+
+// Lazy-load the recharts area chart so the recharts bundle only downloads
+// when the dashboard actually renders the revenue graph.
+const RevenueAreaChart = lazy(() => import("@/components/charts/RevenueAreaChart"));
 
 
 export const Route = createFileRoute("/admin/")({
@@ -72,12 +72,8 @@ function DashboardPage() {
     retry: 1,
   });
 
-  const clinicQ = useQuery({
-    queryKey: ["clinic", "profile"],
-    queryFn: () => clinicProfileService.get(),
-    staleTime: 5 * 60_000,
-    retry: 1,
-  });
+
+
 
   const loading = dashQ.isLoading || queueStatsQ.isLoading;
   const anyError = dashQ.error || queueStatsQ.error;
@@ -124,14 +120,12 @@ function DashboardPage() {
             {clinicName ? `${clinicName} · ` : ""}Real-time data from your clinic.
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <ClinicIdentity clinic={clinicQ.data} fallbackName={clinicName} />
-          {anyError && (
-            <div className="inline-flex items-center gap-1.5 text-xs text-amber-600">
-              <AlertTriangle className="size-3.5" /> Some widgets failed to load.
-            </div>
-          )}
-        </div>
+        {anyError && (
+          <div className="inline-flex items-center gap-1.5 text-xs text-amber-600">
+            <AlertTriangle className="size-3.5" /> Some widgets failed to load.
+          </div>
+        )}
+
       </div>
 
 
@@ -216,21 +210,10 @@ function DashboardPage() {
               ) : chartData.length === 0 ? (
                 <EmptyChart message="No collections recorded yet." />
               ) : (
-                <ResponsiveContainer>
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="dash-rev" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="oklch(0.42 0.08 250)" stopOpacity={0.45} />
-                        <stop offset="100%" stopColor="oklch(0.42 0.08 250)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.88 0.018 85)" vertical={false} />
-                    <XAxis dataKey="d" stroke="oklch(0.52 0.06 285)" fontSize={11} />
-                    <YAxis stroke="oklch(0.52 0.06 285)" fontSize={11} />
-                    <Tooltip formatter={(v: number) => inr(v)} />
-                    <Area type="monotone" dataKey="total" stroke="oklch(0.42 0.08 250)" fill="url(#dash-rev)" name="Revenue" />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <Suspense fallback={<Skeleton />}>
+                  <RevenueAreaChart data={chartData} formatValue={inr} />
+                </Suspense>
+
               )}
             </div>
             {revenueLost > 0 && (
@@ -317,26 +300,5 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
   );
 }
 
-function ClinicIdentity({ clinic, fallbackName }: { clinic: ClinicProfile | undefined; fallbackName: string | null }) {
-  const name = (clinic?.clinic_name || clinic?.name || fallbackName || "").trim();
-  const doctor = (clinic?.doctor_name || "").trim();
-  const logo = (clinic?.logo_url as string | undefined) || "";
-  if (!name && !doctor && !logo) return null;
-  const initial = (name || doctor || "C").charAt(0).toUpperCase();
-  return (
-    <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-border bg-card/70 backdrop-blur-sm">
-      {logo ? (
-        <img src={logo} alt={name || "Clinic logo"} className="size-8 rounded-full object-cover border border-border" />
-      ) : (
-        <div className="size-8 rounded-full bg-primary/15 text-primary grid place-items-center text-sm font-semibold">
-          {initial}
-        </div>
-      )}
-      <div className="min-w-0 leading-tight">
-        {name && <div className="text-xs font-semibold truncate max-w-[180px]">{name}</div>}
-        {doctor && <div className="text-[11px] text-muted-foreground truncate max-w-[180px]">{doctor}</div>}
-      </div>
-    </div>
-  );
-}
+
 
