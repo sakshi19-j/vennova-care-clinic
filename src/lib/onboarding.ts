@@ -1,5 +1,8 @@
-// Onboarding state — tracked locally per browser/admin until backend exposes
+// Onboarding state — tracked locally per browser/clinic until backend exposes
 // /settings/onboarding. Pure client utilities, no React.
+//
+// Keys are namespaced by clinic_id so multiple clinics on the same browser
+// don't inherit each other's completion state.
 
 export type OnboardingStep = {
   id: string;
@@ -19,13 +22,19 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   { id: "prescription_test", title: "Send a test prescription", description: "Verify WhatsApp delivery end-to-end", href: "/doctor/queue" },
 ];
 
-const KEY = "vennova.onboarding.completed";
-const DISMISS_KEY = "vennova.onboarding.dismissed";
+const KEY = (clinicId: string) => `vennova.onboarding.completed.${clinicId}`;
+const DISMISS_KEY = (clinicId: string) => `vennova.onboarding.dismissed.${clinicId}`;
 
-export function getCompletedSteps(): Set<string> {
-  if (typeof window === "undefined") return new Set();
+function safeClinicId(clinicId: string | null | undefined): string | null {
+  const v = (clinicId ?? "").trim();
+  return v ? v : null;
+}
+
+export function getCompletedSteps(clinicId: string | null | undefined): Set<string> {
+  const cid = safeClinicId(clinicId);
+  if (typeof window === "undefined" || !cid) return new Set();
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY(cid));
     if (!raw) return new Set();
     return new Set(JSON.parse(raw) as string[]);
   } catch {
@@ -33,36 +42,43 @@ export function getCompletedSteps(): Set<string> {
   }
 }
 
-export function setStepComplete(id: string): void {
-  if (typeof window === "undefined") return;
-  const s = getCompletedSteps();
+export function setStepComplete(clinicId: string | null | undefined, id: string): void {
+  const cid = safeClinicId(clinicId);
+  if (typeof window === "undefined" || !cid) return;
+  const s = getCompletedSteps(cid);
   s.add(id);
-  localStorage.setItem(KEY, JSON.stringify([...s]));
+  localStorage.setItem(KEY(cid), JSON.stringify([...s]));
 }
 
-export function setStepIncomplete(id: string): void {
-  if (typeof window === "undefined") return;
-  const s = getCompletedSteps();
+export function setStepIncomplete(clinicId: string | null | undefined, id: string): void {
+  const cid = safeClinicId(clinicId);
+  if (typeof window === "undefined" || !cid) return;
+  const s = getCompletedSteps(cid);
   s.delete(id);
-  localStorage.setItem(KEY, JSON.stringify([...s]));
+  localStorage.setItem(KEY(cid), JSON.stringify([...s]));
 }
 
-export function isOnboardingComplete(): boolean {
-  const done = getCompletedSteps();
+export function isOnboardingComplete(clinicId: string | null | undefined): boolean {
+  const cid = safeClinicId(clinicId);
+  if (!cid) return false;
+  const done = getCompletedSteps(cid);
   return ONBOARDING_STEPS.every((s) => done.has(s.id));
 }
 
-export function isOnboardingDismissed(): boolean {
-  if (typeof window === "undefined") return true;
-  return localStorage.getItem(DISMISS_KEY) === "1";
+export function isOnboardingDismissed(clinicId: string | null | undefined): boolean {
+  const cid = safeClinicId(clinicId);
+  if (typeof window === "undefined" || !cid) return true;
+  return localStorage.getItem(DISMISS_KEY(cid)) === "1";
 }
 
-export function dismissOnboarding(): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(DISMISS_KEY, "1");
+export function dismissOnboarding(clinicId: string | null | undefined): void {
+  const cid = safeClinicId(clinicId);
+  if (typeof window === "undefined" || !cid) return;
+  localStorage.setItem(DISMISS_KEY(cid), "1");
 }
 
-export function reopenOnboarding(): void {
-  if (typeof window === "undefined") return;
-  localStorage.removeItem(DISMISS_KEY);
+export function reopenOnboarding(clinicId: string | null | undefined): void {
+  const cid = safeClinicId(clinicId);
+  if (typeof window === "undefined" || !cid) return;
+  localStorage.removeItem(DISMISS_KEY(cid));
 }
