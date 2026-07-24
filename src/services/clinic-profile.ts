@@ -29,9 +29,32 @@ export type ClinicProfile = {
 
 const BRANDING_BUCKET = "clinic-branding";
 
+/** Return the value only when it parses as a well-formed absolute URL.
+ *  Blank strings, undefined, and half-typed values return undefined so
+ *  callers can skip `new URL(...)` construction without throwing. */
+export function safeBrandingUrl(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    // new URL throws on empty / malformed strings — guarded above.
+    // eslint-disable-next-line no-new
+    new URL(trimmed);
+    return trimmed;
+  } catch {
+    return undefined;
+  }
+}
+
 export const clinicProfileService = {
   get: () => api.get<ClinicProfile>("/auth/clinic"),
-  update: (body: ClinicProfile) => api.put<ClinicProfile>("/auth/clinic", body),
+  update: (body: ClinicProfile) => {
+    // Never send a blank / half-typed URL to the backend; skip the field.
+    const cleaned: ClinicProfile = { ...body };
+    if ("logo_url" in cleaned) cleaned.logo_url = safeBrandingUrl(cleaned.logo_url);
+    if ("signature_url" in cleaned) cleaned.signature_url = safeBrandingUrl(cleaned.signature_url);
+    return api.put<ClinicProfile>("/auth/clinic", cleaned);
+  },
 
   async uploadBrandingAsset(
     kind: "logo" | "signature",
