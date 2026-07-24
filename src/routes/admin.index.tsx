@@ -300,26 +300,5 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
   );
 }
 
-function ClinicIdentity({ clinic, fallbackName }: { clinic: ClinicProfile | undefined; fallbackName: string | null }) {
-  const name = (clinic?.clinic_name || clinic?.name || fallbackName || "").trim();
-  const doctor = (clinic?.doctor_name || "").trim();
-  const logo = (clinic?.logo_url as string | undefined) || "";
-  if (!name && !doctor && !logo) return null;
-  const initial = (name || doctor || "C").charAt(0).toUpperCase();
-  return (
-    <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-border bg-card/70 backdrop-blur-sm">
-      {logo ? (
-        <img src={logo} alt={name || "Clinic logo"} className="size-8 rounded-full object-cover border border-border" />
-      ) : (
-        <div className="size-8 rounded-full bg-primary/15 text-primary grid place-items-center text-sm font-semibold">
-          {initial}
-        </div>
-      )}
-      <div className="min-w-0 leading-tight">
-        {name && <div className="text-xs font-semibold truncate max-w-[180px]">{name}</div>}
-        {doctor && <div className="text-[11px] text-muted-foreground truncate max-w-[180px]">{doctor}</div>}
-      </div>
-    </div>
-  );
-}
+
 
