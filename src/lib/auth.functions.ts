@@ -93,6 +93,8 @@ export const deleteStaffMember = createServerFn({ method: "POST" })
       throw new Error("Staff member not found in your clinic.");
     }
 
+    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
