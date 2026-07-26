@@ -96,7 +96,7 @@ export const deleteStaffMember = createServerFn({ method: "POST" })
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     await supabaseAdmin
       .from("profiles")
-      .update({ is_active: false, removed_at: new Date().toISOString() })
+      .update({ is_active: false, removed_at: new Date().toISOString() } as never)
       .eq("id", data.userId);
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       ban_duration: "876000h",
