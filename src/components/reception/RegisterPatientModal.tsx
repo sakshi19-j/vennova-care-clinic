@@ -61,14 +61,26 @@ const empty: FormState = {
 
 };
 
+function ageFromDob(dob: string): string {
+  if (!dob) return "";
+  const d = new Date(dob);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  return age >= 0 && age < 130 ? String(age) : "";
+}
+
 export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props) {
   const [f, setF] = useState<FormState>(empty);
+  const [ageAuto, setAgeAuto] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dupe, setDupe] = useState<null | { patient: any; payload: any; fullName: string }>(null);
 
   if (!open) return null;
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }));
-  const reset = () => setF(empty);
+  const reset = () => { setF(empty); setAgeAuto(true); };
 
   const doCreate = async (payload: any, fullName: string) => {
     setSaving(true);
@@ -202,8 +214,11 @@ export function RegisterPatientModal({ open, onOpenChange, onRegistered }: Props
             <div><label className={L}>Middle name</label><input className={T} value={f.middle_name} onChange={(e) => set("middle_name", e.target.value)} /></div>
             <div><label className={L}>Last name</label><input className={T} value={f.last_name} onChange={(e) => set("last_name", e.target.value)} /></div>
           </div>
-          <div className="col-span-3"><label className={L}>Date of birth</label><input type="date" className={T} value={f.dob} onChange={(e) => set("dob", e.target.value)} /></div>
-          <div className="col-span-2"><label className={L}>Age</label><input inputMode="numeric" className={T} value={f.age} onChange={(e) => set("age", e.target.value)} /></div>
+          <div className="col-span-3"><label className={L}>Date of birth</label><input type="date" className={T} value={f.dob} onChange={(e) => {
+            const dob = e.target.value;
+            setF((s) => ({ ...s, dob, age: ageAuto ? ageFromDob(dob) : s.age }));
+          }} /></div>
+          <div className="col-span-2"><label className={L}>Age</label><input inputMode="numeric" className={T} value={f.age} onChange={(e) => { setAgeAuto(false); set("age", e.target.value); }} /></div>
           <div className="col-span-3"><label className={L}>Gender</label>
             <select className={T} value={f.gender} onChange={(e) => set("gender", e.target.value as any)}>
               <option value="">—</option><option value="MALE">Male</option><option value="FEMALE">Female</option><option value="OTHER">Other</option>

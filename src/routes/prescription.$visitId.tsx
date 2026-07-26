@@ -60,7 +60,7 @@ type BoxItem = {
   days: string;
 };
 
-const POTENCIES = ["6C", "30C", "200C", "1M", "10M", "CM"];
+const POTENCIES = ["6C", "30C", "200C", "1M", "10M", "CM", "SL", "PL", "Rubrum"];
 const TIMINGS = ["OD", "BD", "TDS", "QID", "HS", "SOS"];
 
 function PrescriptionPage() {

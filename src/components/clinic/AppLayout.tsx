@@ -100,6 +100,20 @@ export function AppLayout() {
   });
   const pendingCount = Number((remindersStatsQ.data as any)?.pending ?? 0);
 
+  const clinicProfileQ = useQuery({
+    queryKey: ["auth", "clinic", "sidebar"],
+    queryFn: () => api.get<{ name?: string; clinic_name?: string; logo_url?: string }>("/auth/clinic"),
+    enabled: !!session && !!role,
+    staleTime: 5 * 60_000,
+  });
+  const clinicProfile = clinicProfileQ.data;
+  const sidebarClinicName = clinicProfile?.clinic_name || clinicProfile?.name || clinicName || "Vedic";
+  const sidebarLogoUrl = (() => {
+    const v = clinicProfile?.logo_url;
+    if (typeof v !== "string" || !v.trim()) return null;
+    try { new URL(v.trim()); return v.trim(); } catch { return null; }
+  })();
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
@@ -120,12 +134,19 @@ export function AppLayout() {
         style={{ background: "linear-gradient(180deg, #1e1b4b 0%, #0f0e1a 100%)" }}
       >
         <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-          <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md">
-            <Leaf className="size-5" />
+          <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md overflow-hidden shrink-0">
+            {sidebarLogoUrl ? (
+              <img src={sidebarLogoUrl} alt={sidebarClinicName} className="size-full object-cover" />
+            ) : (
+              <Leaf className="size-5" />
+            )}
           </div>
-          <div className="min-w-0">
-            <div className="font-display text-lg leading-none font-semibold truncate">
-              {clinicName || "Vedic"}
+          <div className="min-w-0 flex-1">
+            <div
+              className="font-display text-base leading-tight font-semibold break-words line-clamp-2"
+              title={sidebarClinicName}
+            >
+              {sidebarClinicName}
             </div>
             <div className="text-xs text-sidebar-foreground/70 mt-1">Homeopathic Clinic</div>
           </div>
