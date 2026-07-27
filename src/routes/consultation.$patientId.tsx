@@ -842,13 +842,17 @@ function ConsultationPage() {
                     />
                   </div>
                   <div className="col-span-4 md:col-span-2">
-                    <Label>Dosage</Label>
-                    <input
+                    <Label>Potency</Label>
+                    <select
                       value={m.dosage}
                       onChange={(e) => setMedicine(i, "dosage", e.target.value)}
-                      placeholder="30C / 500mg"
-                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-                    />
+                      className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+                    >
+                      <option value="">—</option>
+                      {["6C", "30C", "200C", "1M", "10M", "CM", "SL", "PL", "Rubrum"].map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="col-span-4 md:col-span-2">
                     <Label>Timing</Label>
