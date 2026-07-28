@@ -4,7 +4,7 @@ const APP_URL = 'https://vennova-care-clinic.vercel.app';
 
 let mainWindow;
 
-function createWindow() {
+async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -14,6 +14,8 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  await mainWindow.webContents.session.clearCache();
 
   // Hides the default File/Edit/View menu bar for a cleaner app feel
   Menu.setApplicationMenu(null);
