@@ -94,7 +94,7 @@ function DashboardPage() {
   const queueInTreatment = pick(qs, ["in_treatment"]);
   const queueCompleted = pick(qs, ["completed"]);
   const visitsToday = queueCompleted + queueInTreatment;
-  const appointmentsToday = pick(qs, ["total_today"]);
+  const appointmentsToday = queueWaiting;
 
   const chartData = useMemo(() => {
     const week = get(d, ["revenue", "this_week", "week"]);
