@@ -137,10 +137,15 @@ function BillingPage() {
     Array<{ id: string; name: string; fee: number; mode: PaymentMode; at: number; receiptUrl: string }>
   >([]);
 
+  // /analytics/summary/today is admin/doctor-only — reception always gets a 403,
+  // so skip the request entirely for that role and fall back to session totals.
+  const canReadSummary = role === "admin" || role === "allopathy" || role === "homeopathy";
   const summaryQ = useQuery({
     queryKey: ["analytics", "summary", "today"],
     queryFn: () => dashboardService.summaryToday(),
-    refetchInterval: 15_000,
+    enabled: canReadSummary,
+    refetchInterval: canReadSummary ? 30_000 : false,
+    staleTime: 30_000,
     retry: 1,
   });
 
