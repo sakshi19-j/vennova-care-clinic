@@ -95,9 +95,9 @@ function QueuePage() {
       const raw = await api.get<unknown>("/queue/today");
       return asArray<QueueItem>(raw).map((q) => ({ ...q, status: normalizedStatus(q.status) }));
     },
-    refetchInterval: 10_000,
+    refetchInterval: 15_000,
     refetchOnWindowFocus: true,
-    staleTime: 5_000,
+    staleTime: 15_000,
   });
 
   const queue = queueQ.data ?? [];
