@@ -18,6 +18,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { loadQueue } from "@/lib/queue-store";
 import { billingService } from "@/services/billing";
 import { dashboardService } from "@/services/dashboard";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/reception/billing")({
   component: BillingPage,
@@ -113,6 +114,7 @@ function billFee(b: PendingBill): number {
 
 function BillingPage() {
   const qc = useQueryClient();
+  const { role } = useAuth();
 
   const pendingQ = useQuery({
     queryKey: ["billing-pending"],
@@ -373,7 +375,7 @@ function BillingPage() {
             {totalToday.toLocaleString("en-IN")}
           </div>
           <div className="text-xs text-muted-foreground mt-1">
-            {summaryQ.isLoading ? "Syncing with backend…" : `Live from /analytics/summary/today · ${todayPaid.length} this session`}
+            {summaryQ.isLoading ? "Syncing with backend…" : `${todayPaid.length} collected this session`}
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             {(["CASH", "UPI", "CARD", "ONLINE"] as const).map((m) => (
