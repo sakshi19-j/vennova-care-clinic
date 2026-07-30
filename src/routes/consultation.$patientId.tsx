@@ -1060,7 +1060,7 @@ function ConsultationPage() {
               className="h-12 px-8 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow-lg"
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              Mark Case Done →
+              {submitting ? "Saving…" : "Mark Case Done →"}
             </button>
           </div>
         </section>
@@ -1120,7 +1120,7 @@ function ConsultationPage() {
             className="w-full h-12 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center justify-center gap-2 hover:bg-teal-700 disabled:opacity-60"
           >
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            Mark Case Done →
+            {submitting ? "Saving…" : "Mark Case Done →"}
           </button>
         </div>
       </div>

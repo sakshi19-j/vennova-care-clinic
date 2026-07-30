@@ -396,7 +396,7 @@ function PrescriptionPage() {
                 className="h-11 px-6 rounded-full bg-teal-600 text-white font-medium text-sm inline-flex items-center gap-2 hover:bg-teal-700 disabled:opacity-60 shadow"
               >
                 {sending ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                Send Prescription
+                {sending ? "Sending…" : "Send Prescription"}
               </button>
             </div>
           </div>
