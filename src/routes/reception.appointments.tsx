@@ -23,7 +23,8 @@ function AppointmentsPage() {
   const appointmentsQ = useQuery({
     queryKey: ["appointments", "all"],
     queryFn: () => api.get<any>("/appointments/"),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
+    staleTime: 20_000,
   });
   const appointments = useMemo(() => {
     const raw = appointmentsQ.data;

@@ -181,8 +181,8 @@ function QueuePage() {
   const statsQ = useQuery({
     queryKey: ["queue", "stats-today"],
     queryFn: () => api.get<Record<string, unknown>>("/queue/stats/today"),
-    refetchInterval: 15_000,
-    staleTime: 5_000,
+    refetchInterval: 30_000,
+    staleTime: 20_000,
     retry: 1,
   });
   const stats = useMemo(() => {
