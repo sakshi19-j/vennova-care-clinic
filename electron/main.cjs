@@ -22,6 +22,9 @@ async function createWindow() {
 
   mainWindow.loadURL(APP_URL);
 
+  // Temporary: open DevTools for debugging
+  mainWindow.webContents.openDevTools();
+
   // If the load fails (e.g. no internet), show a simple retry screen
   // instead of a blank/broken page.
   mainWindow.webContents.on('did-fail-load', () => {
