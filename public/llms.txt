@@ -1,0 +1,10 @@
+# Vennova Clinic Management System
+
+> Vennova is a clinic operating system for homeopathic and general practices — patient records, live queue, consultations, prescriptions, billing and follow-up reminders in one place.
+
+Most of the application is behind a staff login. The pages below are the public entry points.
+
+## Pages
+
+- [Home](/): Overview of the Vennova clinic management system.
+- [Sign in](/auth): Clinic owner registration and staff sign-in.
