@@ -4,7 +4,18 @@ import { ArrowRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/staff")({
-  head: () => ({ meta: [{ title: "Staff — Vennova Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Staff — Vennova Clinic" },
+      { name: "description", content: "Manage clinic staff accounts, roles and access." },
+      { property: "og:title", content: "Staff — Vennova Clinic" },
+      { property: "og:description", content: "Manage clinic staff accounts, roles and access." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/staff" },
+      { name: "twitter:title", content: "Staff — Vennova Clinic" },
+      { name: "twitter:description", content: "Manage clinic staff accounts, roles and access." },
+    ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/staff" }],
+  }),
   component: Staff,
 });
 

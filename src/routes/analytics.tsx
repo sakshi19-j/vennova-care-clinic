@@ -11,10 +11,15 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Analytics — Vedic Clinic" },
+      { title: "Analytics — Vennova Clinic" },
       { name: "description", content: "Retention, follow-up adherence, treatment outcomes and revenue trends." },
+      { property: "og:title", content: "Analytics — Vennova Clinic" },
+      { property: "og:description", content: "Retention, follow-up adherence, treatment outcomes and revenue trends." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/analytics" },
+      { name: "twitter:title", content: "Analytics — Vennova Clinic" },
+      { name: "twitter:description", content: "Retention, follow-up adherence, treatment outcomes and revenue trends." },
     ],
-    links: [{ rel: "canonical", href: "/analytics" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/analytics" }],
   }),
   component: Analytics,
 });

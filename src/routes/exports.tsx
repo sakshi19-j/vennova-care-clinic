@@ -10,9 +10,14 @@ export const Route = createFileRoute("/exports")({
   head: () => ({
     meta: [
       { title: "Export Center — Vennova Clinic" },
-      { name: "description", content: "Download CSV exports of patients, visits, billing and followups." },
+      { name: "description", content: "Download CSV exports of patients, visits, billing and follow-ups." },
+      { property: "og:title", content: "Export Center — Vennova Clinic" },
+      { property: "og:description", content: "Download CSV exports of patients, visits, billing and follow-ups." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/exports" },
+      { name: "twitter:title", content: "Export Center — Vennova Clinic" },
+      { name: "twitter:description", content: "Download CSV exports of patients, visits, billing and follow-ups." },
     ],
-    links: [{ rel: "canonical", href: "/exports" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/exports" }],
   }),
   component: Exports,
 });

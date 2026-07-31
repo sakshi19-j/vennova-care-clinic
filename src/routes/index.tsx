@@ -13,9 +13,14 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Clinic Dashboard — Vennova" },
-      { name: "description", content: "Your clinic at a glance: live queue, today's KPIs and pending followups." },
+      { name: "description", content: "Your clinic at a glance: live queue, today's KPIs and pending follow-ups." },
+      { property: "og:title", content: "Clinic Dashboard — Vennova" },
+      { property: "og:description", content: "Your clinic at a glance: live queue, today's KPIs and pending follow-ups." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/" },
+      { name: "twitter:title", content: "Clinic Dashboard — Vennova" },
+      { name: "twitter:description", content: "Your clinic at a glance: live queue, today's KPIs and pending follow-ups." },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/" }],
   }),
   component: Dashboard,
 });

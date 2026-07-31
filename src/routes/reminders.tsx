@@ -9,7 +9,18 @@ import {
 } from "@/services/reminders";
 
 export const Route = createFileRoute("/reminders")({
-  head: () => ({ meta: [{ title: "Reminders — Vennova Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Reminders — Vennova Clinic" },
+      { name: "description", content: "Scheduled patient reminders and follow-up messaging status." },
+      { property: "og:title", content: "Reminders — Vennova Clinic" },
+      { property: "og:description", content: "Scheduled patient reminders and follow-up messaging status." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/reminders" },
+      { name: "twitter:title", content: "Reminders — Vennova Clinic" },
+      { name: "twitter:description", content: "Scheduled patient reminders and follow-up messaging status." },
+    ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/reminders" }],
+  }),
   component: Reminders,
 });
 

@@ -16,7 +16,13 @@ export const Route = createFileRoute("/patients")({
     meta: [
       { title: "Patients — Vennova Clinic" },
       { name: "description", content: "Search, register and manage all your clinic's patient records." },
+      { property: "og:title", content: "Patients — Vennova Clinic" },
+      { property: "og:description", content: "Search, register and manage all your clinic's patient records." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/patients" },
+      { name: "twitter:title", content: "Patients — Vennova Clinic" },
+      { name: "twitter:description", content: "Search, register and manage all your clinic's patient records." },
     ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/patients" }],
   }),
   component: PatientsPage,
 });

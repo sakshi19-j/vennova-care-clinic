@@ -7,7 +7,18 @@ import { remindersService } from "@/services/reminders";
 
 
 export const Route = createFileRoute("/reception")({
-  head: () => ({ meta: [{ title: "Reception — Vedic Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Reception Desk — Vennova Clinic" },
+      { name: "description", content: "Reception workspace for appointments, queue, billing and follow-ups." },
+      { property: "og:title", content: "Reception Desk — Vennova Clinic" },
+      { property: "og:description", content: "Reception workspace for appointments, queue, billing and follow-ups." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/reception" },
+      { name: "twitter:title", content: "Reception Desk — Vennova Clinic" },
+      { name: "twitter:description", content: "Reception workspace for appointments, queue, billing and follow-ups." },
+    ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/reception" }],
+  }),
   component: ReceptionLayout,
 });
 

@@ -8,13 +8,15 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Clinic Sign In — Vedic Homeopathic Clinic" },
+      { title: "Clinic Sign In — Vennova" },
       { name: "description", content: "Sign in to your clinic console or register a new clinic — owner, doctors and reception each get their own login." },
-      { property: "og:title", content: "Clinic Sign In — Vedic Homeopathic Clinic" },
-      { property: "og:description", content: "Owner registration and staff sign-in for the Vedic Clinic operating system." },
-      { property: "og:url", content: "https://care-flow-fix.lovable.app/auth" },
+      { property: "og:title", content: "Clinic Sign In — Vennova" },
+      { property: "og:description", content: "Sign in to your clinic console or register a new clinic — owner, doctors and reception each get their own login." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/auth" },
+      { name: "twitter:title", content: "Clinic Sign In — Vennova" },
+      { name: "twitter:description", content: "Sign in to your clinic console or register a new clinic — owner, doctors and reception each get their own login." },
     ],
-    links: [{ rel: "canonical", href: "https://care-flow-fix.lovable.app/auth" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/auth" }],
   }),
   component: AuthPage,
 });

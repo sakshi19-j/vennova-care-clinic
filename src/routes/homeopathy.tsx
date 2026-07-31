@@ -5,7 +5,18 @@ import { useQueue, refreshAll } from "@/lib/queue-store";
 
 
 export const Route = createFileRoute("/homeopathy")({
-  head: () => ({ meta: [{ title: "Homeopathy — Vedic Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Homeopathy Console — Vennova Clinic" },
+      { name: "description", content: "Homeopathy workspace for case papers, queue and patient records." },
+      { property: "og:title", content: "Homeopathy Console — Vennova Clinic" },
+      { property: "og:description", content: "Homeopathy workspace for case papers, queue and patient records." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/homeopathy" },
+      { name: "twitter:title", content: "Homeopathy Console — Vennova Clinic" },
+      { name: "twitter:description", content: "Homeopathy workspace for case papers, queue and patient records." },
+    ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/homeopathy" }],
+  }),
   component: HomeopathyLayout,
 });
 
