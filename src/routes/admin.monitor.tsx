@@ -83,7 +83,7 @@ function MonitorPage() {
     <div className="grid grid-cols-12 gap-3">
       <div className="col-span-12 flex items-end justify-between">
         <div>
-          <div className="font-display text-lg leading-tight">Live monitor</div>
+          <h1 className="font-display text-lg leading-tight">Live monitor</h1>
           <div className="text-xs text-muted-foreground">Real-time state from /queue/today · auto-refresh 15s.</div>
         </div>
         {queueQ.isFetching && <Loader2 className="size-4 animate-spin text-muted-foreground" />}

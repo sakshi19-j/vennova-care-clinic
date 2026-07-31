@@ -58,9 +58,9 @@ function AdminLayout() {
         <AdminToolbar />
       </div>
 
-      <main className="min-w-0">
+      <div className="min-w-0">
         <Outlet />
-      </main>
+      </div>
     </div>
   );
 }

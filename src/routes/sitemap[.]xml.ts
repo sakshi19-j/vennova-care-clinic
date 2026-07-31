@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 
-const BASE_URL = "https://care-flow-fix.lovable.app";
+const BASE_URL = "https://vennova-care-clinic.lovable.app";
 
 interface SitemapEntry {
   path: string;
@@ -21,6 +21,11 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/billing", changefreq: "weekly", priority: "0.5" },
           { path: "/patients", changefreq: "weekly", priority: "0.5" },
           { path: "/prescriptions", changefreq: "weekly", priority: "0.5" },
+          { path: "/queue", changefreq: "daily", priority: "0.5" },
+          { path: "/reminders", changefreq: "weekly", priority: "0.4" },
+          { path: "/exports", changefreq: "monthly", priority: "0.3" },
+          { path: "/imports", changefreq: "monthly", priority: "0.3" },
+          { path: "/onboarding", changefreq: "monthly", priority: "0.3" },
         ];
 
         const urls = entries.map((e) =>
