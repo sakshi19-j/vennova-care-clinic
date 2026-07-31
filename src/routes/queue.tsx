@@ -12,8 +12,14 @@ export const Route = createFileRoute("/queue")({
   head: () => ({
     meta: [
       { title: "Live Queue — Vennova Clinic" },
-      { name: "description", content: "Real-time clinic queue with token control, wait times, and one-click call-next." },
+      { name: "description", content: "Real-time clinic queue with token control, wait times and one-click call-next." },
+      { property: "og:title", content: "Live Queue — Vennova Clinic" },
+      { property: "og:description", content: "Real-time clinic queue with token control, wait times and one-click call-next." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/queue" },
+      { name: "twitter:title", content: "Live Queue — Vennova Clinic" },
+      { name: "twitter:description", content: "Real-time clinic queue with token control, wait times and one-click call-next." },
     ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/queue" }],
   }),
   component: QueuePage,
 });

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vennova-care-clinic.lovable.app/sitemap.xml

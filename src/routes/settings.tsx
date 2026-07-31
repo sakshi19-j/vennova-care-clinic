@@ -12,8 +12,13 @@ export const Route = createFileRoute("/settings")({
     meta: [
       { title: "Clinic Settings — Vennova" },
       { name: "description", content: "Clinic profile, branding, logo, signature and footer text." },
+      { property: "og:title", content: "Clinic Settings — Vennova" },
+      { property: "og:description", content: "Clinic profile, branding, logo, signature and footer text." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/settings" },
+      { name: "twitter:title", content: "Clinic Settings — Vennova" },
+      { name: "twitter:description", content: "Clinic profile, branding, logo, signature and footer text." },
     ],
-    links: [{ rel: "canonical", href: "/settings" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/settings" }],
   }),
   component: Settings,
 });

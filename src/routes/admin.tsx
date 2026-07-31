@@ -7,13 +7,15 @@ import { AdminToolbar } from "@/components/admin/AdminToolbar";
 export const Route = createFileRoute("/admin")({
   head: () => ({
     meta: [
-      { title: "Owner Console — Vedic Clinic" },
-      { name: "description", content: "Owner console for clinic revenue, staff performance, monitoring and billing across doctors, reception and homeopathy departments." },
-      { property: "og:title", content: "Owner Console — Vedic Clinic" },
-      { property: "og:description", content: "Revenue, staff, monitoring and billing for clinic owners." },
-      { property: "og:url", content: "https://care-flow-fix.lovable.app/admin" },
+      { title: "Owner Console — Vennova Clinic" },
+      { name: "description", content: "Revenue, staff performance, monitoring and billing for clinic owners." },
+      { property: "og:title", content: "Owner Console — Vennova Clinic" },
+      { property: "og:description", content: "Revenue, staff performance, monitoring and billing for clinic owners." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/admin" },
+      { name: "twitter:title", content: "Owner Console — Vennova Clinic" },
+      { name: "twitter:description", content: "Revenue, staff performance, monitoring and billing for clinic owners." },
     ],
-    links: [{ rel: "canonical", href: "https://care-flow-fix.lovable.app/admin" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/admin" }],
   }),
   component: AdminLayout,
 });
@@ -56,9 +58,9 @@ function AdminLayout() {
         <AdminToolbar />
       </div>
 
-      <main className="min-w-0">
+      <div className="min-w-0">
         <Outlet />
-      </main>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,18 @@ import { Stethoscope, ListChecks, Bell, Users } from "lucide-react";
 import { useQueue } from "@/lib/queue-store";
 
 export const Route = createFileRoute("/doctor")({
-  head: () => ({ meta: [{ title: "Doctor — Vedic Clinic" }] }),
+  head: () => ({
+    meta: [
+      { title: "Doctor Console — Vennova Clinic" },
+      { name: "description", content: "Doctor workspace for the live queue, consultations and prescriptions." },
+      { property: "og:title", content: "Doctor Console — Vennova Clinic" },
+      { property: "og:description", content: "Doctor workspace for the live queue, consultations and prescriptions." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/doctor" },
+      { name: "twitter:title", content: "Doctor Console — Vennova Clinic" },
+      { name: "twitter:description", content: "Doctor workspace for the live queue, consultations and prescriptions." },
+    ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/doctor" }],
+  }),
   component: DoctorLayout,
 });
 

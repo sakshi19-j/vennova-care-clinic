@@ -12,8 +12,13 @@ export const Route = createFileRoute("/imports")({
     meta: [
       { title: "Import Patients — Vennova Clinic" },
       { name: "description", content: "Bulk-import patient records from CSV or Excel." },
+      { property: "og:title", content: "Import Patients — Vennova Clinic" },
+      { property: "og:description", content: "Bulk-import patient records from CSV or Excel." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/imports" },
+      { name: "twitter:title", content: "Import Patients — Vennova Clinic" },
+      { name: "twitter:description", content: "Bulk-import patient records from CSV or Excel." },
     ],
-    links: [{ rel: "canonical", href: "/imports" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/imports" }],
   }),
   component: Imports,
 });

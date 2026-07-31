@@ -16,8 +16,13 @@ export const Route = createFileRoute("/billing")({
     meta: [
       { title: "Billing & Receipts — Vennova Clinic" },
       { name: "description", content: "Collect payments, download GST-ready receipts and track collections." },
+      { property: "og:title", content: "Billing & Receipts — Vennova Clinic" },
+      { property: "og:description", content: "Collect payments, download GST-ready receipts and track collections." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/billing" },
+      { name: "twitter:title", content: "Billing & Receipts — Vennova Clinic" },
+      { name: "twitter:description", content: "Collect payments, download GST-ready receipts and track collections." },
     ],
-    links: [{ rel: "canonical", href: "/billing" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/billing" }],
   }),
   component: Billing,
 });

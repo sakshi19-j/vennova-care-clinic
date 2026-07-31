@@ -12,7 +12,16 @@ import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/onboarding")({
   head: () => ({
-    meta: [{ title: "Set up your clinic — Vennova Clinic" }],
+    meta: [
+      { title: "Set up your clinic — Vennova Clinic" },
+      { name: "description", content: "Guided setup for clinic profile, staff and branding." },
+      { property: "og:title", content: "Set up your clinic — Vennova Clinic" },
+      { property: "og:description", content: "Guided setup for clinic profile, staff and branding." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/onboarding" },
+      { name: "twitter:title", content: "Set up your clinic — Vennova Clinic" },
+      { name: "twitter:description", content: "Guided setup for clinic profile, staff and branding." },
+    ],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/onboarding" }],
   }),
   component: OnboardingPage,
 });

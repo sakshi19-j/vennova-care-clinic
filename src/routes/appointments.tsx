@@ -9,9 +9,14 @@ export const Route = createFileRoute("/appointments")({
   head: () => ({
     meta: [
       { title: "Appointments — Vennova Clinic" },
-      { name: "description", content: "Today's appointment list from the Vennova backend." },
+      { name: "description", content: "Today's appointment list with check-in and queue handoff." },
+      { property: "og:title", content: "Appointments — Vennova Clinic" },
+      { property: "og:description", content: "Today's appointment list with check-in and queue handoff." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/appointments" },
+      { name: "twitter:title", content: "Appointments — Vennova Clinic" },
+      { name: "twitter:description", content: "Today's appointment list with check-in and queue handoff." },
     ],
-    links: [{ rel: "canonical", href: "/appointments" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/appointments" }],
   }),
   component: Appointments,
 });

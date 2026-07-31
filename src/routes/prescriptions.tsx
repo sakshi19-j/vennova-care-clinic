@@ -11,8 +11,13 @@ export const Route = createFileRoute("/prescriptions")({
     meta: [
       { title: "Prescriptions — Vennova Clinic" },
       { name: "description", content: "Branded prescription PDFs with WhatsApp delivery." },
+      { property: "og:title", content: "Prescriptions — Vennova Clinic" },
+      { property: "og:description", content: "Branded prescription PDFs with WhatsApp delivery." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/prescriptions" },
+      { name: "twitter:title", content: "Prescriptions — Vennova Clinic" },
+      { name: "twitter:description", content: "Branded prescription PDFs with WhatsApp delivery." },
     ],
-    links: [{ rel: "canonical", href: "/prescriptions" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/prescriptions" }],
   }),
   component: Prescriptions,
 });

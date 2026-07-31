@@ -13,9 +13,14 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Clinic Dashboard — Vennova" },
-      { name: "description", content: "Your clinic at a glance: live queue, today's KPIs and pending followups." },
+      { name: "description", content: "Your clinic at a glance: live queue, today's KPIs and pending follow-ups." },
+      { property: "og:title", content: "Clinic Dashboard — Vennova" },
+      { property: "og:description", content: "Your clinic at a glance: live queue, today's KPIs and pending follow-ups." },
+      { property: "og:url", content: "https://vennova-care-clinic.lovable.app/" },
+      { name: "twitter:title", content: "Clinic Dashboard — Vennova" },
+      { name: "twitter:description", content: "Your clinic at a glance: live queue, today's KPIs and pending follow-ups." },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [{ rel: "canonical", href: "https://vennova-care-clinic.lovable.app/" }],
   }),
   component: Dashboard,
 });
@@ -137,7 +142,7 @@ function Dashboard() {
           <Card>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <div className="font-display text-xl">Waiting · {stats.waiting ?? waiting.length}</div>
+                <h2 className="font-display text-xl">Waiting · {stats.waiting ?? waiting.length}</h2>
                 <div className="text-xs text-muted-foreground">Live queue · refreshes every 10s</div>
               </div>
               <Link to="/queue" className="text-sm text-primary hover:underline inline-flex items-center gap-1">
@@ -174,7 +179,7 @@ function Dashboard() {
 
         <div className="col-span-12 lg:col-span-4 space-y-5">
           <Card>
-            <div className="font-display text-xl mb-3">Today at a glance</div>
+            <h2 className="font-display text-xl mb-3">Today at a glance</h2>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Stat label="Revenue" value={inr(revenueToday)} loading={summaryQ.isLoading} />
               <Stat label="Visits" value={String(visitsToday)} loading={summaryQ.isLoading} />
@@ -184,7 +189,7 @@ function Dashboard() {
           </Card>
 
           <Card>
-            <div className="font-display text-xl mb-3">Quick actions</div>
+            <h2 className="font-display text-xl mb-3">Quick actions</h2>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { icon: Stethoscope, label: "Open queue", to: "/queue" as const },
@@ -205,7 +210,7 @@ function Dashboard() {
 
         <div className="col-span-12 lg:col-span-3 space-y-5">
           <Card>
-            <div className="font-display text-xl mb-3">Pipeline</div>
+            <h2 className="font-display text-xl mb-3">Pipeline</h2>
             <div className="space-y-3 text-sm">
               <Row label="Waiting" value={stats.waiting ?? 0} />
               <Row label="With doctor" value={stats.with_doctor ?? stats.in_treatment ?? 0} />
