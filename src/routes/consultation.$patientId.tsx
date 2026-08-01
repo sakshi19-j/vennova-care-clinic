@@ -8,6 +8,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
+import {
+  MedicineBoxes,
+  boxesFromMedicines,
+  medicinesPayload,
+  newBox,
+  type BoxItem,
+} from "@/components/clinic/MedicineBoxes";
 import { useAuth } from "@/hooks/use-auth";
 
 // ---------- Custom parameters (local-only, no backend) ----------
@@ -178,10 +185,9 @@ function fmtDate(d?: string | null): string {
 }
 
 // ---------- Form ----------
-type Medicine = { name: string; dosage: string; frequency: string; duration: string };
 const POTENCIES = ["6C", "30C", "200C", "1M", "10M", "CM", "50M"];
 const MIASMS = ["Psora", "Sycosis", "Syphilis", "Tubercular"];
-const THERMALS = ["Hot", "Cold", "Mixed"];
+const THERMALS = ["Hot", "Cold", "Ambithermal"];
 
 type FormState = {
   chief_complaint: string;
@@ -190,7 +196,7 @@ type FormState = {
   thermal: string; appetite: string; thirst: string; sleep: string; dreams: string; mind_symptoms: string;
   particulars: string; rubrics: string[]; rubricInput: string;
   remedy: string; potency: string; repetition: string; miasm: string;
-  diagnosis: string; medicines: Medicine[]; advice: string;
+  diagnosis: string; medicines: BoxItem[]; advice: string;
   fee: string;
 };
 
@@ -201,7 +207,7 @@ const initialForm = (): FormState => ({
   thermal: "", appetite: "", thirst: "", sleep: "", dreams: "", mind_symptoms: "",
   particulars: "", rubrics: [], rubricInput: "",
   remedy: "", potency: "", repetition: "", miasm: "",
-  diagnosis: "", medicines: [{ name: "", dosage: "", frequency: "", duration: "" }], advice: "",
+  diagnosis: "", medicines: [newBox(1)], advice: "",
   fee: "500",
 });
 
@@ -301,14 +307,7 @@ function ConsultationPage() {
         ? homeo.particulars
         : (homeo.particulars && typeof homeo.particulars === "object" && homeo.particulars.text) || "";
 
-    const meds: Medicine[] = Array.isArray(lastVisit.medicines) && lastVisit.medicines.length > 0
-      ? lastVisit.medicines.map((m) => ({
-          name: (m.name || "").toString(),
-          dosage: (m.potency ?? m.dosage ?? "").toString(),
-          frequency: (m.timing ?? m.frequency ?? "").toString(),
-          duration: (m.days ?? m.duration ?? "").toString(),
-        }))
-      : [];
+    const meds: BoxItem[] = boxesFromMedicines(lastVisit.medicines);
 
     const s = (v: unknown) => (v === undefined || v === null ? "" : String(v));
     const keep = (cur: string, next: string) => (cur && cur.trim() ? cur : next);
@@ -341,7 +340,7 @@ function ConsultationPage() {
       // Notes / advice
       advice: keep(f.advice, s(lastVisit.advice || homeo.advice || lastVisit.notes)),
       // Medicines
-      medicines: f.medicines.some((m) => m.name.trim()) || meds.length === 0 ? f.medicines : meds,
+      medicines: f.medicines.some((m) => m.remedy.trim()) || meds.length === 0 ? f.medicines : meds,
       // Vitals
       bp_sys:      keep(f.bp_sys,      s(vit.bp_systolic)),
       bp_dia:      keep(f.bp_dia,      s(vit.bp_diastolic)),
@@ -461,12 +460,8 @@ function ConsultationPage() {
   const removeRubric = (i: number) =>
     setForm((f) => ({ ...f, rubrics: f.rubrics.filter((_, idx) => idx !== i) }));
 
-  const addMedicine = () =>
-    setForm((f) => ({ ...f, medicines: [...f.medicines, { name: "", dosage: "", frequency: "", duration: "" }] }));
-  const removeMedicine = (i: number) =>
-    setForm((f) => ({ ...f, medicines: f.medicines.filter((_, idx) => idx !== i) }));
-  const setMedicine = (i: number, field: keyof Medicine, v: string) =>
-    setForm((f) => ({ ...f, medicines: f.medicines.map((m, idx) => (idx === i ? { ...m, [field]: v } : m)) }));
+  const setMedicineBoxes = (updater: (prev: BoxItem[]) => BoxItem[]) =>
+    setForm((f) => ({ ...f, medicines: updater(f.medicines) }));
 
   const numOrNull = (s: string) => {
     const n = Number(s);
@@ -582,6 +577,20 @@ function ConsultationPage() {
         homeoPayload,
         { timeoutMs: 30000 },
       );
+
+      // ---- 4) Medicines (BOX rows) — same endpoint the prescription page uses.
+      const medsPayload = medicinesPayload(form.medicines);
+      if (medsPayload.length > 0) {
+        try {
+          await api.post(
+            `/visits/${encodeURIComponent(visitId)}/medicines`,
+            { medicines: medsPayload },
+            { timeoutMs: 20000 },
+          );
+        } catch (e) {
+          console.warn("[consultation] medicines save non-fatal:", e);
+        }
+      }
 
       clearDraft();
       toast.success("Consultation saved", { id: toastId });
@@ -827,75 +836,9 @@ function ConsultationPage() {
             </Block>
           )}
 
-          {/* Medicines (free-form list — saved with the prescription) */}
+          {/* Medicines — same BOX-style builder used on the prescription page */}
           <Block title="Medicines">
-            <div className="space-y-3">
-              {form.medicines.map((m, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                  <div className="col-span-12 md:col-span-4">
-                    <Label>Name</Label>
-                    <input
-                      value={m.name}
-                      onChange={(e) => setMedicine(i, "name", e.target.value)}
-                      placeholder="e.g. Pulsatilla / Paracetamol"
-                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-                    />
-                  </div>
-                  <div className="col-span-4 md:col-span-2">
-                    <Label>Potency</Label>
-                    <select
-                      value={m.dosage}
-                      onChange={(e) => setMedicine(i, "dosage", e.target.value)}
-                      className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-                    >
-                      <option value="">—</option>
-                      {["6C", "30C", "200C", "1M", "10M", "CM", "SL", "PL", "Rubrum"].map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="col-span-4 md:col-span-2">
-                    <Label>Timing</Label>
-                    <input
-                      value={m.frequency}
-                      onChange={(e) => setMedicine(i, "frequency", e.target.value)}
-                      placeholder="BD / TDS or custom"
-                      list="vennova-timing-presets"
-                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-                    />
-                  </div>
-                  <div className="col-span-3 md:col-span-2">
-                    <Label>Days</Label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={m.duration}
-                      onChange={(e) => setMedicine(i, "duration", e.target.value)}
-                      placeholder="7"
-                      className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm tabular-nums outline-none focus:ring-2 focus:ring-ring/40"
-                    />
-                  </div>
-                  <div className="col-span-1 md:col-span-2 flex justify-end">
-                    {form.medicines.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeMedicine(i)}
-                        className="size-9 grid place-items-center rounded-lg border border-border hover:bg-muted text-destructive"
-                        aria-label="Remove medicine"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <Button type="button" variant="outline" className="rounded-full" onClick={addMedicine}>
-                + Add medicine
-              </Button>
-              <div className="text-xs text-muted-foreground">
-                Detailed BOX-style prescription is finalized on the next screen.
-              </div>
-            </div>
+            <MedicineBoxes boxes={form.medicines} setBoxes={setMedicineBoxes} />
           </Block>
 
           {/* Datalist of timing presets — shared by all medicine rows */}
