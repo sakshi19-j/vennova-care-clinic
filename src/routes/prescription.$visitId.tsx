@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Loader2, Plus, Trash2, ArrowLeft, Send, AlertTriangle, Zap, FileText,
+  Loader2, ArrowLeft, Send, AlertTriangle, Zap, FileText,
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -393,40 +393,4 @@ function PrescriptionPage() {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">{children}</div>;
-}
-
-function Input({
-  label, value, onChange, type = "text", placeholder, col = "4",
-}: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; col?: string }) {
-  return (
-    <div className={`col-span-12 md:col-span-${col}`}>
-      <Label>{label}</Label>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-      />
-    </div>
-  );
-}
-
-function Select({
-  label, value, onChange, options, col = "2",
-}: { label: string; value: string; onChange: (v: string) => void; options: string[]; col?: string }) {
-  return (
-    <div className={`col-span-6 md:col-span-${col}`}>
-      <Label>{label}</Label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
-    </div>
-  );
 }
