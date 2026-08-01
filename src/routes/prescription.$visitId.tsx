@@ -1,14 +1,21 @@
 import { createFileRoute, useNavigate, useSearch, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Loader2, Plus, Trash2, ArrowLeft, Send, AlertTriangle, Zap, FileText,
+  Loader2, ArrowLeft, Send, AlertTriangle, Zap, FileText,
   CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
 import { loadQueue, queueActions } from "@/lib/queue-store";
+import {
+  MedicineBoxes,
+  boxesFromMedicines,
+  medicinesPayload,
+  newBox,
+  type BoxItem,
+} from "@/components/clinic/MedicineBoxes";
 
 type PrescriptionSearch = {
   patient_id?: string;
@@ -51,17 +58,6 @@ type Visit = {
   [k: string]: unknown;
 };
 
-type BoxItem = {
-  box: string;
-  remedy: string;
-  potency: string;
-  timing: string;
-  food: "Before food" | "After food" | "With food" | "";
-  days: string;
-};
-
-const POTENCIES = ["6C", "30C", "200C", "1M", "10M", "CM", "SL", "PL", "Rubrum"];
-const TIMINGS = ["OD", "BD", "TDS", "QID", "HS", "SOS"];
 
 function PrescriptionPage() {
   const { visitId } = Route.useParams();
@@ -78,9 +74,16 @@ function PrescriptionPage() {
   const visit = visitQ.data;
   const patientId = search.patient_id || visit?.patient_id || visit?.patient?.id || "";
 
-  const [boxes, setBoxes] = useState<BoxItem[]>([
-    { box: "1", remedy: "", potency: "30C", timing: "BD", food: "After food", days: "7" },
-  ]);
+  const [boxes, setBoxes] = useState<BoxItem[]>([newBox(1)]);
+  const prefilled = useRef(false);
+
+  // Prefill from medicines already saved during the consultation.
+  useEffect(() => {
+    if (prefilled.current || !visit) return;
+    const saved = boxesFromMedicines((visit as { medicines?: unknown }).medicines);
+    if (saved.length > 0) setBoxes(() => saved);
+    prefilled.current = true;
+  }, [visit]);
   const [advice, setAdvice] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -105,12 +108,6 @@ function PrescriptionPage() {
     d.setDate(d.getDate() + preset.days);
     return d.toISOString().slice(0, 10);
   }
-
-  const addBox = () =>
-    setBoxes((b) => [...b, { box: String(b.length + 1), remedy: "", potency: "30C", timing: "BD", food: "After food", days: "7" }]);
-  const removeBox = (i: number) => setBoxes((b) => b.filter((_, idx) => idx !== i));
-  const setBox = (i: number, field: keyof BoxItem, v: string) =>
-    setBoxes((b) => b.map((x, idx) => (idx === i ? { ...x, [field]: v } : x)));
 
   const sendPrescription = async () => {
     const valid = boxes.filter((b) => b.remedy.trim() && b.box.trim());
@@ -141,13 +138,7 @@ function PrescriptionPage() {
 
       try {
         await api.post(`/visits/${encodeURIComponent(visitId)}/medicines`, {
-          medicines: valid.map((b) => ({
-            name: b.remedy,
-            potency: b.potency,
-            timing: b.timing,
-            days: b.days,
-            food_relation: b.food || "",
-          })),
+          medicines: medicinesPayload(valid),
         });
       } catch (e) {
         console.warn("medicines save non-fatal:", e);
@@ -290,51 +281,7 @@ function PrescriptionPage() {
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground">Confidential</span>
             </div>
 
-            <div className="space-y-3">
-              {boxes.map((b, i) => (
-                <div key={i} className="rounded-xl border border-border bg-muted/20 p-3">
-                  <div className="grid grid-cols-12 gap-2">
-                    <Input col="2" label="BOX #" value={b.box} onChange={(v) => setBox(i, "box", v)} />
-                    <Input col="4" label="Remedy" value={b.remedy} onChange={(v) => setBox(i, "remedy", v)} placeholder="e.g. Pulsatilla" />
-                    <Select col="2" label="Potency" value={b.potency} onChange={(v) => setBox(i, "potency", v)} options={POTENCIES} />
-                    <Select col="2" label="Timing" value={b.timing} onChange={(v) => setBox(i, "timing", v)} options={TIMINGS} />
-                    <Input col="2" label="Days" value={b.days} onChange={(v) => setBox(i, "days", v)} type="number" />
-                    <div className="col-span-11">
-                      <Label>Food</Label>
-                      <div className="flex gap-2">
-                        {(["Before food", "After food", "With food"] as const).map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            onClick={() => setBox(i, "food", b.food === f ? "" : f)}
-                            className={`h-8 px-3 rounded-full border text-xs ${
-                              b.food === f ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"
-                            }`}
-                          >
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="col-span-1 flex items-end justify-end">
-                      {boxes.length > 1 && (
-                        <button
-                          onClick={() => removeBox(i)}
-                          aria-label="Remove BOX"
-                          className="size-9 grid place-items-center rounded-lg border border-border hover:bg-muted text-destructive"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <Button type="button" variant="outline" className="rounded-full mt-3" onClick={addBox}>
-              <Plus className="size-4 mr-1" /> Add BOX
-            </Button>
+            <MedicineBoxes boxes={boxes} setBoxes={setBoxes} />
 
             <div className="mt-4">
               <Label>Advice / instructions</Label>
@@ -446,40 +393,4 @@ function PrescriptionPage() {
 
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1.5">{children}</div>;
-}
-
-function Input({
-  label, value, onChange, type = "text", placeholder, col = "4",
-}: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; col?: string }) {
-  return (
-    <div className={`col-span-12 md:col-span-${col}`}>
-      <Label>{label}</Label>
-      <input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 rounded-lg border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-      />
-    </div>
-  );
-}
-
-function Select({
-  label, value, onChange, options, col = "2",
-}: { label: string; value: string; onChange: (v: string) => void; options: string[]; col?: string }) {
-  return (
-    <div className={`col-span-6 md:col-span-${col}`}>
-      <Label>{label}</Label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-9 rounded-lg border border-border bg-background px-2 text-sm outline-none focus:ring-2 focus:ring-ring/40"
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
-    </div>
-  );
 }
