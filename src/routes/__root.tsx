@@ -6,7 +6,7 @@ import {
   createRootRouteWithContext,
   useRouter,
   useRouterState,
-  useNavigate,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
