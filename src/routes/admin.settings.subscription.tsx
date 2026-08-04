@@ -11,18 +11,18 @@ export const Route = createFileRoute("/admin/settings/subscription")({
 });
 
 type Plan = {
-  id: "starter" | "growth" | "clinicpro";
+  id: "starter" | "growth" | "enterprise";
   planKeyMonthly: string;
   planKey6month: string;
   planKeyYearly: string;
   name: string;
-  monthlyPrice: number;
-  price6month: number;
-  yearlyPrice: number;
+  monthlyPrice: number | null;
+  price6month: number | null;
+  yearlyPrice: number | null;
   tagline: string;
   icon: typeof Zap;
-  devices: string;
   highlight: boolean;
+  contactSales?: boolean;
   features: string[];
 };
 
@@ -34,17 +34,16 @@ const PLANS: Plan[] = [
     planKeyYearly: "starter_yearly",
     name: "Starter",
     monthlyPrice: 599,
-    price6month: 2699,
-    yearlyPrice: 4999,
-    tagline: "For solo practitioners",
+    price6month: 3235,
+    yearlyPrice: 5750,
+    tagline: "For solo practitioners just going digital.",
     icon: Zap,
-    devices: "1 device only",
     highlight: false,
     features: [
-      "Up to 100 patients/month",
-      "1 staff account",
-      "WhatsApp reminders",
-      "Billing & receipts",
+      "Up to 200 patients/month",
+      "Patient management & case history",
+      "Appointments & basic queue",
+      "Digital prescriptions (WhatsApp)",
       "Email support",
     ],
   },
@@ -53,46 +52,46 @@ const PLANS: Plan[] = [
     planKeyMonthly: "growth_monthly",
     planKey6month: "growth_6month",
     planKeyYearly: "growth_yearly",
-    name: "Professional",
-    monthlyPrice: 899,
-    price6month: 4299,
-    yearlyPrice: 7999,
-    tagline: "Most popular for growing clinics",
+    name: "Growth",
+    monthlyPrice: 999,
+    price6month: 5395,
+    yearlyPrice: 9590,
+    tagline: "For growing clinics with multiple doctors.",
     icon: Sparkles,
-    devices: "Up to 3 devices",
     highlight: true,
     features: [
-      "Unlimited patients",
-      "3 staff accounts",
-      "WhatsApp Business templates",
-      "Priority email support",
-      "Advanced analytics",
-      "Patient import",
+      "Up to 1,000 patients/month",
+      "Everything in Starter plus:",
+      "Live queue updates",
+      "Billing & invoicing",
+      "Analytics & reports",
+      "Automated follow-up reminders",
+      "Priority support",
     ],
   },
   {
-    id: "clinicpro",
-    planKeyMonthly: "clinicpro_monthly",
-    planKey6month: "clinicpro_6month",
-    planKeyYearly: "clinicpro_yearly",
-    name: "Premium",
-    monthlyPrice: 1299,
-    price6month: 6499,
-    yearlyPrice: 11999,
-    tagline: "Multi-clinic & enterprise",
+    id: "enterprise",
+    planKeyMonthly: "enterprise_monthly",
+    planKey6month: "enterprise_6month",
+    planKeyYearly: "enterprise_yearly",
+    name: "Enterprise",
+    monthlyPrice: null,
+    price6month: null,
+    yearlyPrice: null,
+    tagline: "For multi-location clinics and chains.",
     icon: Crown,
-    devices: "Unlimited devices",
     highlight: false,
+    contactSales: true,
     features: [
-      "Everything in Professional",
-      "Unlimited staff",
-      "Multi-branch dashboard",
-      "Phone & chat support",
-      "Custom integrations",
-      "Dedicated manager",
+      "Unlimited patients",
+      "Everything in Growth plus:",
+      "Multi-location management",
+      "Role-based access control",
+      "Dedicated account manager",
     ],
   },
 ];
+
 
 declare global {
   interface Window {
@@ -214,8 +213,9 @@ function SubscriptionPage() {
         <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted border border-border">
           {([
             { key: "monthly", label: "Monthly" },
-            { key: "6month", label: "6 Months", badge: "SAVE 25%" },
-            { key: "yearly", label: "Yearly", badge: "SAVE 50%" },
+            { key: "6month", label: "6 Months", badge: "SAVE 10%" },
+            { key: "yearly", label: "Yearly", badge: "SAVE 20%" },
+
           ] as const).map((opt) => (
             <button
               key={opt.key}
@@ -254,22 +254,25 @@ function SubscriptionPage() {
           >
             {p.highlight && (
               <div className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold uppercase tracking-widest">
-                Most Popular
+                Recommended
               </div>
             )}
             <div className="flex items-center gap-2.5 mb-2">
               <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center">
                 <Icon className="size-5" />
               </div>
-              <div>
-                <div className="font-display text-2xl">{p.name}</div>
-                <div className="text-[11px] text-muted-foreground">{p.devices}</div>
-              </div>
+              <div className="font-display text-2xl">{p.name}</div>
             </div>
             <div className="text-xs text-muted-foreground">{p.tagline}</div>
             <div className="mt-3 mb-4">
-              <span className="font-display text-4xl">₹{price.toLocaleString("en-IN")}</span>
-              <span className="text-sm text-muted-foreground"> {period}</span>
+              {price === null ? (
+                <span className="font-display text-4xl">Custom</span>
+              ) : (
+                <>
+                  <span className="font-display text-4xl">₹{price.toLocaleString("en-IN")}</span>
+                  <span className="text-sm text-muted-foreground"> {period}</span>
+                </>
+              )}
             </div>
             <ul className="space-y-2 mb-5 flex-1">
               {p.features.map((f) => (
@@ -279,19 +282,29 @@ function SubscriptionPage() {
                 </li>
               ))}
             </ul>
-            <button
-              onClick={() => upgrade(p)}
-              disabled={upgrading === p.id || currentPlan === p.id}
-              className={`w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 transition-all ${p.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25" : "border border-border hover:bg-muted"}`}
-            >
-              {upgrading === p.id ? (
-                <><Loader2 className="size-4 animate-spin" /> Starting checkout…</>
-              ) : currentPlan === p.id ? (
-                "Current plan ✓"
-              ) : (
-                `Upgrade to ${p.name}`
-              )}
-            </button>
+            {p.contactSales ? (
+              <a
+                href="mailto:sales@vennova.in?subject=Vennova%20Enterprise%20enquiry"
+                className="w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 border border-border hover:bg-muted transition-all"
+              >
+                Contact Sales
+              </a>
+            ) : (
+              <button
+                onClick={() => upgrade(p)}
+                disabled={upgrading === p.id || currentPlan === p.id}
+                className={`w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 transition-all ${p.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25" : "border border-border hover:bg-muted"}`}
+              >
+                {upgrading === p.id ? (
+                  <><Loader2 className="size-4 animate-spin" /> Starting checkout…</>
+                ) : currentPlan === p.id ? (
+                  "Current plan ✓"
+                ) : (
+                  `Upgrade to ${p.name}`
+                )}
+              </button>
+            )}
+
           </Card>
         );
       })}
