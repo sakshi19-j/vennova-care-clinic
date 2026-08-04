@@ -11,18 +11,18 @@ export const Route = createFileRoute("/admin/settings/subscription")({
 });
 
 type Plan = {
-  id: "starter" | "growth" | "clinicpro";
+  id: "starter" | "growth" | "enterprise";
   planKeyMonthly: string;
   planKey6month: string;
   planKeyYearly: string;
   name: string;
-  monthlyPrice: number;
-  price6month: number;
-  yearlyPrice: number;
+  monthlyPrice: number | null;
+  price6month: number | null;
+  yearlyPrice: number | null;
   tagline: string;
   icon: typeof Zap;
-  devices: string;
   highlight: boolean;
+  contactSales?: boolean;
   features: string[];
 };
 
@@ -34,17 +34,16 @@ const PLANS: Plan[] = [
     planKeyYearly: "starter_yearly",
     name: "Starter",
     monthlyPrice: 599,
-    price6month: 2699,
-    yearlyPrice: 4999,
-    tagline: "For solo practitioners",
+    price6month: 3235,
+    yearlyPrice: 5750,
+    tagline: "For solo practitioners just going digital.",
     icon: Zap,
-    devices: "1 device only",
     highlight: false,
     features: [
-      "Up to 100 patients/month",
-      "1 staff account",
-      "WhatsApp reminders",
-      "Billing & receipts",
+      "Up to 200 patients/month",
+      "Patient management & case history",
+      "Appointments & basic queue",
+      "Digital prescriptions (WhatsApp)",
       "Email support",
     ],
   },
@@ -53,46 +52,46 @@ const PLANS: Plan[] = [
     planKeyMonthly: "growth_monthly",
     planKey6month: "growth_6month",
     planKeyYearly: "growth_yearly",
-    name: "Professional",
-    monthlyPrice: 899,
-    price6month: 4299,
-    yearlyPrice: 7999,
-    tagline: "Most popular for growing clinics",
+    name: "Growth",
+    monthlyPrice: 999,
+    price6month: 5395,
+    yearlyPrice: 9590,
+    tagline: "For growing clinics with multiple doctors.",
     icon: Sparkles,
-    devices: "Up to 3 devices",
     highlight: true,
     features: [
-      "Unlimited patients",
-      "3 staff accounts",
-      "WhatsApp Business templates",
-      "Priority email support",
-      "Advanced analytics",
-      "Patient import",
+      "Up to 1,000 patients/month",
+      "Everything in Starter plus:",
+      "Live queue updates",
+      "Billing & invoicing",
+      "Analytics & reports",
+      "Automated follow-up reminders",
+      "Priority support",
     ],
   },
   {
-    id: "clinicpro",
-    planKeyMonthly: "clinicpro_monthly",
-    planKey6month: "clinicpro_6month",
-    planKeyYearly: "clinicpro_yearly",
-    name: "Premium",
-    monthlyPrice: 1299,
-    price6month: 6499,
-    yearlyPrice: 11999,
-    tagline: "Multi-clinic & enterprise",
+    id: "enterprise",
+    planKeyMonthly: "enterprise_monthly",
+    planKey6month: "enterprise_6month",
+    planKeyYearly: "enterprise_yearly",
+    name: "Enterprise",
+    monthlyPrice: null,
+    price6month: null,
+    yearlyPrice: null,
+    tagline: "For multi-location clinics and chains.",
     icon: Crown,
-    devices: "Unlimited devices",
     highlight: false,
+    contactSales: true,
     features: [
-      "Everything in Professional",
-      "Unlimited staff",
-      "Multi-branch dashboard",
-      "Phone & chat support",
-      "Custom integrations",
-      "Dedicated manager",
+      "Unlimited patients",
+      "Everything in Growth plus:",
+      "Multi-location management",
+      "Role-based access control",
+      "Dedicated account manager",
     ],
   },
 ];
+
 
 declare global {
   interface Window {
