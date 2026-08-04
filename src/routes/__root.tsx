@@ -195,13 +195,12 @@ function RootComponent() {
 }
 
 // Global 402 → trial-expired gate. Intercepts every fetch response; if any
-// backend call answers 402, the app locks to the subscription/settings area
-// with a banner until a plan is picked.
-const ALLOWED_WHEN_LOCKED = ["/admin/settings", "/admin/billing", "/auth"];
+// backend call anywhere in the app answers 402, we replace the whole app with
+// a friendly full-page upgrade message so no page can render blank or raw errors.
+const SUBSCRIPTION_PATH = "/admin/settings/subscription";
 
 function TrialExpiredGate({ children }: { children: React.ReactNode }) {
   const [locked, setLocked] = useState(false);
-  const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
@@ -221,24 +220,47 @@ function TrialExpiredGate({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!locked) return;
-    const allowed = ALLOWED_WHEN_LOCKED.some((p) => path === p || path.startsWith(p + "/"));
-    if (!allowed) {
-      navigate({ to: "/admin/settings/subscription" as any, replace: true });
-    }
-  }, [locked, path, navigate]);
+  // Once the user is on the subscription page (or signs out), let them through.
+  const onSubscription = path.startsWith(SUBSCRIPTION_PATH) || path.startsWith("/auth");
 
+  if (locked && !onSubscription) {
+    return <TrialExpiredScreen onDismiss={() => setLocked(false)} />;
+  }
+
+  return <>{children}</>;
+}
+
+function TrialExpiredScreen({ onDismiss }: { onDismiss: () => void }) {
   return (
-    <>
-      {locked && (
-        <div className="fixed top-0 inset-x-0 z-[70] bg-destructive text-destructive-foreground px-4 py-2.5 text-sm text-center shadow-md">
-          Your trial has ended — choose a plan to continue using Vennova.
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto mb-4 grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+          <span className="text-xl font-semibold">!</span>
         </div>
-      )}
-      <div className={locked ? "pt-10" : ""}>{children}</div>
-    </>
+        <h1 className="font-display text-2xl text-foreground">Your trial has ended</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Upgrade your plan to continue using Vennova. Your clinic data is safe and will be
+          available again the moment your subscription is active.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Link
+            to={SUBSCRIPTION_PATH}
+            onClick={onDismiss}
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            View plans &amp; upgrade
+          </Link>
+          <a
+            href="/auth"
+            className="inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm text-foreground transition-colors hover:bg-muted"
+          >
+            Sign in with a different account
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
+
 
 
