@@ -253,22 +253,25 @@ function SubscriptionPage() {
           >
             {p.highlight && (
               <div className="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold uppercase tracking-widest">
-                Most Popular
+                Recommended
               </div>
             )}
             <div className="flex items-center gap-2.5 mb-2">
               <div className="size-10 rounded-xl bg-primary/10 text-primary grid place-items-center">
                 <Icon className="size-5" />
               </div>
-              <div>
-                <div className="font-display text-2xl">{p.name}</div>
-                <div className="text-[11px] text-muted-foreground">{p.devices}</div>
-              </div>
+              <div className="font-display text-2xl">{p.name}</div>
             </div>
             <div className="text-xs text-muted-foreground">{p.tagline}</div>
             <div className="mt-3 mb-4">
-              <span className="font-display text-4xl">₹{price.toLocaleString("en-IN")}</span>
-              <span className="text-sm text-muted-foreground"> {period}</span>
+              {price === null ? (
+                <span className="font-display text-4xl">Custom</span>
+              ) : (
+                <>
+                  <span className="font-display text-4xl">₹{price.toLocaleString("en-IN")}</span>
+                  <span className="text-sm text-muted-foreground"> {period}</span>
+                </>
+              )}
             </div>
             <ul className="space-y-2 mb-5 flex-1">
               {p.features.map((f) => (
@@ -278,19 +281,29 @@ function SubscriptionPage() {
                 </li>
               ))}
             </ul>
-            <button
-              onClick={() => upgrade(p)}
-              disabled={upgrading === p.id || currentPlan === p.id}
-              className={`w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 transition-all ${p.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25" : "border border-border hover:bg-muted"}`}
-            >
-              {upgrading === p.id ? (
-                <><Loader2 className="size-4 animate-spin" /> Starting checkout…</>
-              ) : currentPlan === p.id ? (
-                "Current plan ✓"
-              ) : (
-                `Upgrade to ${p.name}`
-              )}
-            </button>
+            {p.contactSales ? (
+              <a
+                href="mailto:sales@vennova.in?subject=Vennova%20Enterprise%20enquiry"
+                className="w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 border border-border hover:bg-muted transition-all"
+              >
+                Contact Sales
+              </a>
+            ) : (
+              <button
+                onClick={() => upgrade(p)}
+                disabled={upgrading === p.id || currentPlan === p.id}
+                className={`w-full h-11 rounded-xl text-sm font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-60 transition-all ${p.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25" : "border border-border hover:bg-muted"}`}
+              >
+                {upgrading === p.id ? (
+                  <><Loader2 className="size-4 animate-spin" /> Starting checkout…</>
+                ) : currentPlan === p.id ? (
+                  "Current plan ✓"
+                ) : (
+                  `Upgrade to ${p.name}`
+                )}
+              </button>
+            )}
+
           </Card>
         );
       })}
