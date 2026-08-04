@@ -213,8 +213,9 @@ function SubscriptionPage() {
         <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted border border-border">
           {([
             { key: "monthly", label: "Monthly" },
-            { key: "6month", label: "6 Months", badge: "SAVE 25%" },
-            { key: "yearly", label: "Yearly", badge: "SAVE 50%" },
+            { key: "6month", label: "6 Months", badge: "SAVE 10%" },
+            { key: "yearly", label: "Yearly", badge: "SAVE 20%" },
+
           ] as const).map((opt) => (
             <button
               key={opt.key}
