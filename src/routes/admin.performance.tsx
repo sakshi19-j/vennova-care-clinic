@@ -6,13 +6,38 @@ import { dashboardService, asArray, type RevenuePoint } from "@/services/dashboa
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend,
 } from "recharts";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import {
+  AlertTriangle, Loader2, Clock, CalendarClock, AlertCircle, CheckCircle2,
+} from "lucide-react";
 
 export const Route = createFileRoute("/admin/performance")({
   component: PerformancePage,
 });
 
 type TopPatient = { name?: string; patient_name?: string; visits?: number; count?: number };
+
+type FollowupSummary = {
+  due_today?: number;
+  upcoming?: number;
+  missed?: number;
+  completed?: number;
+  due_today_list?: unknown[];
+};
+
+const numOr = (v: unknown, fallback: number) => (typeof v === "number" ? v : fallback);
+
+/** Locate `followup_summary` anywhere on the performance payload. */
+function pickFollowupSummary(raw: unknown): FollowupSummary | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const direct = o.followup_summary ?? o.followups;
+  if (direct && typeof direct === "object" && !Array.isArray(direct)) {
+    return direct as FollowupSummary;
+  }
+  if ("due_today" in o || "upcoming" in o) return o as FollowupSummary;
+  return undefined;
+}
+
 
 function PerformancePage() {
   const topPatientsQ = useQuery({
