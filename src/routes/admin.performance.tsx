@@ -36,12 +36,30 @@ function PerformancePage() {
     retry: 1,
   });
 
+  const dashboardQ = useQuery({
+    queryKey: ["analytics", "dashboard"],
+    queryFn: () => analyticsService.dashboard(),
+    staleTime: 60_000,
+    retry: 1,
+  });
+
   const top = asArray<TopPatient>(topPatientsQ.data);
   const daily = asArray<RevenuePoint>(dailyRevQ.data).map((p, i) => ({
     d: String(p.date ?? p.day ?? p.d ?? p.label ?? i + 1).slice(5, 10),
     total: Number(p.total ?? p.amount ?? p.revenue ?? p.value ?? 0) || 0,
   }));
-  const followupsCount = Array.isArray(followupsQ.data) ? followupsQ.data.length : 0;
+
+  // Backend now returns `followup_summary` on the performance/dashboard payload:
+  // { due_today, upcoming, missed, completed, due_today_list }
+  const summary = pickFollowupSummary(dashboardQ.data) ?? pickFollowupSummary(followupsQ.data);
+  const fallbackToday = Array.isArray(followupsQ.data) ? followupsQ.data.length : 0;
+  const fu = {
+    due_today: numOr(summary?.due_today, fallbackToday),
+    upcoming: numOr(summary?.upcoming, 0),
+    missed: numOr(summary?.missed, 0),
+    completed: numOr(summary?.completed, 0),
+  };
+  const fuLoading = followupsQ.isLoading || dashboardQ.isLoading;
 
   return (
     <div className="grid grid-cols-12 gap-3">
@@ -50,24 +68,35 @@ function PerformancePage() {
         <div className="text-xs text-muted-foreground">Live retention, revenue trend and clinical follow-up performance.</div>
       </div>
 
-      <Card className="col-span-12 md:col-span-4">
-        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Follow-ups due today</div>
-        <div className="font-display text-2xl mt-0.5 tabular-nums">
-          {followupsQ.isLoading ? <Loader2 className="size-5 animate-spin" /> : followupsCount}
+      <Card className="col-span-12">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Follow-ups</div>
+            <div className="font-display text-base">Clinical follow-up pipeline</div>
+          </div>
+          <span className="text-[11px] text-muted-foreground">Read-only · managed from Reception</span>
+        </div>
+        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+          <FollowupStat label="Due today" value={fu.due_today} loading={fuLoading} icon={<Clock className="size-3.5" />} />
+          <FollowupStat label="Upcoming" value={fu.upcoming} loading={fuLoading} icon={<CalendarClock className="size-3.5" />} />
+          <FollowupStat label="Missed" value={fu.missed} loading={fuLoading} icon={<AlertCircle className="size-3.5" />} tone="danger" />
+          <FollowupStat label="Completed" value={fu.completed} loading={fuLoading} icon={<CheckCircle2 className="size-3.5" />} tone="success" />
         </div>
       </Card>
-      <Card className="col-span-12 md:col-span-4">
+
+      <Card className="col-span-12 md:col-span-6">
         <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Active top patients</div>
         <div className="font-display text-2xl mt-0.5 tabular-nums">
           {topPatientsQ.isLoading ? <Loader2 className="size-5 animate-spin" /> : top.length}
         </div>
       </Card>
-      <Card className="col-span-12 md:col-span-4">
+      <Card className="col-span-12 md:col-span-6">
         <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Days of revenue data</div>
         <div className="font-display text-2xl mt-0.5 tabular-nums">
           {dailyRevQ.isLoading ? <Loader2 className="size-5 animate-spin" /> : daily.length}
         </div>
       </Card>
+
 
       <Card className="col-span-12">
         <div className="font-display text-base mb-2">Daily revenue</div>
