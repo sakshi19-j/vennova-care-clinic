@@ -30,7 +30,9 @@ function DoctorPatientsPage() {
       phone: p.phone_mobile || p.phone || "",
       last_visit: p.last_visit || null,
       total_visits: p.total_visits || 0,
+      added_by: (p.added_by_staff_name || "").trim(),
     }));
+
   }, [patientsQ.data]);
 
   const filtered = useMemo(() => {
