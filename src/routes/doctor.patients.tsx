@@ -144,7 +144,13 @@ function PatientCard({
               ? ` · ${patient.total_visits} visit${patient.total_visits === 1 ? "" : "s"}`
               : " · No visits yet"}
           </div>
+          {patient.added_by ? (
+            <div className="text-[11px] text-muted-foreground truncate">
+              Added by: {patient.added_by}
+            </div>
+          ) : null}
         </div>
+
         {expanded ? (
           <ChevronUp className="size-4 text-muted-foreground shrink-0" />
         ) : (
