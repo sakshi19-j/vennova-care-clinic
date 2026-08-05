@@ -73,7 +73,11 @@ function PatientRecord() {
               <span className="inline-flex items-center gap-1.5">
                 <Calendar className="size-3.5" /> Last visit {lastVisit ? new Date(lastVisit).toLocaleDateString("en-IN") : "—"}
               </span>
+              {(p as any).added_by_staff_name ? (
+                <span>Added by: {(p as any).added_by_staff_name}</span>
+              ) : null}
             </div>
+
           </div>
           <div className="text-right">
             <div className="font-display text-3xl">{totalVisits}</div>
