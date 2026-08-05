@@ -178,3 +178,32 @@ function Empty({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
+function FollowupStat({
+  label, value, loading, icon, tone,
+}: {
+  label: string;
+  value: number;
+  loading: boolean;
+  icon: React.ReactNode;
+  tone?: "success" | "danger";
+}) {
+  const toneCls =
+    tone === "success"
+      ? "text-success"
+      : tone === "danger"
+        ? "text-destructive"
+        : "text-primary";
+  return (
+    <div className="rounded-xl border clinic-divider bg-muted/30 px-3 py-2.5">
+      <div className={`flex items-center gap-1.5 text-[11px] uppercase tracking-widest ${toneCls}`}>
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="font-display text-2xl mt-1 tabular-nums">
+        {loading ? <Loader2 className="size-5 animate-spin text-muted-foreground" /> : value}
+      </div>
+    </div>
+  );
+}
+
