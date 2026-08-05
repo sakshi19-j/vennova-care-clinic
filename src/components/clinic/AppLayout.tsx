@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { remindersService } from "@/services/reminders";
 import { api } from "@/lib/api-client";
 import { isOnboardingComplete, isOnboardingDismissed, reopenOnboarding } from "@/lib/onboarding";
-import vennovaLogo from "@/assets/vennova-logo.png.asset.json";
+import vennovaLogo from "@/assets/vennova-mark.png.asset.json";
 
 type NavItem = { to: string; icon: React.ComponentType<{ className?: string }>; label: string; live?: boolean };
 type NavGroup = { label: string; items: NavItem[] };
@@ -131,15 +131,15 @@ export function AppLayout() {
       {/* Sidebar */}
       <aside
         className="w-64 shrink-0 sticky top-0 h-screen text-sidebar-foreground flex flex-col"
-        style={{ background: "linear-gradient(180deg, #1e1b4b 0%, #0f0e1a 100%)" }}
+        style={{ background: "linear-gradient(180deg, #0D2A4D 0%, #071829 100%)" }}
       >
         <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-          <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md overflow-hidden shrink-0">
-            {sidebarLogoUrl ? (
-              <img src={sidebarLogoUrl} alt={sidebarClinicName} className="size-full object-cover" />
-            ) : (
-              <Leaf className="size-5" />
-            )}
+          <div className="size-10 rounded-xl bg-white flex items-center justify-center shadow-md overflow-hidden shrink-0">
+            <img
+              src={sidebarLogoUrl ?? vennovaLogo.url}
+              alt={sidebarClinicName}
+              className={sidebarLogoUrl ? "size-full object-cover" : "size-7 object-contain"}
+            />
           </div>
           <div className="min-w-0 flex-1">
             <div
