@@ -1,9 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
-import { Leaf, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+
+import vennovaMark from "@/assets/vennova-mark.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -43,14 +45,17 @@ function AuthPage() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-gradient-to-br from-primary to-[color-mix(in_oklab,var(--primary)_70%,black)] text-primary-foreground p-12">
+      <div
+        className="hidden lg:flex flex-col justify-between w-1/2 text-primary-foreground p-12"
+        style={{ background: "linear-gradient(150deg, #0D47A1 0%, #0D2A4D 55%, #00B8A9 100%)" }}
+      >
         <div className="flex items-center gap-3">
-          <div className="size-10 rounded-full bg-gold flex items-center justify-center text-gold-foreground shadow-md">
-            <Leaf className="size-5" />
+          <div className="size-11 rounded-xl bg-white flex items-center justify-center shadow-md shrink-0">
+            <img src={vennovaMark.url} alt="Vennova" className="size-8 object-contain" />
           </div>
           <div>
-            <div className="font-display text-lg leading-none">Vedic</div>
-            <div className="text-xs text-primary-foreground/70 mt-1">Homeopathic Clinic OS</div>
+            <div className="text-lg leading-none lowercase tracking-tight font-semibold">vennova</div>
+            <div className="text-xs text-primary-foreground/70 mt-1">Clinic OS</div>
           </div>
         </div>
         <div>
