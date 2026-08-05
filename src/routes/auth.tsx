@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import React, { useEffect, useState } from "react";
-import { Leaf, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
