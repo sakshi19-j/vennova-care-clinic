@@ -130,6 +130,12 @@ export function AppLayout() {
     // While auth page renders / role resolves, show nothing (navigation handled above).
     return path === "/auth" ? <Outlet /> : null;
   }
+  if (role === "super_admin") {
+    // Platform console renders standalone, without clinic chrome.
+    return <Outlet />;
+  }
+
+
 
   const groups = groupsByRole[role];
   const meta = roleMeta[role];
