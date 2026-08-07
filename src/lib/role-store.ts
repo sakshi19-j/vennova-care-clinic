@@ -45,6 +45,14 @@ export const roleMeta: Record<Role, {
     initials: "OW",
     accent: "text-rose-600",
   },
+  super_admin: {
+    label: "Platform Super Admin",
+    tagline: "Vennova platform · all clinics, plans, provisioning",
+    home: "/superadmin",
+    allowedPrefixes: ["/superadmin"],
+    initials: "SA",
+    accent: "text-primary",
+  },
 };
 
 export function useRole(): Role | null {
