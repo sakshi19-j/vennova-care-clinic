@@ -44,6 +44,9 @@ const groupsByRole: Record<Role, NavGroup[]> = {
       ],
     },
   ],
+  super_admin: [
+    { label: "Platform", items: [{ to: "/superadmin", icon: ShieldCheck, label: "All clinics", live: true }] },
+  ],
 };
 
 export function AppLayout() {
