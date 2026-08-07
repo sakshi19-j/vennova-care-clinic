@@ -74,6 +74,12 @@ export function AppLayout() {
       return;
     }
     if (!role) return; // profile still loading
+    if (role === "super_admin") {
+      if (!path.startsWith("/superadmin")) {
+        navigate({ to: "/superadmin" as any, replace: true });
+      }
+      return;
+    }
     if (path === "/" || path === "/auth") {
       // First-time onboarding: admin lands on /onboarding until completed or dismissed.
       const clinicId = profile?.clinic_id ?? null;
