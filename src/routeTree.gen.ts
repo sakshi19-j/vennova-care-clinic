@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -58,6 +59,11 @@ import { Route as AdminSettingsImportRouteImport } from './routes/admin.settings
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
 import { Route as AdminSettingsAccessRouteImport } from './routes/admin.settings.access'
 
+const SuperadminRoute = SuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffRoute = StaffRouteImport.update({
   id: '/staff',
   path: '/staff',
@@ -321,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRoute
+  '/superadmin': typeof SuperadminRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/monitor': typeof AdminMonitorRoute
   '/admin/performance': typeof AdminPerformanceRoute
@@ -367,6 +374,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRoute
+  '/superadmin': typeof SuperadminRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/monitor': typeof AdminMonitorRoute
   '/admin/performance': typeof AdminPerformanceRoute
@@ -417,6 +425,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/staff': typeof StaffRoute
+  '/superadmin': typeof SuperadminRoute
   '/admin/billing': typeof AdminBillingRoute
   '/admin/monitor': typeof AdminMonitorRoute
   '/admin/performance': typeof AdminPerformanceRoute
@@ -469,6 +478,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/staff'
+    | '/superadmin'
     | '/admin/billing'
     | '/admin/monitor'
     | '/admin/performance'
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/staff'
+    | '/superadmin'
     | '/admin/billing'
     | '/admin/monitor'
     | '/admin/performance'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/staff'
+    | '/superadmin'
     | '/admin/billing'
     | '/admin/monitor'
     | '/admin/performance'
@@ -615,6 +627,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRoute
+  SuperadminRoute: typeof SuperadminRoute
   ConsultationPatientIdRoute: typeof ConsultationPatientIdRoute
   PrescriptionVisitIdRoute: typeof PrescriptionVisitIdRoute
   ConsultationEditVisitIdRoute: typeof ConsultationEditVisitIdRoute
@@ -622,6 +635,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/superadmin': {
+      id: '/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof SuperadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/staff': {
       id: '/staff'
       path: '/staff'
@@ -1109,6 +1129,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRoute,
+  SuperadminRoute: SuperadminRoute,
   ConsultationPatientIdRoute: ConsultationPatientIdRoute,
   PrescriptionVisitIdRoute: PrescriptionVisitIdRoute,
   ConsultationEditVisitIdRoute: ConsultationEditVisitIdRoute,
