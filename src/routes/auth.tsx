@@ -23,12 +23,9 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Mode = "login" | "register";
-
 function AuthPage() {
   const navigate = useNavigate();
-  const { session, role, loading, refresh } = useAuth();
-  const [mode, setMode] = useState<Mode>("login");
+  const { session, role, loading } = useAuth();
 
   // Once signed in & role is loaded, send the user to their home.
   useEffect(() => {
@@ -36,7 +33,8 @@ function AuthPage() {
     if (!session) return;
     if (!role) return;
     const home =
-      role === "admin" ? "/admin"
+      role === "super_admin" ? "/superadmin"
+      : role === "admin" ? "/admin"
       : role === "reception" ? "/reception"
       : role === "homeopathy" ? "/admin"
       : "/doctor";
@@ -68,7 +66,7 @@ function AuthPage() {
           </p>
           <div className="mt-8 flex items-center gap-2 text-sm text-primary-foreground/80">
             <ShieldCheck className="size-4" />
-            Owner registers the clinic, then issues staff credentials.
+            Clinic accounts are provisioned by Vennova.
           </div>
         </div>
         <div className="text-xs text-primary-foreground/60">
@@ -78,32 +76,18 @@ function AuthPage() {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="flex rounded-full border border-border p-1 bg-muted/40 text-sm mb-6">
-            <button
-              onClick={() => setMode("login")}
-              className={`flex-1 h-9 rounded-full transition ${mode === "login" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => setMode("register")}
-              className={`flex-1 h-9 rounded-full transition ${mode === "register" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-            >
-              Register clinic
-            </button>
-          </div>
-
-          {mode === "login" ? <LoginForm /> : <RegisterForm onDone={() => refresh()} />}
+          <LoginForm />
 
           <p className="text-xs text-muted-foreground mt-6 text-center">
-            Staff accounts are created by the clinic owner from the admin console.
-            If you're staff, ask your owner for credentials.
+            Clinic and staff accounts are issued by Vennova. Need access?
+            Contact your clinic owner or the Vennova team.
           </p>
         </div>
       </div>
     </div>
   );
 }
+
 
 function LoginForm() {
   const [email, setEmail] = useState("");
