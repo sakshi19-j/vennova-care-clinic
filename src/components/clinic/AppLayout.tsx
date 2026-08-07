@@ -68,6 +68,7 @@ export function AppLayout() {
 
   // Redirect to /auth if signed out; redirect to role home if landing on / or outside scope.
   useEffect(() => {
+    if (path.startsWith("/superadmin")) return;
     if (loading) return;
     if (!session) {
       if (path !== "/auth") navigate({ to: "/auth" as any, replace: true });
@@ -123,6 +124,7 @@ export function AppLayout() {
     try { new URL(v.trim()); return v.trim(); } catch { return null; }
   })();
 
+  if (path.startsWith("/superadmin")) return <Outlet />;
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
