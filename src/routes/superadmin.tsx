@@ -53,16 +53,17 @@ const inr = (n: unknown) =>
   `₹${Number(n ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 function SuperAdminPage() {
-  const { role, loading, profile, signOut } = useAuth();
+  const { role, loading, session, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
   useEffect(() => {
     if (loading) return;
-    if (role !== "super_admin") {
+    if (!session) return; // AppLayout sends signed-out users to /auth
+    if (role && role !== "super_admin") {
       navigate({ to: "/" as any, replace: true });
     }
-  }, [loading, role, navigate]);
+  }, [loading, session, role, navigate]);
 
   const clinicsQ = useQuery({
     queryKey: ["superadmin", "clinics"],
