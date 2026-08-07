@@ -23,12 +23,9 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Mode = "login" | "register";
-
 function AuthPage() {
   const navigate = useNavigate();
-  const { session, role, loading, refresh } = useAuth();
-  const [mode, setMode] = useState<Mode>("login");
+  const { session, role, loading } = useAuth();
 
   // Once signed in & role is loaded, send the user to their home.
   useEffect(() => {
@@ -36,7 +33,8 @@ function AuthPage() {
     if (!session) return;
     if (!role) return;
     const home =
-      role === "admin" ? "/admin"
+      role === "super_admin" ? "/superadmin"
+      : role === "admin" ? "/admin"
       : role === "reception" ? "/reception"
       : role === "homeopathy" ? "/admin"
       : "/doctor";
@@ -68,7 +66,7 @@ function AuthPage() {
           </p>
           <div className="mt-8 flex items-center gap-2 text-sm text-primary-foreground/80">
             <ShieldCheck className="size-4" />
-            Owner registers the clinic, then issues staff credentials.
+            Clinic accounts are provisioned by Vennova.
           </div>
         </div>
         <div className="text-xs text-primary-foreground/60">
@@ -78,32 +76,18 @@ function AuthPage() {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
-          <div className="flex rounded-full border border-border p-1 bg-muted/40 text-sm mb-6">
-            <button
-              onClick={() => setMode("login")}
-              className={`flex-1 h-9 rounded-full transition ${mode === "login" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-            >
-              Sign in
-            </button>
-            <button
-              onClick={() => setMode("register")}
-              className={`flex-1 h-9 rounded-full transition ${mode === "register" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-            >
-              Register clinic
-            </button>
-          </div>
-
-          {mode === "login" ? <LoginForm /> : <RegisterForm onDone={() => refresh()} />}
+          <LoginForm />
 
           <p className="text-xs text-muted-foreground mt-6 text-center">
-            Staff accounts are created by the clinic owner from the admin console.
-            If you're staff, ask your owner for credentials.
+            Clinic and staff accounts are issued by Vennova. Need access?
+            Contact your clinic owner or the Vennova team.
           </p>
         </div>
       </div>
     </div>
   );
 }
+
 
 function LoginForm() {
   const [email, setEmail] = useState("");
@@ -147,111 +131,6 @@ function LoginForm() {
         className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-2"
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <>Sign in <ArrowRight className="size-4" /></>}
-      </button>
-    </form>
-  );
-}
-
-function RegisterForm({ onDone }: { onDone: () => void }) {
-  const [clinicName, setClinicName] = useState("");
-  const [clinicType, setClinicType] = useState<"HOMEOPATHY" | "ALLOPATHY" | "AYURVEDIC">("HOMEOPATHY");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      const { data: signUp, error: signErr } = await supabase.auth.signUp({
-        email, password,
-        options: {
-          emailRedirectTo: typeof window !== "undefined" ? window.location.origin : undefined,
-          data: { full_name: fullName, clinic_name: clinicName, clinic_type: clinicType },
-        },
-      });
-      if (signErr) throw signErr;
-
-      // Ensure we have a session (auto-confirm is on for this clinic app).
-      if (!signUp.session) {
-        const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInErr) throw signInErr;
-      }
-
-      // Create clinic + admin profile + admin role server-side via SECURITY DEFINER RPC.
-      // Try with clinic_type first; fall back to legacy 2-arg signature if the
-      // RPC hasn't been updated yet on this environment.
-      let rpcErr = (await supabase.rpc("register_clinic_owner" as any, {
-        _clinic_name: clinicName,
-        _full_name: fullName,
-        _clinic_type: clinicType,
-      } as any)).error;
-      if (rpcErr && /function|argument|signature|does not exist/i.test(rpcErr.message)) {
-        rpcErr = (await supabase.rpc("register_clinic_owner", {
-          _clinic_name: clinicName,
-          _full_name: fullName,
-        })).error;
-      }
-      if (rpcErr) throw rpcErr;
-
-      toast.success("Clinic created. Welcome aboard.");
-      await onDone();
-    } catch (err: any) {
-      toast.error(err?.message ?? "Could not register clinic.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <h2 className="font-display text-2xl">Register your clinic</h2>
-      <p className="text-sm text-muted-foreground -mt-2">
-        You become the owner / admin and can add staff later.
-      </p>
-      <Field label="Clinic name">
-        <input
-          required maxLength={120} value={clinicName} onChange={(e) => setClinicName(e.target.value)}
-          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </Field>
-      <Field label="Clinic type">
-        <select
-          value={clinicType}
-          onChange={(e) => setClinicType(e.target.value as any)}
-          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          <option value="HOMEOPATHY">Homeopathy</option>
-          <option value="ALLOPATHY">Allopathy</option>
-          <option value="AYURVEDIC">Ayurvedic</option>
-        </select>
-      </Field>
-      <Field label="Your name">
-        <input
-          required maxLength={120} value={fullName} onChange={(e) => setFullName(e.target.value)}
-          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </Field>
-      <Field label="Email">
-        <input
-          type="email" required autoComplete="email"
-          value={email} onChange={(e) => setEmail(e.target.value)}
-          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </Field>
-      <Field label="Password" hint="At least 8 characters.">
-        <input
-          type="password" required autoComplete="new-password" minLength={8}
-          value={password} onChange={(e) => setPassword(e.target.value)}
-          className="w-full h-11 px-4 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </Field>
-      <button
-        type="submit" disabled={busy}
-        className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-60 inline-flex items-center justify-center gap-2"
-      >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <>Create clinic <ArrowRight className="size-4" /></>}
       </button>
     </form>
   );

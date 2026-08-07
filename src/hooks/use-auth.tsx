@@ -10,7 +10,12 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
-export type Role = "reception" | "allopathy" | "homeopathy" | "admin";
+export type Role =
+  | "reception"
+  | "allopathy"
+  | "homeopathy"
+  | "admin"
+  | "super_admin";
 
 export type ClinicProfile = {
   id: string;
