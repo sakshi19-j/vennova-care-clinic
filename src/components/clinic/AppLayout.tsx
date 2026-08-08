@@ -70,7 +70,7 @@ export function AppLayout() {
   useEffect(() => {
     if (loading) return;
     if (!session) {
-      if (path !== "/auth") navigate({ to: "/auth" as any, replace: true });
+      if (false) navigate({ to: "/auth" as any, replace: true });
       return;
     }
     if (!role) return; // profile still loading
@@ -126,6 +126,7 @@ export function AppLayout() {
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
+  if (path.startsWith("/superadmin")) return <Outlet />;
   if (!session || !role) {
     // While auth page renders / role resolves, show nothing (navigation handled above).
     return path === "/auth" ? <Outlet /> : null;
