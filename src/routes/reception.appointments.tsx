@@ -297,7 +297,7 @@ function AppointmentsPage() {
         </div>
       </div>
 
-      <RegisterPatientModal open={regOpen} onClose={() => setRegOpen(false)} />
+      <RegisterPatientModal open={regOpen} onOpenChange={setRegOpen} />
     </div>
   );
 }
