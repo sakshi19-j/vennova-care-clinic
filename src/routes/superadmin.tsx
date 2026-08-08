@@ -80,7 +80,16 @@ function SuperAdminPage() {
     );
   }
 
-  const clinics = asArray<ClinicRow>(clinicsQ.data);
+  const rawClinics = asArray<ClinicRow>(clinicsQ.data);
+  // Guard against duplicate rows/keys if the API ever returns repeats.
+  const seen = new Set<string>();
+  const clinics = rawClinics.filter((c, i) => {
+    const k = String(c.id ?? `${c.clinic_name ?? c.name ?? ""}|${c.owner_email ?? ""}|${i}`);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
 
   return (
     <div className="min-h-screen bg-background">
