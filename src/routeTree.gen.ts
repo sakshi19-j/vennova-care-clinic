@@ -43,6 +43,7 @@ import { Route as HomeopathyQueueRouteImport } from './routes/homeopathy.queue'
 import { Route as DoctorQueueRouteImport } from './routes/doctor.queue'
 import { Route as DoctorPatientsRouteImport } from './routes/doctor.patients'
 import { Route as ConsultationPatientIdRouteImport } from './routes/consultation.$patientId'
+import { Route as BookClinicIdRouteImport } from './routes/book.$clinicId'
 import { Route as AdminStaffManagementRouteImport } from './routes/admin.staff-management'
 import { Route as AdminStaffRouteImport } from './routes/admin.staff'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -229,6 +230,11 @@ const ConsultationPatientIdRoute = ConsultationPatientIdRouteImport.update({
   path: '/consultation/$patientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BookClinicIdRoute = BookClinicIdRouteImport.update({
+  id: '/book/$clinicId',
+  path: '/book/$clinicId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminStaffManagementRoute = AdminStaffManagementRouteImport.update({
   id: '/staff-management',
   path: '/staff-management',
@@ -334,6 +340,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRouteWithChildren
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
@@ -432,6 +440,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRouteWithChildren
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
@@ -485,6 +494,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/staff-management'
+    | '/book/$clinicId'
     | '/consultation/$patientId'
     | '/doctor/patients'
     | '/doctor/queue'
@@ -531,6 +541,7 @@ export interface FileRouteTypes {
     | '/admin/performance'
     | '/admin/staff'
     | '/admin/staff-management'
+    | '/book/$clinicId'
     | '/consultation/$patientId'
     | '/doctor/patients'
     | '/doctor/queue'
@@ -582,6 +593,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/staff-management'
+    | '/book/$clinicId'
     | '/consultation/$patientId'
     | '/doctor/patients'
     | '/doctor/queue'
@@ -628,6 +640,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRoute
   SuperadminRoute: typeof SuperadminRoute
+  BookClinicIdRoute: typeof BookClinicIdRoute
   ConsultationPatientIdRoute: typeof ConsultationPatientIdRoute
   PrescriptionVisitIdRoute: typeof PrescriptionVisitIdRoute
   ConsultationEditVisitIdRoute: typeof ConsultationEditVisitIdRoute
@@ -871,6 +884,13 @@ declare module '@tanstack/react-router' {
       path: '/consultation/$patientId'
       fullPath: '/consultation/$patientId'
       preLoaderRoute: typeof ConsultationPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$clinicId': {
+      id: '/book/$clinicId'
+      path: '/book/$clinicId'
+      fullPath: '/book/$clinicId'
+      preLoaderRoute: typeof BookClinicIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/staff-management': {
@@ -1130,6 +1150,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRoute,
   SuperadminRoute: SuperadminRoute,
+  BookClinicIdRoute: BookClinicIdRoute,
   ConsultationPatientIdRoute: ConsultationPatientIdRoute,
   PrescriptionVisitIdRoute: PrescriptionVisitIdRoute,
   ConsultationEditVisitIdRoute: ConsultationEditVisitIdRoute,
