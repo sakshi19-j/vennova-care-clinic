@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { Building2, DatabaseBackup, Sparkles, Upload, Users } from "lucide-react";
+import { Building2, CalendarCog, DatabaseBackup, Sparkles, Upload, Users } from "lucide-react";
 
 export const Route = createFileRoute("/admin/settings")({
   component: SettingsLayout,
@@ -8,6 +8,7 @@ export const Route = createFileRoute("/admin/settings")({
 const tabs = [
   { to: "/admin/settings",              label: "Clinic profile",   icon: Building2,      end: true },
   { to: "/admin/settings/access",       label: "Staff & Access",   icon: Users },
+  { to: "/admin/settings/appointments", label: "Appointments",     icon: CalendarCog },
   { to: "/admin/settings/import",       label: "Import patients",  icon: Upload },
   { to: "/admin/settings/backups",      label: "Backups",          icon: DatabaseBackup },
   { to: "/admin/settings/subscription", label: "Subscription",     icon: Sparkles },
