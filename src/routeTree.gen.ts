@@ -56,6 +56,7 @@ import { Route as PatientsPatientIdWorkspaceRouteImport } from './routes/patient
 import { Route as HomeopathyPatientsIdRouteImport } from './routes/homeopathy.patients.$id'
 import { Route as DoctorPatientsIdRouteImport } from './routes/doctor.patients.$id'
 import { Route as ConsultationEditVisitIdRouteImport } from './routes/consultation.edit.$visitId'
+import { Route as ApiPublicTmpkeyRouteImport } from './routes/api/public/tmpkey'
 import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
 import { Route as AdminSettingsImportRouteImport } from './routes/admin.settings.import'
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
@@ -298,6 +299,11 @@ const ConsultationEditVisitIdRoute = ConsultationEditVisitIdRouteImport.update({
   path: '/consultation/edit/$visitId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTmpkeyRoute = ApiPublicTmpkeyRouteImport.update({
+  id: '/api/public/tmpkey',
+  path: '/api/public/tmpkey',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSettingsSubscriptionRoute =
   AdminSettingsSubscriptionRouteImport.update({
     id: '/subscription',
@@ -374,6 +380,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/api/public/tmpkey': typeof ApiPublicTmpkeyRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
@@ -423,6 +430,7 @@ export interface FileRoutesByTo {
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/api/public/tmpkey': typeof ApiPublicTmpkeyRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
@@ -478,6 +486,7 @@ export interface FileRoutesById {
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
+  '/api/public/tmpkey': typeof ApiPublicTmpkeyRoute
   '/consultation/edit/$visitId': typeof ConsultationEditVisitIdRoute
   '/doctor/patients/$id': typeof DoctorPatientsIdRoute
   '/homeopathy/patients/$id': typeof HomeopathyPatientsIdRoute
@@ -534,6 +543,7 @@ export interface FileRouteTypes {
     | '/admin/settings/backups'
     | '/admin/settings/import'
     | '/admin/settings/subscription'
+    | '/api/public/tmpkey'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
@@ -583,6 +593,7 @@ export interface FileRouteTypes {
     | '/admin/settings/backups'
     | '/admin/settings/import'
     | '/admin/settings/subscription'
+    | '/api/public/tmpkey'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
@@ -637,6 +648,7 @@ export interface FileRouteTypes {
     | '/admin/settings/backups'
     | '/admin/settings/import'
     | '/admin/settings/subscription'
+    | '/api/public/tmpkey'
     | '/consultation/edit/$visitId'
     | '/doctor/patients/$id'
     | '/homeopathy/patients/$id'
@@ -668,6 +680,7 @@ export interface RootRouteChildren {
   BookClinicIdRoute: typeof BookClinicIdRoute
   ConsultationPatientIdRoute: typeof ConsultationPatientIdRoute
   PrescriptionVisitIdRoute: typeof PrescriptionVisitIdRoute
+  ApiPublicTmpkeyRoute: typeof ApiPublicTmpkeyRoute
   ConsultationEditVisitIdRoute: typeof ConsultationEditVisitIdRoute
 }
 
@@ -1002,6 +1015,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConsultationEditVisitIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/tmpkey': {
+      id: '/api/public/tmpkey'
+      path: '/api/public/tmpkey'
+      fullPath: '/api/public/tmpkey'
+      preLoaderRoute: typeof ApiPublicTmpkeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/settings/subscription': {
       id: '/admin/settings/subscription'
       path: '/subscription'
@@ -1196,6 +1216,7 @@ const rootRouteChildren: RootRouteChildren = {
   BookClinicIdRoute: BookClinicIdRoute,
   ConsultationPatientIdRoute: ConsultationPatientIdRoute,
   PrescriptionVisitIdRoute: PrescriptionVisitIdRoute,
+  ApiPublicTmpkeyRoute: ApiPublicTmpkeyRoute,
   ConsultationEditVisitIdRoute: ConsultationEditVisitIdRoute,
 }
 export const routeTree = rootRouteImport
