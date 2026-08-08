@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Loader2, Plus, RefreshCw, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Building2, Loader2, Plus, RefreshCw, ShieldCheck, CheckCircle2, Copy, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/hooks/use-auth";
@@ -80,7 +80,16 @@ function SuperAdminPage() {
     );
   }
 
-  const clinics = asArray<ClinicRow>(clinicsQ.data);
+  const rawClinics = asArray<ClinicRow>(clinicsQ.data);
+  // Guard against duplicate rows/keys if the API ever returns repeats.
+  const seen = new Set<string>();
+  const clinics = rawClinics.filter((c, i) => {
+    const k = String(c.id ?? `${c.clinic_name ?? c.name ?? ""}|${c.owner_email ?? ""}|${i}`);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -222,24 +231,106 @@ const PLAN_OPTIONS = [
   { value: "enterprise", label: "Enterprise" },
 ];
 
+type CreatedClinic = {
+  owner_email?: string;
+  generated_password?: string;
+  email_sent?: boolean;
+  clinic?: { owner_email?: string; generated_password?: string };
+  data?: { owner_email?: string; generated_password?: string; email_sent?: boolean };
+};
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div>
+      <span className="block text-[11px] uppercase tracking-widest text-muted-foreground mb-1">{label}</span>
+      <div className="flex items-stretch gap-2">
+        <code className="flex-1 min-w-0 truncate rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono">
+          {value}
+        </code>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(value);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            } catch {
+              toast.error("Could not copy — select and copy manually.");
+            }
+          }}
+          className="shrink-0 h-auto px-3 rounded-lg border border-border text-xs inline-flex items-center gap-1.5 hover:bg-muted"
+          aria-label={`Copy ${label}`}
+        >
+          {copied ? <><Check className="size-3.5" /> Copied</> : <><Copy className="size-3.5" /> Copy</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CredentialsPanel({ data, onClose }: { data: CreatedClinic; onClose: () => void }) {
+  const src = data.data ?? data.clinic ?? data;
+  const email = (src as CreatedClinic).owner_email ?? data.owner_email ?? "";
+  const password = (src as CreatedClinic).generated_password ?? data.generated_password ?? "";
+  const emailSent = (data.data?.email_sent ?? data.email_sent) === true;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-foreground/40 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex gap-2">
+            <CheckCircle2 className="size-5 text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <h3 className="font-display text-lg leading-tight">Clinic created</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Owner sign-in credentials</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="size-8 grid place-items-center rounded-lg hover:bg-muted" aria-label="Close">
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          <CopyField label="Owner email" value={email || "—"} />
+          <CopyField label="Generated password" value={password || "—"} />
+        </div>
+
+        {!emailSent && (
+          <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700">
+            Email not sent yet — copy these credentials and share manually.
+          </p>
+        )}
+
+        <button
+          onClick={onClose}
+          className="mt-5 w-full h-11 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90"
+        >
+          Done
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CreateClinicCard({ onCreated }: { onCreated: () => void }) {
   const [clinicName, setClinicName] = useState("");
   const [doctorName, setDoctorName] = useState("");
   const [doctorEmail, setDoctorEmail] = useState("");
   const [plan, setPlan] = useState("starter");
-  const [created, setCreated] = useState<string | null>(null);
+  const [created, setCreated] = useState<CreatedClinic | null>(null);
 
   const createM = useMutation({
     mutationFn: () =>
-      api.post("/superadmin/clinics", {
+      api.post<CreatedClinic>("/superadmin/clinics", {
         clinic_name: clinicName.trim(),
         doctor_name: doctorName.trim(),
         doctor_email: doctorEmail.trim(),
         plan,
       }),
-    onSuccess: () => {
-      setCreated(doctorEmail.trim());
-      toast.success("Clinic created — login credentials emailed.");
+    onSuccess: (res) => {
+      setCreated({ owner_email: doctorEmail.trim(), ...(res ?? {}) });
+      toast.success("Clinic created.");
       setClinicName("");
       setDoctorName("");
       setDoctorEmail("");
@@ -258,12 +349,8 @@ function CreateClinicCard({ onCreated }: { onCreated: () => void }) {
         Provisions the clinic and emails the owner their sign-in credentials.
       </p>
 
-      {created && (
-        <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-700 flex gap-2">
-          <CheckCircle2 className="size-4 mt-0.5 shrink-0" />
-          <span>Clinic created. Credentials were emailed to <strong>{created}</strong>.</span>
-        </div>
-      )}
+      {created && <CredentialsPanel data={created} onClose={() => setCreated(null)} />}
+
 
       <form
         className="mt-4 space-y-3"
