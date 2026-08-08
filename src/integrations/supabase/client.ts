@@ -4,9 +4,16 @@ import type { Database } from './types';
 
 // The clinic's own auth/database project (same one the Railway backend validates
 // tokens against). Falls back to the platform project when not configured.
-const supabaseUrl = (import.meta.env.VITE_CLINIC_SUPABASE_URL ||
-  import.meta.env.VITE_SUPABASE_URL) as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const clinicUrl = import.meta.env.VITE_CLINIC_SUPABASE_URL as string | undefined;
+const clinicKey = import.meta.env.VITE_CLINIC_SUPABASE_ANON_KEY as string | undefined;
+
+// URL and key must always come from the SAME project, otherwise Supabase
+// rejects every request with "Invalid API key".
+const useClinic = Boolean(clinicUrl && clinicKey);
+const supabaseUrl = (useClinic ? clinicUrl : import.meta.env.VITE_SUPABASE_URL) as string;
+const supabaseAnonKey = (useClinic
+  ? clinicKey
+  : import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
