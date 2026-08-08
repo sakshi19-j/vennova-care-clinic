@@ -68,11 +68,11 @@ function SuperAdminPage() {
   const clinicsQ = useQuery({
     queryKey: ["superadmin", "clinics"],
     queryFn: () => api.get<unknown>("/superadmin/clinics"),
-    enabled: false,
+    enabled: role === "super_admin",
     staleTime: 30_000,
   });
 
-  if (false) {
+  if (loading || role !== "super_admin") {
     return (
       <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">
         Checking access…
@@ -318,7 +318,7 @@ function CreateClinicCard({ onCreated }: { onCreated: () => void }) {
   const [doctorName, setDoctorName] = useState("");
   const [doctorEmail, setDoctorEmail] = useState("");
   const [plan, setPlan] = useState("starter");
-  const [created, setCreated] = useState<CreatedClinic | null>({ owner_email: "dr.mehta@sunrisecare.in", generated_password: "Vn7k-92xQtRa", email_sent: false });
+  const [created, setCreated] = useState<CreatedClinic | null>(null);
 
   const createM = useMutation({
     mutationFn: () =>
