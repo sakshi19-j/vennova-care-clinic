@@ -124,6 +124,7 @@ export function AppLayout() {
     try { new URL(v.trim()); return v.trim(); } catch { return null; }
   })();
 
+  if (path.startsWith("/book/")) return <Outlet />; // public patient booking link
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
