@@ -24,12 +24,14 @@ const groupsByRole: Record<Role, NavGroup[]> = {
   allopathy: [
     { label: "Doctor", items: [
       { to: "/doctor", icon: Activity, label: "Allopathy OPD", live: true },
+      { to: "/doctor/appointments", icon: CalendarDays, label: "My schedule" },
       { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
     ] },
   ],
   homeopathy: [
     { label: "Doctor", items: [
       { to: "/homeopathy", icon: Leaf, label: "Homeopathy OPD", live: true },
+      { to: "/doctor/appointments", icon: CalendarDays, label: "My schedule" },
       { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
     ] },
   ],
@@ -69,6 +71,7 @@ export function AppLayout() {
   // Redirect to /auth if signed out; redirect to role home if landing on / or outside scope.
   useEffect(() => {
     if (loading) return;
+    if (path.startsWith("/book/")) return; // public patient booking link
     if (!session) {
       if (path !== "/auth") navigate({ to: "/auth" as any, replace: true });
       return;
@@ -123,6 +126,7 @@ export function AppLayout() {
     try { new URL(v.trim()); return v.trim(); } catch { return null; }
   })();
 
+  if (path.startsWith("/book/")) return <Outlet />; // public patient booking link
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }

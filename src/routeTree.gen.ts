@@ -42,7 +42,9 @@ import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patien
 import { Route as HomeopathyQueueRouteImport } from './routes/homeopathy.queue'
 import { Route as DoctorQueueRouteImport } from './routes/doctor.queue'
 import { Route as DoctorPatientsRouteImport } from './routes/doctor.patients'
+import { Route as DoctorAppointmentsRouteImport } from './routes/doctor.appointments'
 import { Route as ConsultationPatientIdRouteImport } from './routes/consultation.$patientId'
+import { Route as BookClinicIdRouteImport } from './routes/book.$clinicId'
 import { Route as AdminStaffManagementRouteImport } from './routes/admin.staff-management'
 import { Route as AdminStaffRouteImport } from './routes/admin.staff'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -57,6 +59,7 @@ import { Route as ConsultationEditVisitIdRouteImport } from './routes/consultati
 import { Route as AdminSettingsSubscriptionRouteImport } from './routes/admin.settings.subscription'
 import { Route as AdminSettingsImportRouteImport } from './routes/admin.settings.import'
 import { Route as AdminSettingsBackupsRouteImport } from './routes/admin.settings.backups'
+import { Route as AdminSettingsAppointmentsRouteImport } from './routes/admin.settings.appointments'
 import { Route as AdminSettingsAccessRouteImport } from './routes/admin.settings.access'
 
 const SuperadminRoute = SuperadminRouteImport.update({
@@ -224,9 +227,19 @@ const DoctorPatientsRoute = DoctorPatientsRouteImport.update({
   path: '/patients',
   getParentRoute: () => DoctorRoute,
 } as any)
+const DoctorAppointmentsRoute = DoctorAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => DoctorRoute,
+} as any)
 const ConsultationPatientIdRoute = ConsultationPatientIdRouteImport.update({
   id: '/consultation/$patientId',
   path: '/consultation/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookClinicIdRoute = BookClinicIdRouteImport.update({
+  id: '/book/$clinicId',
+  path: '/book/$clinicId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminStaffManagementRoute = AdminStaffManagementRouteImport.update({
@@ -301,6 +314,12 @@ const AdminSettingsBackupsRoute = AdminSettingsBackupsRouteImport.update({
   path: '/backups',
   getParentRoute: () => AdminSettingsRoute,
 } as any)
+const AdminSettingsAppointmentsRoute =
+  AdminSettingsAppointmentsRouteImport.update({
+    id: '/appointments',
+    path: '/appointments',
+    getParentRoute: () => AdminSettingsRoute,
+  } as any)
 const AdminSettingsAccessRoute = AdminSettingsAccessRouteImport.update({
   id: '/access',
   path: '/access',
@@ -334,7 +353,9 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRouteWithChildren
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
@@ -349,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/homeopathy/': typeof HomeopathyIndexRoute
   '/reception/': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
+  '/admin/settings/appointments': typeof AdminSettingsAppointmentsRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
@@ -380,7 +402,9 @@ export interface FileRoutesByTo {
   '/admin/performance': typeof AdminPerformanceRoute
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
@@ -395,6 +419,7 @@ export interface FileRoutesByTo {
   '/homeopathy': typeof HomeopathyIndexRoute
   '/reception': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
+  '/admin/settings/appointments': typeof AdminSettingsAppointmentsRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
@@ -432,7 +457,9 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRouteWithChildren
   '/admin/staff': typeof AdminStaffRoute
   '/admin/staff-management': typeof AdminStaffManagementRoute
+  '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
@@ -447,6 +474,7 @@ export interface FileRoutesById {
   '/homeopathy/': typeof HomeopathyIndexRoute
   '/reception/': typeof ReceptionIndexRoute
   '/admin/settings/access': typeof AdminSettingsAccessRoute
+  '/admin/settings/appointments': typeof AdminSettingsAppointmentsRoute
   '/admin/settings/backups': typeof AdminSettingsBackupsRoute
   '/admin/settings/import': typeof AdminSettingsImportRoute
   '/admin/settings/subscription': typeof AdminSettingsSubscriptionRoute
@@ -485,7 +513,9 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/staff-management'
+    | '/book/$clinicId'
     | '/consultation/$patientId'
+    | '/doctor/appointments'
     | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
@@ -500,6 +530,7 @@ export interface FileRouteTypes {
     | '/homeopathy/'
     | '/reception/'
     | '/admin/settings/access'
+    | '/admin/settings/appointments'
     | '/admin/settings/backups'
     | '/admin/settings/import'
     | '/admin/settings/subscription'
@@ -531,7 +562,9 @@ export interface FileRouteTypes {
     | '/admin/performance'
     | '/admin/staff'
     | '/admin/staff-management'
+    | '/book/$clinicId'
     | '/consultation/$patientId'
+    | '/doctor/appointments'
     | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
@@ -546,6 +579,7 @@ export interface FileRouteTypes {
     | '/homeopathy'
     | '/reception'
     | '/admin/settings/access'
+    | '/admin/settings/appointments'
     | '/admin/settings/backups'
     | '/admin/settings/import'
     | '/admin/settings/subscription'
@@ -582,7 +616,9 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/staff'
     | '/admin/staff-management'
+    | '/book/$clinicId'
     | '/consultation/$patientId'
+    | '/doctor/appointments'
     | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
@@ -597,6 +633,7 @@ export interface FileRouteTypes {
     | '/homeopathy/'
     | '/reception/'
     | '/admin/settings/access'
+    | '/admin/settings/appointments'
     | '/admin/settings/backups'
     | '/admin/settings/import'
     | '/admin/settings/subscription'
@@ -628,6 +665,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   StaffRoute: typeof StaffRoute
   SuperadminRoute: typeof SuperadminRoute
+  BookClinicIdRoute: typeof BookClinicIdRoute
   ConsultationPatientIdRoute: typeof ConsultationPatientIdRoute
   PrescriptionVisitIdRoute: typeof PrescriptionVisitIdRoute
   ConsultationEditVisitIdRoute: typeof ConsultationEditVisitIdRoute
@@ -866,11 +904,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorPatientsRouteImport
       parentRoute: typeof DoctorRoute
     }
+    '/doctor/appointments': {
+      id: '/doctor/appointments'
+      path: '/appointments'
+      fullPath: '/doctor/appointments'
+      preLoaderRoute: typeof DoctorAppointmentsRouteImport
+      parentRoute: typeof DoctorRoute
+    }
     '/consultation/$patientId': {
       id: '/consultation/$patientId'
       path: '/consultation/$patientId'
       fullPath: '/consultation/$patientId'
       preLoaderRoute: typeof ConsultationPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/book/$clinicId': {
+      id: '/book/$clinicId'
+      path: '/book/$clinicId'
+      fullPath: '/book/$clinicId'
+      preLoaderRoute: typeof BookClinicIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/staff-management': {
@@ -971,6 +1023,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsBackupsRouteImport
       parentRoute: typeof AdminSettingsRoute
     }
+    '/admin/settings/appointments': {
+      id: '/admin/settings/appointments'
+      path: '/appointments'
+      fullPath: '/admin/settings/appointments'
+      preLoaderRoute: typeof AdminSettingsAppointmentsRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
     '/admin/settings/access': {
       id: '/admin/settings/access'
       path: '/access'
@@ -983,6 +1042,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminSettingsRouteChildren {
   AdminSettingsAccessRoute: typeof AdminSettingsAccessRoute
+  AdminSettingsAppointmentsRoute: typeof AdminSettingsAppointmentsRoute
   AdminSettingsBackupsRoute: typeof AdminSettingsBackupsRoute
   AdminSettingsImportRoute: typeof AdminSettingsImportRoute
   AdminSettingsSubscriptionRoute: typeof AdminSettingsSubscriptionRoute
@@ -991,6 +1051,7 @@ interface AdminSettingsRouteChildren {
 
 const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsAccessRoute: AdminSettingsAccessRoute,
+  AdminSettingsAppointmentsRoute: AdminSettingsAppointmentsRoute,
   AdminSettingsBackupsRoute: AdminSettingsBackupsRoute,
   AdminSettingsImportRoute: AdminSettingsImportRoute,
   AdminSettingsSubscriptionRoute: AdminSettingsSubscriptionRoute,
@@ -1036,12 +1097,14 @@ const DoctorPatientsRouteWithChildren = DoctorPatientsRoute._addFileChildren(
 )
 
 interface DoctorRouteChildren {
+  DoctorAppointmentsRoute: typeof DoctorAppointmentsRoute
   DoctorPatientsRoute: typeof DoctorPatientsRouteWithChildren
   DoctorQueueRoute: typeof DoctorQueueRoute
   DoctorIndexRoute: typeof DoctorIndexRoute
 }
 
 const DoctorRouteChildren: DoctorRouteChildren = {
+  DoctorAppointmentsRoute: DoctorAppointmentsRoute,
   DoctorPatientsRoute: DoctorPatientsRouteWithChildren,
   DoctorQueueRoute: DoctorQueueRoute,
   DoctorIndexRoute: DoctorIndexRoute,
@@ -1130,6 +1193,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   StaffRoute: StaffRoute,
   SuperadminRoute: SuperadminRoute,
+  BookClinicIdRoute: BookClinicIdRoute,
   ConsultationPatientIdRoute: ConsultationPatientIdRoute,
   PrescriptionVisitIdRoute: PrescriptionVisitIdRoute,
   ConsultationEditVisitIdRoute: ConsultationEditVisitIdRoute,
@@ -1137,13 +1201,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
