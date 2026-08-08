@@ -42,6 +42,7 @@ import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patien
 import { Route as HomeopathyQueueRouteImport } from './routes/homeopathy.queue'
 import { Route as DoctorQueueRouteImport } from './routes/doctor.queue'
 import { Route as DoctorPatientsRouteImport } from './routes/doctor.patients'
+import { Route as DoctorAppointmentsRouteImport } from './routes/doctor.appointments'
 import { Route as ConsultationPatientIdRouteImport } from './routes/consultation.$patientId'
 import { Route as BookClinicIdRouteImport } from './routes/book.$clinicId'
 import { Route as AdminStaffManagementRouteImport } from './routes/admin.staff-management'
@@ -226,6 +227,11 @@ const DoctorPatientsRoute = DoctorPatientsRouteImport.update({
   path: '/patients',
   getParentRoute: () => DoctorRoute,
 } as any)
+const DoctorAppointmentsRoute = DoctorAppointmentsRouteImport.update({
+  id: '/appointments',
+  path: '/appointments',
+  getParentRoute: () => DoctorRoute,
+} as any)
 const ConsultationPatientIdRoute = ConsultationPatientIdRouteImport.update({
   id: '/consultation/$patientId',
   path: '/consultation/$patientId',
@@ -349,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/admin/staff-management': typeof AdminStaffManagementRoute
   '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
@@ -397,6 +404,7 @@ export interface FileRoutesByTo {
   '/admin/staff-management': typeof AdminStaffManagementRoute
   '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
@@ -451,6 +459,7 @@ export interface FileRoutesById {
   '/admin/staff-management': typeof AdminStaffManagementRoute
   '/book/$clinicId': typeof BookClinicIdRoute
   '/consultation/$patientId': typeof ConsultationPatientIdRoute
+  '/doctor/appointments': typeof DoctorAppointmentsRoute
   '/doctor/patients': typeof DoctorPatientsRouteWithChildren
   '/doctor/queue': typeof DoctorQueueRoute
   '/homeopathy/queue': typeof HomeopathyQueueRoute
@@ -506,6 +515,7 @@ export interface FileRouteTypes {
     | '/admin/staff-management'
     | '/book/$clinicId'
     | '/consultation/$patientId'
+    | '/doctor/appointments'
     | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
@@ -554,6 +564,7 @@ export interface FileRouteTypes {
     | '/admin/staff-management'
     | '/book/$clinicId'
     | '/consultation/$patientId'
+    | '/doctor/appointments'
     | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
@@ -607,6 +618,7 @@ export interface FileRouteTypes {
     | '/admin/staff-management'
     | '/book/$clinicId'
     | '/consultation/$patientId'
+    | '/doctor/appointments'
     | '/doctor/patients'
     | '/doctor/queue'
     | '/homeopathy/queue'
@@ -892,6 +904,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DoctorPatientsRouteImport
       parentRoute: typeof DoctorRoute
     }
+    '/doctor/appointments': {
+      id: '/doctor/appointments'
+      path: '/appointments'
+      fullPath: '/doctor/appointments'
+      preLoaderRoute: typeof DoctorAppointmentsRouteImport
+      parentRoute: typeof DoctorRoute
+    }
     '/consultation/$patientId': {
       id: '/consultation/$patientId'
       path: '/consultation/$patientId'
@@ -1078,12 +1097,14 @@ const DoctorPatientsRouteWithChildren = DoctorPatientsRoute._addFileChildren(
 )
 
 interface DoctorRouteChildren {
+  DoctorAppointmentsRoute: typeof DoctorAppointmentsRoute
   DoctorPatientsRoute: typeof DoctorPatientsRouteWithChildren
   DoctorQueueRoute: typeof DoctorQueueRoute
   DoctorIndexRoute: typeof DoctorIndexRoute
 }
 
 const DoctorRouteChildren: DoctorRouteChildren = {
+  DoctorAppointmentsRoute: DoctorAppointmentsRoute,
   DoctorPatientsRoute: DoctorPatientsRouteWithChildren,
   DoctorQueueRoute: DoctorQueueRoute,
   DoctorIndexRoute: DoctorIndexRoute,

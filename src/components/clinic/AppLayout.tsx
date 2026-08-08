@@ -24,12 +24,14 @@ const groupsByRole: Record<Role, NavGroup[]> = {
   allopathy: [
     { label: "Doctor", items: [
       { to: "/doctor", icon: Activity, label: "Allopathy OPD", live: true },
+      { to: "/doctor/appointments", icon: CalendarDays, label: "My schedule" },
       { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
     ] },
   ],
   homeopathy: [
     { label: "Doctor", items: [
       { to: "/homeopathy", icon: Leaf, label: "Homeopathy OPD", live: true },
+      { to: "/doctor/appointments", icon: CalendarDays, label: "My schedule" },
       { to: "/doctor/patients", icon: UserCog, label: "Patient Records" },
     ] },
   ],
