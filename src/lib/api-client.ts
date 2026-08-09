@@ -147,9 +147,10 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 async function authHeader(): Promise<Record<string, string>> {
-  const token = await getAccessToken();
+  const token = await waitForAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
 
 // ---------- Fetch with timeout ----------
 
