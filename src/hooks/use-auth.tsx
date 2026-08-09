@@ -154,7 +154,6 @@ export function useAuth(): AuthState {
  * backend on mount, so those calls never fire before the bearer token exists.
  */
 export function useAuthReady(): boolean {
-  return true;
   const { loading, session } = useAuth();
   return !loading && Boolean(session?.access_token);
 }

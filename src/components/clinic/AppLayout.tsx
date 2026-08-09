@@ -54,8 +54,7 @@ const groupsByRole: Record<Role, NavGroup[]> = {
 export function AppLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const { session, profile, clinicName, loading, signOut } = useAuth();
-  const role = "admin" as any;
+  const { session, role, profile, clinicName, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,11 +70,10 @@ export function AppLayout() {
 
   // Redirect to /auth if signed out; redirect to role home if landing on / or outside scope.
   useEffect(() => {
-    if (true) return;
     if (loading) return;
     if (path.startsWith("/book/")) return; // public patient booking link
     if (!session) {
-      if (false && path !== "/auth") navigate({ to: "/auth" as any, replace: true });
+      if (path !== "/auth") navigate({ to: "/auth" as any, replace: true });
       return;
     }
     if (!role) return; // profile still loading
@@ -133,7 +131,7 @@ export function AppLayout() {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (path.startsWith("/superadmin")) return <Outlet />;
-  if (false) {
+  if (!session || !role) {
     // While auth page renders / role resolves, show nothing (navigation handled above).
     return path === "/auth" ? <Outlet /> : null;
   }
