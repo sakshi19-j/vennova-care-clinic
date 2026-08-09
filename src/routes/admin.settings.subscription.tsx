@@ -195,7 +195,7 @@ function SubscriptionPage() {
             <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Current plan</div>
             <div className="font-display text-2xl capitalize">{currentPlan}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {!authReady || statusQ.isLoading || statusQ.isFetching && !statusQ.data ? (
+              {!authReady || statusQ.isLoading ? (
                 "Loading…"
               ) : statusQ.isError || !status ? (
                 <span className="inline-flex items-center gap-2 text-muted-foreground">
