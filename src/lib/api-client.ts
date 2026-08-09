@@ -90,6 +90,43 @@ async function getAccessToken(): Promise<string | null> {
   }
 }
 
+// True when Supabase has a persisted session in storage but has not finished
+// rehydrating it yet. Used to avoid firing authed requests token-less on the
+// very first render after a reload / right after sign-in.
+function hasPersistedSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("sb-") && k.endsWith("-auth-token")) return true;
+    }
+  } catch {
+    /* storage blocked */
+  }
+  return false;
+}
+
+// Waits (briefly) for the session token to become available instead of racing
+// ahead of Supabase's rehydration and getting a 401 "Missing authorization
+// token". Returns immediately when a token is already there, and does not wait
+// at all when the user is genuinely signed out.
+const AUTH_WAIT_MS = 4000;
+async function waitForAccessToken(): Promise<string | null> {
+  let token = await getAccessToken();
+  if (token) return token;
+  if (!hasPersistedSession()) return null;
+
+  const deadline = Date.now() + AUTH_WAIT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 120));
+    token = await getAccessToken();
+    if (token) return token;
+    if (!hasPersistedSession()) return null;
+  }
+  return null;
+}
+
+
 async function refreshAccessToken(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
@@ -110,9 +147,10 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 async function authHeader(): Promise<Record<string, string>> {
-  const token = await getAccessToken();
+  const token = await waitForAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
+
 
 // ---------- Fetch with timeout ----------
 

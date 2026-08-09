@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { dashboardService } from "@/services/dashboard";
 import { api } from "@/lib/api-client";
+import { useAuthReady } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -62,22 +63,24 @@ function asArray<T>(x: unknown): T[] {
 }
 
 function Dashboard() {
+  // Never fire authed backend calls before the Supabase session token exists.
+  const authReady = useAuthReady();
   const queueQ = useQuery({
     queryKey: ["queue", "today"],
     queryFn: () => api.get<unknown>("/queue/today").then(asArray<QueueItem>),
-    refetchInterval: 10_000, staleTime: 5_000, retry: 1,
+    refetchInterval: 10_000, staleTime: 5_000, retry: 1, enabled: authReady,
   });
   const statsQ = useQuery({
     // Canonical key shared with every invalidator (admin/doctor/reception/billing/Rx).
     queryKey: ["queue", "stats-today"],
     queryFn: () => api.get<QueueStats>("/queue/stats/today"),
-    refetchInterval: 10_000, staleTime: 5_000, retry: 1,
+    refetchInterval: 10_000, staleTime: 5_000, retry: 1, enabled: authReady,
   });
   const summaryQ = useQuery({
     // Keep under the ["analytics"] prefix so blanket invalidations refresh us.
     queryKey: ["analytics", "summary", "today"],
     queryFn: () => dashboardService.summaryToday(),
-    refetchInterval: 30_000, staleTime: 15_000, retry: 1,
+    refetchInterval: 30_000, staleTime: 15_000, retry: 1, enabled: authReady,
   });
 
   const queue = queueQ.data ?? [];
