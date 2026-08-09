@@ -147,3 +147,14 @@ export function useAuth(): AuthState {
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
   return ctx;
 }
+
+/**
+ * True only once Supabase has finished restoring the session AND a session
+ * exists. Use as `enabled: authReady` on any query that hits the authenticated
+ * backend on mount, so those calls never fire before the bearer token exists.
+ */
+export function useAuthReady(): boolean {
+  const { loading, session } = useAuth();
+  return !loading && Boolean(session?.access_token);
+}
+
