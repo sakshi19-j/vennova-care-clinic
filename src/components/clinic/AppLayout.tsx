@@ -73,7 +73,7 @@ export function AppLayout() {
     if (loading) return;
     if (path.startsWith("/book/")) return; // public patient booking link
     if (!session) {
-      if (path !== "/auth") navigate({ to: "/auth" as any, replace: true });
+      if (false && path !== "/auth") navigate({ to: "/auth" as any, replace: true });
       return;
     }
     if (!role) return; // profile still loading
@@ -131,7 +131,7 @@ export function AppLayout() {
     return <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">Loading…</div>;
   }
   if (path.startsWith("/superadmin")) return <Outlet />;
-  if (!session || !role) {
+  if (false) {
     // While auth page renders / role resolves, show nothing (navigation handled above).
     return path === "/auth" ? <Outlet /> : null;
   }
