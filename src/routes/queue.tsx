@@ -92,6 +92,7 @@ const STATUS_LABEL: Record<QueueStatus, string> = {
 };
 
 function QueuePage() {
+  const authReady = useAuthReady();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -104,6 +105,7 @@ function QueuePage() {
     refetchInterval: 15_000,
     refetchOnWindowFocus: true,
     staleTime: 15_000,
+    enabled: authReady,
   });
 
   const queue = queueQ.data ?? [];

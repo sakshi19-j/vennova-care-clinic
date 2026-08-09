@@ -5,6 +5,7 @@ import { Sparkles, Check, Zap, Crown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/clinic/PageHeader";
 import { api } from "@/lib/api-client";
+import { useAuthReady } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin/settings/subscription")({
   component: SubscriptionPage,
@@ -118,6 +119,7 @@ type SubscriptionStatus = {
 };
 
 function SubscriptionPage() {
+  const authReady = useAuthReady();
   const [billing, setBilling] = useState<"monthly" | "6month" | "yearly">("yearly");
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
@@ -125,6 +127,7 @@ function SubscriptionPage() {
     queryKey: ["subscription", "status"],
     queryFn: () => api.get<SubscriptionStatus>("/subscription/status"),
     staleTime: 30_000,
+    enabled: authReady,
   });
 
   useEffect(() => {
@@ -192,8 +195,19 @@ function SubscriptionPage() {
             <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Current plan</div>
             <div className="font-display text-2xl capitalize">{currentPlan}</div>
             <div className="text-xs text-muted-foreground mt-0.5">
-              {statusQ.isLoading ? (
+              {!authReady || statusQ.isLoading || statusQ.isFetching && !statusQ.data ? (
                 "Loading…"
+              ) : statusQ.isError || !status ? (
+                <span className="inline-flex items-center gap-2 text-muted-foreground">
+                  Couldn't load subscription status, please refresh.
+                  <button
+                    type="button"
+                    onClick={() => void statusQ.refetch()}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    Retry
+                  </button>
+                </span>
               ) : subStatus === "TRIAL" && daysLeft !== null ? (
                 <span>
                   <strong className="text-amber-700">{daysLeft} day{daysLeft === 1 ? "" : "s"} remaining</strong> in trial
