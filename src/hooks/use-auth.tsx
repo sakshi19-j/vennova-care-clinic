@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"
+import { clinicDb } from "@/integrations/supabase/clinic-db";
 
 export type Role =
   | "reception"
@@ -39,12 +40,12 @@ const AuthCtx = createContext<AuthState | null>(null);
 
 async function loadProfileBundle(userId: string) {
   const [{ data: profile }, { data: roleRow }] = await Promise.all([
-    supabase
+    clinicDb
       .from("profiles")
       .select("id, clinic_id, full_name, email")
       .eq("id", userId)
       .maybeSingle(),
-    supabase
+    clinicDb
       .from("user_roles")
       .select("role")
       .eq("user_id", userId)
@@ -53,7 +54,7 @@ async function loadProfileBundle(userId: string) {
 
   let clinicName: string | null = null;
   if (profile?.clinic_id) {
-    const { data: clinic } = await supabase
+    const { data: clinic } = await clinicDb
       .from("clinics")
       .select("name")
       .eq("id", profile.clinic_id)

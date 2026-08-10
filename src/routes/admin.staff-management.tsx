@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, Tag } from "@/components/clinic/PageHeader";
 import { UserPlus, Mail, Trash2, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"
+import { clinicDb } from "@/integrations/supabase/clinic-db";
 import { deleteStaffMember } from "@/lib/auth.functions";
 import { api } from "@/lib/api-client";
 import { useAuth, type Role } from "@/hooks/use-auth";
@@ -29,12 +30,12 @@ function StaffManagement() {
 
   const load = async () => {
     if (!profile?.clinic_id) return;
-    const { data: profiles } = await supabase
+    const { data: profiles } = await clinicDb
       .from("profiles")
       .select("id, full_name, email, created_at")
       .eq("clinic_id", profile.clinic_id)
       .order("created_at", { ascending: true });
-    const { data: roles } = await supabase
+    const { data: roles } = await clinicDb
       .from("user_roles")
       .select("user_id, role")
       .eq("clinic_id", profile.clinic_id);

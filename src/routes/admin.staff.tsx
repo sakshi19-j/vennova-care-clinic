@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, AlertTriangle, UserPlus } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { Card, Tag } from "@/components/clinic/PageHeader";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"
+import { clinicDb } from "@/integrations/supabase/clinic-db";
 import { useAuth, type Role } from "@/hooks/use-auth";
 
 
@@ -63,12 +64,12 @@ function StaffPerfPage() {
     (async () => {
       try {
         const [{ data: profiles, error: pErr }, { data: roles, error: rErr }] = await Promise.all([
-          supabase
+          clinicDb
             .from("profiles")
             .select("id, full_name, email, created_at")
             .eq("clinic_id", profile.clinic_id)
             .order("created_at", { ascending: true }),
-          supabase
+          clinicDb
             .from("user_roles")
             .select("user_id, role")
             .eq("clinic_id", profile.clinic_id),
