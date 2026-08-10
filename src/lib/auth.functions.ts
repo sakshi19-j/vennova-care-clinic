@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { asClinicDb } from "@/integrations/supabase/clinic-db";
 
 const StaffRoleSchema = z.enum(["reception", "allopathy", "homeopathy", "admin"]);
 
@@ -17,9 +18,11 @@ export const createStaffMember = createServerFn({ method: "POST" })
   .inputValidator((data) => CreateStaffSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const db = asClinicDb(supabase);
+    const admin = asClinicDb(supabaseAdmin);
 
     // Caller must be admin of a clinic.
-    const { data: callerRole } = await supabase
+    const { data: callerRole } = await db
       .from("user_roles")
       .select("role, clinic_id")
       .eq("user_id", userId)
@@ -44,7 +47,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
     const newUserId = created.user.id;
 
-    const { error: profileErr } = await supabaseAdmin.from("profiles").insert({
+    const { error: profileErr } = await admin.from("profiles").insert({
       id: newUserId,
       clinic_id: clinicId,
       full_name: data.fullName,
@@ -55,7 +58,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
       throw new Error(profileErr.message);
     }
 
-    const { error: roleErr } = await supabaseAdmin.from("user_roles").insert({
+    const { error: roleErr } = await admin.from("user_roles").insert({
       user_id: newUserId,
       clinic_id: clinicId,
       role: data.role,
@@ -73,9 +76,11 @@ export const deleteStaffMember = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const db = asClinicDb(supabase);
+    const admin = asClinicDb(supabaseAdmin);
     if (data.userId === userId) throw new Error("You can't remove yourself.");
 
-    const { data: callerRole } = await supabase
+    const { data: callerRole } = await db
       .from("user_roles")
       .select("clinic_id")
       .eq("user_id", userId)
@@ -84,7 +89,7 @@ export const deleteStaffMember = createServerFn({ method: "POST" })
     if (!callerRole) throw new Error("Only clinic admins can remove staff.");
 
     // Confirm target belongs to same clinic.
-    const { data: target } = await supabaseAdmin
+    const { data: target } = await admin
       .from("profiles")
       .select("clinic_id")
       .eq("id", data.userId)
@@ -93,8 +98,8 @@ export const deleteStaffMember = createServerFn({ method: "POST" })
       throw new Error("Staff member not found in your clinic.");
     }
 
-    await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-    await supabaseAdmin.from("profiles").delete().eq("id", data.userId);
+    await admin.from("user_roles").delete().eq("user_id", data.userId);
+    await admin.from("profiles").delete().eq("id", data.userId);
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
