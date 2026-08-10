@@ -14,13 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointment_settings: {
+        Row: {
+          break_end: string | null
+          break_start: string | null
+          clinic_id: string
+          clinic_name: string | null
+          close_time: string
+          holidays: string[]
+          open_time: string
+          slot_minutes: number
+          updated_at: string
+          working_days: number[]
+        }
+        Insert: {
+          break_end?: string | null
+          break_start?: string | null
+          clinic_id: string
+          clinic_name?: string | null
+          close_time?: string
+          holidays?: string[]
+          open_time?: string
+          slot_minutes?: number
+          updated_at?: string
+          working_days?: number[]
+        }
+        Update: {
+          break_end?: string | null
+          break_start?: string | null
+          clinic_id?: string
+          clinic_name?: string | null
+          close_time?: string
+          holidays?: string[]
+          open_time?: string
+          slot_minutes?: number
+          updated_at?: string
+          working_days?: number[]
+        }
+        Relationships: []
+      }
+      appointment_slots: {
+        Row: {
+          backend_appointment_id: string | null
+          booking_source: string
+          chief_complaint: string | null
+          clinic_id: string
+          created_at: string
+          end_time: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string
+          slot_date: string
+          start_time: string
+          status: string
+          visit_type: string | null
+        }
+        Insert: {
+          backend_appointment_id?: string | null
+          booking_source?: string
+          chief_complaint?: string | null
+          clinic_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string
+          slot_date: string
+          start_time: string
+          status?: string
+          visit_type?: string | null
+        }
+        Update: {
+          backend_appointment_id?: string | null
+          booking_source?: string
+          chief_complaint?: string | null
+          clinic_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string
+          slot_date?: string
+          start_time?: string
+          status?: string
+          visit_type?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      clinic_reserve_slot: {
+        Args: {
+          p_clinic: string
+          p_date: string
+          p_end: string
+          p_name: string
+          p_patient_id: string
+          p_phone: string
+          p_reason: string
+          p_start: string
+          p_visit_type: string
+        }
+        Returns: Json
+      }
+      clinic_slot_rows: {
+        Args: { p_clinic: string; p_date?: string }
+        Returns: {
+          backend_appointment_id: string | null
+          booking_source: string
+          chief_complaint: string | null
+          clinic_id: string
+          created_at: string
+          end_time: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string
+          slot_date: string
+          start_time: string
+          status: string
+          visit_type: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "appointment_slots"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      clinic_update_slot_status: {
+        Args: { p_backend_id?: string; p_id: string; p_status: string }
+        Returns: undefined
+      }
+      public_book_slot: {
+        Args: {
+          p_clinic: string
+          p_date: string
+          p_end: string
+          p_name: string
+          p_phone: string
+          p_reason?: string
+          p_start: string
+        }
+        Returns: Json
+      }
+      public_booked_times: {
+        Args: { p_clinic: string; p_date: string }
+        Returns: string[]
+      }
+      public_booking_info: { Args: { p_clinic: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
