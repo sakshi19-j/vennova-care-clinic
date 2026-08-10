@@ -10,115 +10,168 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
-      clinics: {
+      appointment_settings: {
         Row: {
-          created_at: string
-          id: string
-          name: string
-          owner_id: string
+          break_end: string | null
+          break_start: string | null
+          clinic_id: string
+          clinic_name: string | null
+          close_time: string
+          holidays: string[]
+          open_time: string
+          slot_minutes: number
+          updated_at: string
+          working_days: number[]
         }
         Insert: {
-          created_at?: string
-          id?: string
-          name: string
-          owner_id: string
+          break_end?: string | null
+          break_start?: string | null
+          clinic_id: string
+          clinic_name?: string | null
+          close_time?: string
+          holidays?: string[]
+          open_time?: string
+          slot_minutes?: number
+          updated_at?: string
+          working_days?: number[]
         }
         Update: {
-          created_at?: string
-          id?: string
-          name?: string
-          owner_id?: string
+          break_end?: string | null
+          break_start?: string | null
+          clinic_id?: string
+          clinic_name?: string | null
+          close_time?: string
+          holidays?: string[]
+          open_time?: string
+          slot_minutes?: number
+          updated_at?: string
+          working_days?: number[]
         }
         Relationships: []
       }
-      profiles: {
+      appointment_slots: {
         Row: {
+          backend_appointment_id: string | null
+          booking_source: string
+          chief_complaint: string | null
           clinic_id: string
           created_at: string
-          email: string
-          full_name: string
+          end_time: string
           id: string
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string
+          slot_date: string
+          start_time: string
+          status: string
+          visit_type: string | null
         }
         Insert: {
+          backend_appointment_id?: string | null
+          booking_source?: string
+          chief_complaint?: string | null
           clinic_id: string
           created_at?: string
-          email: string
-          full_name?: string
-          id: string
+          end_time: string
+          id?: string
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string
+          slot_date: string
+          start_time: string
+          status?: string
+          visit_type?: string | null
         }
         Update: {
+          backend_appointment_id?: string | null
+          booking_source?: string
+          chief_complaint?: string | null
           clinic_id?: string
           created_at?: string
-          email?: string
-          full_name?: string
+          end_time?: string
           id?: string
+          patient_id?: string | null
+          patient_name?: string
+          patient_phone?: string
+          slot_date?: string
+          start_time?: string
+          status?: string
+          visit_type?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_roles: {
-        Row: {
-          clinic_id: string
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          clinic_id: string
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          clinic_id?: string
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_roles_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      current_clinic_id: { Args: never; Returns: string }
-      has_role: {
+      clinic_reserve_slot: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
+          p_clinic: string
+          p_date: string
+          p_end: string
+          p_name: string
+          p_patient_id: string
+          p_phone: string
+          p_reason: string
+          p_start: string
+          p_visit_type: string
         }
-        Returns: boolean
+        Returns: Json
       }
-      register_clinic_owner: {
-        Args: { _clinic_name: string; _full_name: string }
-        Returns: string
+      clinic_slot_rows: {
+        Args: { p_clinic: string; p_date?: string }
+        Returns: {
+          backend_appointment_id: string | null
+          booking_source: string
+          chief_complaint: string | null
+          clinic_id: string
+          created_at: string
+          end_time: string
+          id: string
+          patient_id: string | null
+          patient_name: string
+          patient_phone: string
+          slot_date: string
+          start_time: string
+          status: string
+          visit_type: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "appointment_slots"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
+      clinic_update_slot_status: {
+        Args: { p_backend_id?: string; p_id: string; p_status: string }
+        Returns: undefined
+      }
+      public_book_slot: {
+        Args: {
+          p_clinic: string
+          p_date: string
+          p_end: string
+          p_name: string
+          p_phone: string
+          p_reason?: string
+          p_start: string
+        }
+        Returns: Json
+      }
+      public_booked_times: {
+        Args: { p_clinic: string; p_date: string }
+        Returns: string[]
+      }
+      public_booking_info: { Args: { p_clinic: string }; Returns: Json }
     }
     Enums: {
-      app_role: "reception" | "allopathy" | "homeopathy" | "admin"
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -245,8 +298,6 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {
-      app_role: ["reception", "allopathy", "homeopathy", "admin"],
-    },
+    Enums: {},
   },
 } as const

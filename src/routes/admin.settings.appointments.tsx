@@ -27,7 +27,7 @@ export const Route = createFileRoute("/admin/settings/appointments")({
 });
 
 function AppointmentSettingsPage() {
-  const { profile } = useAuth();
+  const { profile, clinicName } = useAuth();
   const clinicId = profile?.clinic_id ?? null;
   const [form, setForm] = useState<AppointmentSettings>(DEFAULT_APPOINTMENT_SETTINGS);
   const [saving, setSaving] = useState(false);
@@ -68,7 +68,7 @@ function AppointmentSettingsPage() {
       return toast.error("Break end must be after break start");
     setSaving(true);
     try {
-      await saveAppointmentSettings(clinicId, form);
+      await saveAppointmentSettings(clinicId, form, clinicName);
       toast.success("Appointment settings saved");
       void q.refetch();
     } catch (e) {

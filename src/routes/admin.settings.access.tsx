@@ -6,7 +6,8 @@ import { Card } from "@/components/clinic/PageHeader";
 import { UserPlus, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api-client";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client"
+import { clinicDb } from "@/integrations/supabase/clinic-db";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/admin/settings/access")({
@@ -35,7 +36,7 @@ function StaffAccess() {
 
   const loadCounts = async () => {
     if (!profile?.clinic_id) return;
-    const { data } = await supabase
+    const { data } = await clinicDb
       .from("user_roles")
       .select("role")
       .eq("clinic_id", profile.clinic_id);
