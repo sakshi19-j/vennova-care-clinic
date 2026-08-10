@@ -11,11 +11,11 @@
 // Everything degrades gracefully: if the Cloud tables are not present yet the
 // app falls back to sensible defaults and staff booking still works.
 
-import { supabase } from "@/integrations/supabase/client";
+import { appointmentsDb } from "@/integrations/supabase/appointments-client";
 import { api } from "@/lib/api-client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const db = supabase as any;
+const db = appointmentsDb as any;
 
 // ---------------------------------------------------------------- settings
 
@@ -85,12 +85,14 @@ export async function loadAppointmentSettings(
 export async function saveAppointmentSettings(
   clinicId: string,
   s: AppointmentSettings,
+  clinicName?: string | null,
 ): Promise<void> {
   const { error } = await db
     .from("appointment_settings")
     .upsert(
       {
         clinic_id: clinicId,
+        ...(clinicName ? { clinic_name: clinicName } : {}),
         working_days: s.working_days,
         open_time: s.open_time,
         close_time: s.close_time,
@@ -202,13 +204,10 @@ export async function loadSlotRows(
 ): Promise<SlotRow[]> {
   if (!clinicId) return [];
   try {
-    const { data, error } = await db
-      .from("appointment_slots")
-      .select("*")
-      .eq("clinic_id", clinicId)
-      .eq("slot_date", isoDate)
-      .neq("status", "CANCELLED")
-      .order("start_time");
+    const { data, error } = await db.rpc("clinic_slot_rows", {
+      p_clinic: clinicId,
+      p_date: isoDate,
+    });
     if (error) return [];
     return (data ?? []).map((r: any) => ({ ...r, start_time: hhmm(r.start_time) ?? r.start_time }));
   } catch {
@@ -220,17 +219,18 @@ export async function loadSlotRows(
 export async function loadPendingRequests(clinicId: string | null | undefined): Promise<SlotRow[]> {
   if (!clinicId) return [];
   try {
-    const { data, error } = await db
-      .from("appointment_slots")
-      .select("*")
-      .eq("clinic_id", clinicId)
-      .eq("status", "PENDING")
-      .eq("booking_source", "patient_link")
-      .gte("slot_date", localIsoDate())
-      .order("slot_date")
-      .order("start_time");
+    const { data, error } = await db.rpc("clinic_slot_rows", {
+      p_clinic: clinicId,
+      p_date: null,
+    });
     if (error) return [];
-    return (data ?? []).map((r: any) => ({ ...r, start_time: hhmm(r.start_time) ?? r.start_time }));
+    const today = localIsoDate();
+    return (data ?? [])
+      .filter(
+        (r: any) =>
+          r.status === "PENDING" && r.booking_source === "patient_link" && r.slot_date >= today,
+      )
+      .map((r: any) => ({ ...r, start_time: hhmm(r.start_time) ?? r.start_time }));
   } catch {
     return [];
   }
@@ -239,17 +239,23 @@ export async function loadPendingRequests(clinicId: string | null | undefined): 
 /** Reserve a slot. Throws SlotTakenError when the slot is already booked. */
 export async function reserveSlot(row: SlotRow): Promise<SlotRow | null> {
   try {
-    const { data, error } = await db
-      .from("appointment_slots")
-      .insert(row)
-      .select()
-      .maybeSingle();
+    const { data, error } = await db.rpc("clinic_reserve_slot", {
+      p_clinic: row.clinic_id,
+      p_date: row.slot_date,
+      p_start: row.start_time,
+      p_end: row.end_time,
+      p_patient_id: row.patient_id ?? "",
+      p_name: row.patient_name ?? "",
+      p_phone: row.patient_phone ?? "",
+      p_visit_type: row.visit_type ?? null,
+      p_reason: row.chief_complaint ?? null,
+    });
     if (error) {
       if (isUniqueViolation(error)) throw new SlotTakenError();
-      // Table missing / RLS not deployed yet — don't block staff booking.
       return null;
     }
-    return data as SlotRow;
+    if (data && data.ok === false) throw new SlotTakenError();
+    return { ...row, id: data?.id, status: "CONFIRMED" };
   } catch (e) {
     if (e instanceof SlotTakenError) throw e;
     return null;
@@ -259,7 +265,7 @@ export async function reserveSlot(row: SlotRow): Promise<SlotRow | null> {
 export async function releaseSlot(id: string | null | undefined): Promise<void> {
   if (!id) return;
   try {
-    await db.from("appointment_slots").update({ status: "CANCELLED" }).eq("id", id);
+    await db.rpc("clinic_update_slot_status", { p_id: id, p_status: "CANCELLED" });
   } catch {
     /* mirror is best-effort */
   }
@@ -270,10 +276,11 @@ export async function markSlotConfirmed(
   backendAppointmentId?: string | null,
 ): Promise<void> {
   try {
-    await db
-      .from("appointment_slots")
-      .update({ status: "CONFIRMED", backend_appointment_id: backendAppointmentId ?? null })
-      .eq("id", id);
+    await db.rpc("clinic_update_slot_status", {
+      p_id: id,
+      p_status: "CONFIRMED",
+      p_backend_id: backendAppointmentId ?? null,
+    });
   } catch {
     /* best effort */
   }
