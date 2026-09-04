@@ -321,7 +321,7 @@ export const publicBooking = {
     name: string;
     phone: string;
     reason?: string;
-  }): Promise<void> {
+  }): Promise<{ id: string | null }> {
     const { data, error } = await db.rpc("public_book_slot", {
       p_clinic: input.clinicId,
       p_date: input.isoDate,
@@ -335,7 +335,12 @@ export const publicBooking = {
       if (isUniqueViolation(error)) throw new SlotTakenError();
       throw new Error(error.message || "Could not book this slot.");
     }
-    if (data && data.ok === false) throw new SlotTakenError();
+    if (data && data.ok === false) {
+      if (data.reason === "taken") throw new SlotTakenError();
+      if (data.reason === "past") throw new Error("That time has already passed. Please pick another slot.");
+      throw new Error("Please check your details and try again.");
+    }
+    return { id: data?.id ?? null };
   },
 };
 
