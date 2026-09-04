@@ -32,7 +32,15 @@ function PublicBooking() {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<{ date: string; start: string } | null>(null);
+  const [done, setDone] = useState<{
+    id: string | null;
+    date: string;
+    start: string;
+    end: string;
+    name: string;
+    phone: string;
+    reason: string;
+  } | null>(null);
 
   const infoQ = useQuery({
     queryKey: ["public-booking-info", clinicId],
@@ -43,8 +51,12 @@ function PublicBooking() {
   const bookedQ = useQuery({
     queryKey: ["public-booked", clinicId, date],
     queryFn: () => publicBooking.bookedTimes(clinicId, date),
-    enabled: !!infoQ.data,
-    staleTime: 5_000,
+    enabled: !!infoQ.data && !done,
+    staleTime: 0,
+    // Keep availability honest: re-check regularly and whenever the visitor
+    // comes back to the tab, so busy times are never stale.
+    refetchInterval: done ? false : 20_000,
+    refetchOnWindowFocus: true,
   });
 
   const settings = infoQ.data?.settings;
