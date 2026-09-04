@@ -122,7 +122,9 @@ function StaffManagement() {
                         onClick={async () => {
                           setAccessBusy(m.id);
                           try {
-                            const res = await accessLink({ data: { userId: m.id } });
+                            const res = await accessLink({
+                              data: { userId: m.id, redirectTo: window.location.origin },
+                            });
                             if (res?.link) window.location.href = res.link;
                             else toast.error("No access link returned");
                           } catch (e: any) {

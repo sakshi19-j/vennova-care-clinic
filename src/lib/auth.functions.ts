@@ -73,7 +73,11 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
 export const getStaffAccessLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({ userId: z.string().uuid(), redirectTo: z.string().url().optional() })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const db = asClinicDb(supabase);
@@ -96,13 +100,26 @@ export const getStaffAccessLink = createServerFn({ method: "POST" })
       throw new Error("Staff member not found in your clinic.");
     }
 
-    const origin = process.env["VITE_APP_URL"] ?? "";
-    const { data: linkData, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: target.email,
-    });
-    if (error || !linkData?.properties?.action_link) {
-      throw new Error(error?.message ?? "Could not generate access link.");
+    const origin = data.redirectTo ?? process.env["VITE_APP_URL"] ?? "";
+
+    // Magic link first; some projects disable it, so fall back to a recovery link
+    // which also establishes a session when redeemed.
+    let linkData: { properties?: { action_link?: string } } | null = null;
+    let lastError: string | null = null;
+    for (const type of ["magiclink", "recovery"] as const) {
+      const res = await supabaseAdmin.auth.admin.generateLink({
+        type,
+        email: target.email,
+        ...(origin ? { options: { redirectTo: origin } } : {}),
+      } as never);
+      if (res.data?.properties?.action_link) {
+        linkData = res.data as typeof linkData;
+        break;
+      }
+      lastError = res.error?.message ?? null;
+    }
+    if (!linkData?.properties?.action_link) {
+      throw new Error(lastError ?? "Could not generate access link.");
     }
 
     // Rewrite the link so it redirects back into the app after redeeming.

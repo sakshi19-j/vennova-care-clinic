@@ -193,6 +193,26 @@ function DashboardPage() {
             </Link>
           </Card>
 
+          {/* Staff management shortcut */}
+          <Card className="col-span-12">
+            <Link
+              to="/admin/staff-management"
+              className="flex items-center gap-3 -m-2 p-2 rounded-xl hover:bg-muted/60 transition-colors"
+            >
+              <div className="size-11 rounded-full bg-muted text-foreground grid place-items-center shrink-0">
+                <UserCog className="size-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">Team</div>
+                <div className="font-display text-lg">Staff management</div>
+                <div className="text-xs text-muted-foreground">
+                  Add staff, set their role, or sign in as them with Access
+                </div>
+              </div>
+              <ArrowRight className="size-5 text-muted-foreground" />
+            </Link>
+          </Card>
+
           {/* Revenue trend */}
           <Card className="col-span-12 lg:col-span-8 bg-gradient-to-br from-card to-muted/30">
             <div className="flex items-center justify-between mb-2">
