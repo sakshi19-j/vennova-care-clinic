@@ -73,7 +73,11 @@ export const createStaffMember = createServerFn({ method: "POST" })
 
 export const getStaffAccessLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({ userId: z.string().uuid(), redirectTo: z.string().url().optional() })
+      .parse(data),
+  )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const db = asClinicDb(supabase);
