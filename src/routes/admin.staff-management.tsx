@@ -2,10 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Card, Tag } from "@/components/clinic/PageHeader";
-import { UserPlus, Mail, Trash2, Loader2 } from "lucide-react";
+import { UserPlus, Mail, Trash2, Loader2, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client"
 import { clinicDb } from "@/integrations/supabase/clinic-db";
-import { deleteStaffMember } from "@/lib/auth.functions";
+import { deleteStaffMember, getStaffAccessLink } from "@/lib/auth.functions";
 import { api } from "@/lib/api-client";
 import { useAuth, type Role } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ function StaffManagement() {
   const [members, setMembers] = useState<Member[]>([]);
   const [open, setOpen] = useState(false);
   const remove = useServerFn(deleteStaffMember);
+  const accessLink = useServerFn(getStaffAccessLink);
+  const [accessBusy, setAccessBusy] = useState<string | null>(null);
 
   const load = async () => {
     if (!profile?.clinic_id) return;
@@ -114,7 +116,26 @@ function StaffManagement() {
                   <td className="py-3 px-3 text-muted-foreground inline-flex items-center gap-1">
                     <Mail className="size-3" /> {m.email}
                   </td>
-                  <td className="py-3 px-5 text-right">
+                  <td className="py-3 px-5 text-right space-x-3">
+                    {m.id !== profile?.id && (
+                      <button
+                        onClick={async () => {
+                          setAccessBusy(m.id);
+                          try {
+                            const res = await accessLink({ data: { userId: m.id } });
+                            if (res?.link) window.location.href = res.link;
+                            else toast.error("No access link returned");
+                          } catch (e: any) {
+                            toast.error(friendlyStaffError(e, "Failed to generate access link"));
+                          } finally {
+                            setAccessBusy(null);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        {accessBusy === m.id ? <Loader2 className="size-3 animate-spin" /> : <KeyRound className="size-3" />} Access
+                      </button>
+                    )}
                     {m.id !== profile?.id && (
                       <button
                         onClick={async () => {

@@ -71,6 +71,54 @@ export const createStaffMember = createServerFn({ method: "POST" })
     return { id: newUserId, email: data.email, fullName: data.fullName, role: data.role };
   });
 
+export const getStaffAccessLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const db = asClinicDb(supabase);
+    const admin = asClinicDb(supabaseAdmin);
+
+    const { data: callerRole } = await db
+      .from("user_roles")
+      .select("clinic_id")
+      .eq("user_id", userId)
+      .eq("role", "admin")
+      .maybeSingle();
+    if (!callerRole) throw new Error("Only clinic admins can access staff accounts.");
+
+    const { data: target } = await admin
+      .from("profiles")
+      .select("clinic_id, email")
+      .eq("id", data.userId)
+      .maybeSingle();
+    if (!target || target.clinic_id !== callerRole.clinic_id) {
+      throw new Error("Staff member not found in your clinic.");
+    }
+
+    const origin = process.env["VITE_APP_URL"] ?? "";
+    const { data: linkData, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email: target.email,
+    });
+    if (error || !linkData?.properties?.action_link) {
+      throw new Error(error?.message ?? "Could not generate access link.");
+    }
+
+    // Rewrite the link so it redirects back into the app after redeeming.
+    let link = linkData.properties.action_link as string;
+    if (origin) {
+      try {
+        const url = new URL(link);
+        url.searchParams.set("redirect_to", origin);
+        link = url.toString();
+      } catch {
+        // keep original link
+      }
+    }
+    return { link };
+  });
+
 export const deleteStaffMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ userId: z.string().uuid() }).parse(data))
