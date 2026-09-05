@@ -5,7 +5,7 @@ import { Card, Tag } from "@/components/clinic/PageHeader";
 import { UserPlus, Mail, Trash2, Loader2, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client"
 import { clinicDb } from "@/integrations/supabase/clinic-db";
-import { deleteStaffMember, getStaffAccessLink } from "@/lib/auth.functions";
+import { deleteStaffMember } from "@/lib/auth.functions";
 import { api } from "@/lib/api-client";
 import { useAuth, type Role } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -121,18 +121,19 @@ function StaffManagement() {
                         onClick={async () => {
                           setAccessBusy(m.id);
                           try {
-                            const res = await accessLink({
-                              data: { userId: m.id, redirectTo: window.location.origin },
-                            });
-                            if (res?.link) window.location.href = res.link;
-                            else toast.error("No access link returned");
+                            const res = await api.post<{ login_link: string }>(
+                              `/auth/staff/${m.id}/login-link`,
+                            );
+                            if (res?.login_link) window.location.href = res.login_link;
+                            else toast.error("No login link returned");
                           } catch (e: any) {
                             toast.error(friendlyStaffError(e, "Failed to generate access link"));
                           } finally {
                             setAccessBusy(null);
                           }
                         }}
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        disabled={accessBusy === m.id}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-60"
                       >
                         {accessBusy === m.id ? <Loader2 className="size-3 animate-spin" /> : <KeyRound className="size-3" />} Access
                       </button>
