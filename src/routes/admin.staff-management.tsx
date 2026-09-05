@@ -27,7 +27,7 @@ function StaffManagement() {
   const [members, setMembers] = useState<Member[]>([]);
   const [open, setOpen] = useState(false);
   const remove = useServerFn(deleteStaffMember);
-  const accessBusyRef = { current: null as string | null };
+  const [accessBusy] = [accessBusyState];
   const [accessBusy, setAccessBusy] = useState<string | null>(null);
 
   const load = async () => {
