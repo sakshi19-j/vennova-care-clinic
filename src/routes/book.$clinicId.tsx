@@ -73,39 +73,67 @@ function PublicBooking() {
     setError(null);
     setSaving(true);
     try {
-      await publicBooking.book({
+      const res = await publicBooking.book({
         clinicId, isoDate: date, start: slot.start, end: slot.end,
         name: name.trim(), phone: phone.trim(), reason: reason.trim() || undefined,
       });
-      setDone({ date, start: slot.start });
+      setDone({
+        id: res?.id ?? null,
+        date, start: slot.start, end: slot.end,
+        name: name.trim(), phone: phone.trim(), reason: reason.trim(),
+      });
     } catch (e) {
       if (e instanceof SlotTakenError) {
         setError("Sorry, this slot is no longer available. Please select another slot.");
         setSlot(null);
-        void bookedQ.refetch();
       } else {
         setError((e as Error).message || "Something went wrong. Please try again.");
       }
+      // Always refresh availability after a failure so busy times aren't stale.
+      void bookedQ.refetch();
     } finally {
       setSaving(false);
     }
   };
 
   if (done) {
+    const clinicName = infoQ.data?.clinic_name ?? "the clinic";
+    const rows: Array<[string, string]> = [
+      ["Clinic", clinicName],
+      ["Date", new Date(`${done.date}T00:00:00`).toLocaleDateString("en-IN", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+      })],
+      ["Time", `${formatSlotLabel(done.start)} – ${formatSlotLabel(done.end)}`],
+      ["Name", done.name],
+      ["Phone", done.phone],
+    ];
+    if (done.reason) rows.push(["Reason", done.reason]);
+    if (done.id) rows.push(["Reference", done.id.slice(0, 8).toUpperCase()]);
     return (
       <Shell clinic={infoQ.data?.clinic_name}>
         <div className="p-8 text-center">
           <CheckCircle2 className="mx-auto size-12 text-primary" />
           <h1 className="mt-4 font-display text-2xl">Appointment requested</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {new Date(`${done.date}T00:00:00`).toLocaleDateString("en-IN", {
-              weekday: "long", day: "numeric", month: "long",
-            })}{" "}
-            at <span className="font-medium text-foreground">{formatSlotLabel(done.start)}</span>
+            Your request has been sent to {clinicName}.
           </p>
+          <dl className="mx-auto mt-6 max-w-sm space-y-2 rounded-2xl border border-border bg-muted/30 p-4 text-left text-sm">
+            {rows.map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between gap-4">
+                <dt className="shrink-0 text-xs uppercase tracking-widest text-muted-foreground">{k}</dt>
+                <dd className="break-words text-right font-medium">{v}</dd>
+              </div>
+            ))}
+          </dl>
           <p className="mt-4 text-sm text-muted-foreground">
-            The clinic will confirm your booking shortly on {phone}.
+            The clinic will confirm your booking shortly on {done.phone}.
           </p>
+          <button
+            onClick={() => { setDone(null); setSlot(null); setName(""); setPhone(""); setReason(""); setError(null); }}
+            className="mt-6 text-sm font-medium text-primary hover:underline"
+          >
+            Book another appointment
+          </button>
         </div>
       </Shell>
     );

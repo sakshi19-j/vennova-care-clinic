@@ -104,26 +104,26 @@ export const getStaffAccessLink = createServerFn({ method: "POST" })
 
     // Magic link first; some projects disable it, so fall back to a recovery link
     // which also establishes a session when redeemed.
-    let linkData: { properties?: { action_link?: string } } | null = null;
+    let actionLink: string | null = null;
     let lastError: string | null = null;
     for (const type of ["magiclink", "recovery"] as const) {
       const res = await supabaseAdmin.auth.admin.generateLink({
         type,
         email: target.email,
         ...(origin ? { options: { redirectTo: origin } } : {}),
-      } as never);
+      });
       if (res.data?.properties?.action_link) {
-        linkData = res.data as typeof linkData;
+        actionLink = res.data.properties.action_link;
         break;
       }
       lastError = res.error?.message ?? null;
     }
-    if (!linkData?.properties?.action_link) {
+    if (!actionLink) {
       throw new Error(lastError ?? "Could not generate access link.");
     }
 
     // Rewrite the link so it redirects back into the app after redeeming.
-    let link = linkData.properties.action_link as string;
+    let link = actionLink;
     if (origin) {
       try {
         const url = new URL(link);
