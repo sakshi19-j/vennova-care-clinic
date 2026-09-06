@@ -12,6 +12,7 @@ import {
 
 import appCss from "../styles.css?url";
 import { AppLayout } from "@/components/clinic/AppLayout";
+import { BackToAdminButton } from "@/components/clinic/BackToAdminButton";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -189,6 +190,7 @@ function RootComponent() {
         <TrialExpiredGate>
           <AppLayout />
         </TrialExpiredGate>
+        <BackToAdminButton />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
