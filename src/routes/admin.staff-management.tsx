@@ -124,8 +124,16 @@ function StaffManagement() {
                             const res = await api.post<{ login_link: string }>(
                               `/auth/staff/${m.id}/login-link`,
                             );
-                            if (res?.login_link) window.location.href = res.login_link;
-                            else toast.error("No login link returned");
+                            if (res?.login_link) {
+                              const { data: { session } } = await supabase.auth.getSession();
+                              if (session) {
+                                sessionStorage.setItem("vennova_admin_session", JSON.stringify({
+                                  access_token: session.access_token,
+                                  refresh_token: session.refresh_token,
+                                }));
+                              }
+                              window.location.href = res.login_link;
+                            } else toast.error("No login link returned");
                           } catch (e: any) {
                             toast.error(friendlyStaffError(e, "Failed to generate access link"));
                           } finally {
